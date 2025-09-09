@@ -9,7 +9,7 @@ import { DepartmentGetAction } from "../../redux/Action/Department/DepartmentAct
 import { DesignationGetAction } from "../../redux/Action/Designation/DesignationAction";
 import { EmployeeGetActionForFilter } from "../../redux/Action/Employee/EmployeeAction";
 import { useCheckEnabledModule } from "../../hooks/useCheckEnabledModule";
-import { PiMagnifyingGlassBold, PiXBold } from "react-icons/pi";
+import { MagnifyingGlass, X } from "@phosphor-icons/react";
 import { Button } from "@material-tailwind/react";
 import DateStatusFilter from "../DateStatusFilter/DateStatusFilter";
 
@@ -493,7 +493,7 @@ const MultiSelectFilter = ({
             onClick={() => onSet(selectedFilters)}
             className="px-3 py-3 bg-primary hover:bg-primaryLight hover:text-primary transition-all duration-200 text-xs flex gap-2 justify-between"
           >
-            Search <PiMagnifyingGlassBold className="w-4 h-4" />
+            Search <MagnifyingGlass className="w-4 h-4" />
           </Button>
         )}
 
@@ -508,7 +508,7 @@ const MultiSelectFilter = ({
           }}
           className="flex items-center gap-2 bg-popLight text-popfont-medium px-3 py-2 rounded-md text-sm hover:bg-popMedium"
         >
-          Clear <PiXBold className="w-4 h-4" />
+          Clear <X className="w-4 h-4" />
         </button>
       </div>
     </div>

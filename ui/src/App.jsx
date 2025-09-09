@@ -41,13 +41,13 @@ const LeaveIndex = lazy(() => import("./pages/Leave/Policy/Index"));
 const LeaveRequestIndex = lazy(() => import("./pages/Leave/Request/Index"));
 const LeaveHistoryIndex = lazy(() => import("./pages/Leave/History/Index"));
 const AttendanceApprovals = lazy(() => import("./pages/Attendence/Approvals/Index"));
-const NotFound = lazy(() => import("./pages/Notfound/Notfound"));
+const NotFound = lazy(() => import("./pages/Notfound/NotFound"));
 const RolesIndex = lazy(() => import("./pages/Roles/Index"));
 const TasksIndex = lazy(() => import("./pages/Tasks/Index"));
 const CheckPointIndex = lazy(() => import("./pages/Checkpoint/Index"));
 const HolidayIndex = lazy(() => import("./pages/Holiday/Index"));
 const BannerIndex = lazy(() => import("./pages/Banners/Index"));
-const SettingIndex = lazy(() => import("./pages/settings/Index"));
+const SettingIndex = lazy(() => import("./pages/settings/index"));
 const AttendenceReportIndex = lazy(() =>
   import("./pages/Attendence/AttendenceReport/Index")
 );

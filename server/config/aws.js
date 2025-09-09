@@ -1,14 +1,14 @@
 import { logger } from '../helper/logger.js';
 import { RekognitionClient, CreateCollectionCommand, ListCollectionsCommand ,IndexFacesCommand,SearchFacesByImageCommand} from "@aws-sdk/client-rekognition";
-import AWS  from 'aws-sdk';
+// import AWS  from 'aws-sdk';
 import fs from "fs"
 
-
-AWS.config.update({
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    region: process.env.AWS_REGION,
-  });
+// Temporarily disabled AWS config for Replit setup
+// AWS.config.update({
+//     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+//     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+//     region: process.env.AWS_REGION,
+//   });
 
 const client = new RekognitionClient({ region: process.env.AWS_REGION });
 

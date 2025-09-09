@@ -1,7 +1,7 @@
 
 import * as express from 'express';
 import * as biometricAuth from '../controllers/biometric/auth.js';
-import * as device from '../controllers/biometric/Devices.js';
+import * as device from '../controllers/biometric/devices.js';
 import * as auth from '../controllers/auth/auth.js';
 import * as user from '../controllers/user/user.js';
 import * as apiResponse from '../helper/apiResponse.js';
