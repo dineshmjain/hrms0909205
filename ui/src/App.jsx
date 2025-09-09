@@ -56,7 +56,7 @@ const BranchRadiusSettingIndex = lazy(() => import("./pages/Attendence/BranchRad
 import { LoadScript, LoadScriptNext } from "@react-google-maps/api";
 import BranchRadiusSetting from "./pages/Attendence/BranchRadiusSetting/BranchRadiusSetting";
 import Profile from "./pages/Profile/Profile";
-const BiometricIndex = lazy(() => import('./pages/Biometrics/index'))
+const BiometricIndex = lazy(() => import('./pages/Biometrics/Index'))
 const googleMapsApiKey = import.meta.env.VITE_MAPAPI;
 const GOOGLE_MAP_LIBRARIES = ["places"];
 const App = () => {
