@@ -138,6 +138,6 @@ var port = 8050;
 //start the cron job for auto approval
 //autoApprovedAttendance();
 
-createServer(app).listen(port,"0.0.0.0",()=>{
-  console.log('\n================================== \x1b[35measyPagarEnterprise API is runnning at ' + port +" \x1B[39m==================================\n");
+createServer(app).listen(port, "localhost", () => {
+  console.log('\n================================== \x1b[35measyPagarEnterprise API is running at ' + port +" \x1B[39m==================================\n");
 });
