@@ -9,7 +9,7 @@ const hostname = process.env.MONGO_HOSTNAME
 const port = process.env.MONGO_PORT 
 const dbName = process.env.MONGO_DBNAME
 
-const uri = /*"mongodb://192.168.1.118:27022/?authMechanism=DEFAULT&authSource=stockTaker"*/`mongodb://${hostname}:${port}/${dbName}`
+const uri = `mongodb+srv://admin:Admin2025mwbt@easypagarenterprise.t3mko0d.mongodb.net/admin?retryWrites=true&w=majority`;
 // const uri = "mongodb://localhost:27017/easyPagarEnterprise"
 //const uri = "mongodb://192.168.1.118:27022/easyPagarEnterprise"
 
