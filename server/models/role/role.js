@@ -377,7 +377,7 @@ export const getAdminRole=async(body)=>{
   try{
     
     let query = {
-      name:constants.role.ADMIN,
+      name:constants.role.ADMIN || 'Admin',
       priority: 1,
       isActive: true
   }

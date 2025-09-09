@@ -9,7 +9,7 @@ export default defineConfig({
     port: 5000,
     allowedHosts: true,
     proxy: {
-      '/api': 'http://localhost:8050/api/v1'
+      '/api': 'http://localhost:8050'
     }
   },
   plugins: [react()],

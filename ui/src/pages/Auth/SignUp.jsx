@@ -20,7 +20,7 @@ import {
   InputWithHelperText,
   PasswordWithHelperText,
 } from "../../components/Input/Input";
-import OtpVerification from "./OTPVerfication";
+
 import toast from "react-hot-toast";
 import Otp from "./Otp";
 import logo from "../../assets/MWB_Logo (2).png";

@@ -8,7 +8,7 @@ import {errors} from "celebrate";
 import { fork } from 'child_process';
 import fileUpload from 'express-fileupload';
 import fs from 'fs';
-import routes from "./routes/apiRoute.js";
+import routes from './routes/apiRoute.js';
 
 import dotenv from 'dotenv'
 dotenv.config()
@@ -63,7 +63,7 @@ const __dirname = path.dirname(__filename);
 
 // const __filename = fileURLToPath(import.meta.url);
 // const __dirname = path.dirname(__filename);
-
+app.set('trust proxy', 1)
 const limiter = rateLimit({
   windowMs : 10 * 60 * 1000, //10 min
   max : parseInt(process.env.REQUESTLIMIT) || 150000, //1.5 lakh requests from same IP
@@ -138,6 +138,6 @@ var port = 8050;
 //start the cron job for auto approval
 //autoApprovedAttendance();
 
-createServer(app).listen(port, "localhost", () => {
+createServer(app).listen(port, "0.0.0.0", () => {
   console.log('\n================================== \x1b[35measyPagarEnterprise API is running at ' + port +" \x1B[39m==================================\n");
 });
