@@ -1,0 +1,10 @@
+2025-09-08T10:07:56.792Z - [INFO]: [0mPOST /api/v1/user/getDetails [33m401[0m 31.564 ms - 39[0m
+ 
+2025-09-08T10:09:12.813Z - [INFO]: [0mPOST /api/v1/user/getDetails [33m401[0m 12.034 ms - 39[0m
+ 
+2025-09-08T10:09:45.141Z - [INFO]: [0mPOST /api/v1/auth/login [32m200[0m 277.015 ms - 3166[0m
+ 
+2025-09-08T10:10:08.268Z - [INFO]: [0mPOST /api/v1/user/getDetails [32m200[0m 198.976 ms - 3003[0m
+ 
+2025-09-08T10:10:12.116Z - [INFO]: [0mPOST /api/v1/dashboard/overall [32m200[0m 59.974 ms - 174[0m
+ 

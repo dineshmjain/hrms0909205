@@ -1,0 +1,7 @@
+.env
+node_modules
+log
+grpc
+face_reco_new
+face_recognition
+assets

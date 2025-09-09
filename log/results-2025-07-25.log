@@ -1,0 +1,181 @@
+2025-07-25T07:46:07.175Z - [INFO]: [0mPOST /api/v1/user/getDetails [33m401[0m 13.973 ms - 39[0m
+ 
+2025-07-25T07:50:04.234Z - [INFO]: [0mPOST /api/v1/user/getDetails [33m401[0m 17.503 ms - 39[0m
+ 
+2025-07-25T07:50:04.442Z - [INFO]: [0mPOST /api/v1/branch/radius/get [33m401[0m 6.837 ms - 39[0m
+ 
+2025-07-25T08:09:23.448Z - [INFO]: [0mPOST /api/v1/auth/login [33m404[0m 1960.355 ms - 63[0m
+ 
+2025-07-25T08:09:40.772Z - [INFO]: [0mPOST /api/v1/auth/login [33m404[0m 251.222 ms - 63[0m
+ 
+2025-07-25T08:09:46.501Z - [INFO]: [0mPOST /api/v1/auth/login [33m404[0m 153.780 ms - 63[0m
+ 
+2025-07-25T08:10:26.078Z - [INFO]: [0mPOST /api/v1/auth/register [33m404[0m 147.260 ms - 48[0m
+ 
+2025-07-25T08:12:13.086Z - [INFO]: [0mPOST /api/v1/auth/register [32m200[0m 2270.948 ms - 70[0m
+ 
+2025-07-25T08:12:13.175Z - [INFO]: [0mPOST /api/v1/user/getDetails [33m401[0m 16.135 ms - 39[0m
+ 
+2025-07-25T08:12:15.450Z - [INFO]: [0mPOST /api/v1/auth/verify [33m400[0m 109.646 ms - 118[0m
+ 
+2025-07-25T08:12:19.857Z - [INFO]: [0mPOST /api/v1/auth/verify [33m400[0m 170.369 ms - 118[0m
+ 
+2025-07-25T08:15:08.584Z - [INFO]: [0mPOST /api/v1/auth/register [33m400[0m 1803.472 ms - 54[0m
+ 
+2025-07-25T08:15:13.968Z - [INFO]: [0mPOST /api/v1/auth/register [33m400[0m 400.499 ms - 49[0m
+ 
+2025-07-25T08:15:21.554Z - [INFO]: [0mPOST /api/v1/auth/register [32m200[0m 2234.813 ms - 70[0m
+ 
+2025-07-25T08:15:21.625Z - [INFO]: [0mPOST /api/v1/user/getDetails [33m401[0m 11.596 ms - 39[0m
+ 
+2025-07-25T08:15:25.174Z - [INFO]: [0mPOST /api/v1/auth/verify [32m200[0m 1289.671 ms - 1596[0m
+ 
+2025-07-25T08:15:26.646Z - [INFO]: [0mPOST /api/v1/user/getDetails [32m200[0m 1364.779 ms - 1371[0m
+ 
+2025-07-25T08:15:37.577Z - [INFO]: [0mPOST /api/v1/user/getDetails [33m401[0m 8.380 ms - 39[0m
+ 
+2025-07-25T08:15:37.847Z - [INFO]: [0mPOST /api/v1/branch/list?mapedData=branch&orgLevel=true [33m401[0m 9.839 ms - 39[0m
+ 
+2025-07-25T08:15:37.877Z - [INFO]: [0mPOST /api/v1/designation/get [33m401[0m 16.659 ms - 39[0m
+ 
+2025-07-25T08:15:37.945Z - [INFO]: [0mPOST /api/v1/user/get [33m401[0m 45.982 ms - 39[0m
+ 
+2025-07-25T08:15:37.969Z - [INFO]: [0mPOST /api/v1/shift/date/list [33m400[0m 10.072 ms - 180[0m
+ 
+2025-07-25T08:15:37.977Z - [INFO]: [0mPOST /api/v1/department/get [33m401[0m 4.090 ms - 39[0m
+ 
+2025-07-25T08:15:38.431Z - [INFO]: [0mPOST /api/v1/user/getDetails [32m200[0m 1789.559 ms - 1371[0m
+ 
+2025-07-25T08:15:41.191Z - [INFO]: [0mGET /api/v1/globle/address/type/list [32m200[0m 437.732 ms - 469[0m
+ 
+2025-07-25T08:15:41.213Z - [INFO]: [0mGET /api/v1/globle/orgType/list [32m200[0m 4230.125 ms - 4870[0m
+ 
+2025-07-25T08:15:41.682Z - [INFO]: [0mGET /api/v1/globle/orgType/list [36m304[0m 455.505 ms - -[0m
+ 
+2025-07-25T08:15:53.350Z - [INFO]: [0mPOST /api/v1/user/getDetails [32m200[0m 3005.064 ms - 1371[0m
+ 
+2025-07-25T08:15:53.689Z - [INFO]: [0mGET /api/v1/globle/orgType/list [36m304[0m 3199.606 ms - -[0m
+ 
+2025-07-25T08:15:54.196Z - [INFO]: [0mGET /api/v1/globle/orgType/list [36m304[0m 500.333 ms - -[0m
+ 
+2025-07-25T08:15:56.324Z - [INFO]: [0mGET /api/v1/globle/orgType/list [36m304[0m 448.510 ms - -[0m
+ 
+2025-07-25T08:15:56.785Z - [INFO]: [0mGET /api/v1/globle/orgType/list [36m304[0m 452.579 ms - -[0m
+ 
+2025-07-25T08:15:57.538Z - [INFO]: [0mPOST /api/v1/user/getDetails [32m200[0m 1770.146 ms - 1371[0m
+ 
+2025-07-25T08:16:19.799Z - [INFO]: orgDetails 
+2025-07-25T08:16:23.004Z - [INFO]: [0mPOST /api/v1/organization/add/group [32m200[0m 4727.091 ms - 51[0m
+ 
+2025-07-25T08:16:26.298Z - [INFO]: [0mPOST /api/v1/user/getDetails [32m200[0m 3212.822 ms - 1426[0m
+ 
+2025-07-25T08:16:37.846Z - [INFO]: [0mPOST /api/v1/user/getDetails [33m401[0m 4.716 ms - 39[0m
+ 
+2025-07-25T08:16:38.654Z - [INFO]: [0mPOST /api/v1/branch/list?mapedData=branch&orgLevel=true [33m401[0m 8.634 ms - 39[0m
+ 
+2025-07-25T08:16:38.668Z - [INFO]: [0mPOST /api/v1/department/get [33m401[0m 5.412 ms - 39[0m
+ 
+2025-07-25T08:16:38.679Z - [INFO]: [0mPOST /api/v1/designation/get [33m401[0m 6.382 ms - 39[0m
+ 
+2025-07-25T08:16:38.693Z - [INFO]: [0mPOST /api/v1/user/get [33m401[0m 8.223 ms - 39[0m
+ 
+2025-07-25T08:16:38.711Z - [INFO]: [0mPOST /api/v1/shift/date/list [33m400[0m 3.855 ms - 180[0m
+ 
+2025-07-25T08:16:40.597Z - [INFO]: [0mPOST /api/v1/user/getDetails [32m200[0m 2856.254 ms - 1426[0m
+ 
+2025-07-25T08:19:16.517Z - [INFO]: [0mPOST /api/v1/user/getDetails [32m200[0m 2690.325 ms - 1426[0m
+ 
+2025-07-25T08:19:26.856Z - [INFO]: [0mPOST /api/v1/user/getDetails [33m401[0m 4.265 ms - 39[0m
+ 
+2025-07-25T08:19:27.397Z - [INFO]: [0mPOST /api/v1/branch/list?mapedData=branch&orgLevel=true [33m401[0m 5.427 ms - 39[0m
+ 
+2025-07-25T08:19:27.412Z - [INFO]: [0mPOST /api/v1/department/get [33m401[0m 8.337 ms - 39[0m
+ 
+2025-07-25T08:19:27.424Z - [INFO]: [0mPOST /api/v1/designation/get [33m401[0m 6.096 ms - 39[0m
+ 
+2025-07-25T08:19:27.442Z - [INFO]: [0mPOST /api/v1/user/get [33m401[0m 10.969 ms - 39[0m
+ 
+2025-07-25T08:19:27.464Z - [INFO]: [0mPOST /api/v1/shift/date/list [33m400[0m 8.948 ms - 180[0m
+ 
+2025-07-25T08:19:27.476Z - [INFO]: [0mPOST /api/v1/user/getDetails [32m200[0m 785.827 ms - 1426[0m
+ 
+2025-07-25T08:19:27.705Z - [INFO]: [0mGET /api/v1/globle/orgType/list [36m304[0m 217.284 ms - -[0m
+ 
+2025-07-25T08:19:28.360Z - [INFO]: [0mPOST /api/v1/organization/get [32m200[0m 643.363 ms - 396[0m
+ 
+2025-07-25T08:19:28.990Z - [INFO]: [0mGET /api/v1/globle/address/type/list [36m304[0m 1201.393 ms - -[0m
+ 
+2025-07-25T08:19:42.335Z - [INFO]: [0mPOST /api/v1/branch/add [32m200[0m 1402.976 ms - 123[0m
+ 
+2025-07-25T08:20:00.284Z - [INFO]: [0mPOST /api/v1/user/getDetails [33m401[0m 4.866 ms - 39[0m
+ 
+2025-07-25T08:20:01.317Z - [INFO]: [0mPOST /api/v1/branch/list?mapedData=branch&orgLevel=true [33m401[0m 6.607 ms - 39[0m
+ 
+2025-07-25T08:20:01.327Z - [INFO]: [0mPOST /api/v1/department/get [33m401[0m 4.590 ms - 39[0m
+ 
+2025-07-25T08:20:01.338Z - [INFO]: [0mPOST /api/v1/designation/get [33m401[0m 4.649 ms - 39[0m
+ 
+2025-07-25T08:20:01.349Z - [INFO]: [0mPOST /api/v1/user/get [33m401[0m 5.699 ms - 39[0m
+ 
+2025-07-25T08:20:01.356Z - [INFO]: [0mPOST /api/v1/shift/date/list [33m400[0m 4.047 ms - 180[0m
+ 
+2025-07-25T08:20:02.104Z - [INFO]: [0mPOST /api/v1/user/getDetails [32m200[0m 1900.030 ms - 1425[0m
+ 
+2025-07-25T08:20:06.801Z - [INFO]: [0mPOST /api/v1/organization/get [32m200[0m 497.066 ms - 396[0m
+ 
+2025-07-25T08:20:16.762Z - [INFO]: [0mPOST /api/v1/organization/get [32m200[0m 199.551 ms - 396[0m
+ 
+2025-07-25T08:20:16.910Z - [INFO]: [0mPOST /api/v1/branch/list?mapedData=branch&orgLevel=true&page=1&limit=10&name=&subOrgId= [32m200[0m 356.667 ms - 866[0m
+ 
+2025-07-25T08:20:20.793Z - [INFO]: [0mPOST /api/v1/organization/get [32m200[0m 164.550 ms - 396[0m
+ 
+2025-07-25T08:20:33.361Z - [INFO]: [0mPOST /api/v1/user/getDetails [33m401[0m 5.479 ms - 39[0m
+ 
+2025-07-25T08:20:33.879Z - [INFO]: [0mPOST /api/v1/user/getDetails [32m200[0m 553.466 ms - 1425[0m
+ 
+2025-07-25T08:20:33.892Z - [INFO]: [0mPOST /api/v1/branch/list?mapedData=branch&orgLevel=true [33m401[0m 4.924 ms - 39[0m
+ 
+2025-07-25T08:20:33.918Z - [INFO]: [0mPOST /api/v1/department/get [33m401[0m 7.126 ms - 39[0m
+ 
+2025-07-25T08:20:33.927Z - [INFO]: [0mPOST /api/v1/designation/get [33m401[0m 4.664 ms - 39[0m
+ 
+2025-07-25T08:20:33.940Z - [INFO]: [0mPOST /api/v1/user/get [33m401[0m 5.715 ms - 39[0m
+ 
+2025-07-25T08:20:33.946Z - [INFO]: [0mPOST /api/v1/shift/date/list [33m400[0m 2.417 ms - 180[0m
+ 
+2025-07-25T08:20:35.160Z - [INFO]: [0mPOST /api/v1/department/get?page=1&limit=10&category=assigned&mapedData=department [32m200[0m 384.138 ms - 3432[0m
+ 
+2025-07-25T08:20:38.640Z - [INFO]: [0mPOST /api/v1/organization/get [32m200[0m 417.829 ms - 396[0m
+ 
+2025-07-25T08:20:38.761Z - [INFO]: [0mPOST /api/v1/user/get [32m200[0m 530.261 ms - 119[0m
+ 
+2025-07-25T08:20:39.203Z - [INFO]: [0mPOST /api/v1/user/get [32m200[0m 512.106 ms - 119[0m
+ 
+2025-07-25T08:20:39.679Z - [INFO]: [0mPOST /api/v1/branch/list?subOrgId=68833d5504e9fdb2c7aa5490 [32m200[0m 890.112 ms - 866[0m
+ 
+2025-07-25T08:20:40.609Z - [INFO]: [0mPOST /api/v1/attendance/month/analytics [32m200[0m 1600.434 ms - 103[0m
+ 
+2025-07-25T08:20:53.870Z - [INFO]: [0mPOST /api/v1/user/getDetails [33m401[0m 4.655 ms - 39[0m
+ 
+2025-07-25T08:20:54.418Z - [INFO]: [0mPOST /api/v1/branch/list?mapedData=branch&orgLevel=true [33m401[0m 6.341 ms - 39[0m
+ 
+2025-07-25T08:20:54.426Z - [INFO]: [0mPOST /api/v1/department/get [33m401[0m 5.125 ms - 39[0m
+ 
+2025-07-25T08:20:54.439Z - [INFO]: [0mPOST /api/v1/designation/get [33m401[0m 4.518 ms - 39[0m
+ 
+2025-07-25T08:20:54.452Z - [INFO]: [0mPOST /api/v1/user/get [33m401[0m 6.923 ms - 39[0m
+ 
+2025-07-25T08:20:54.459Z - [INFO]: [0mPOST /api/v1/shift/date/list [33m400[0m 1.886 ms - 180[0m
+ 
+2025-07-25T08:20:55.751Z - [INFO]: [0mPOST /api/v1/user/getDetails [32m200[0m 1998.486 ms - 1425[0m
+ 
+2025-07-25T08:20:56.546Z - [INFO]: [0mPOST /api/v1/organization/get [32m200[0m 593.847 ms - 396[0m
+ 
+2025-07-25T08:20:56.769Z - [INFO]: [0mPOST /api/v1/user/get [32m200[0m 809.603 ms - 119[0m
+ 
+2025-07-25T08:20:56.946Z - [INFO]: [0mPOST /api/v1/user/get [32m200[0m 696.440 ms - 119[0m
+ 
+2025-07-25T08:21:43.922Z - [INFO]: [0mPOST /api/v1/organization/get [32m200[0m 1381.714 ms - 396[0m
+ 
+2025-07-25T08:21:47.357Z - [INFO]: [0mPOST /api/v1/department/get?page=1&limit=10&category=assigned&mapedData=department [32m200[0m 1839.711 ms - 3432[0m
+ 
