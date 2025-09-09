@@ -55,11 +55,11 @@ const AttendanceRoprtMonthIndex = lazy(() => import('./pages/Attendence/Attenden
 const BranchRadiusSettingIndex = lazy(() => import("./pages/Attendence/BranchRadiusSetting/Index"))
 import { LoadScript, LoadScriptNext } from "@react-google-maps/api";
 import BranchRadiusSetting from "./pages/Attendence/BranchRadiusSetting/BranchRadiusSetting";
-import Profile from "./pages/Profile/Profile";
+// import Profile from "./pages/Profile/Profile";
 const BiometricIndex = lazy(() => import('./pages/Biometrics/Index'))
 const googleMapsApiKey = import.meta.env.VITE_MAPAPI;
 const GOOGLE_MAP_LIBRARIES = ["places"];
-const App = () => {
+const AppContent = () => {
   const navigate = useNavigate();
   const user = useSelector((state) => state.user.user);
   const setupMode = useSelector((state) => state.setupMode);
@@ -71,12 +71,12 @@ const App = () => {
 
     if (
       !token &&
-      location.pathname !== "/auth/login" &&
-      location.pathname !== "/auth/sign-up"
+      window.location.pathname !== "/auth/login" &&
+      window.location.pathname !== "/auth/sign-up"
     ) {
       navigate("/auth/login");
     }
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     if (!user?._id) {
@@ -164,7 +164,7 @@ const App = () => {
               element={<TasksIndex pageName={"patrolling"} />}
               path="patrolling/*"
             />
-            <Route path="Profile" element={<Profile />} />
+            {/* <Route path="Profile" element={<Profile />} /> */}
             <Route element={<BiometricIndex />} path="biometrics/*" />
           </Route>
           <Route path="/:everythingElse" element={<NotFound />} />
@@ -172,6 +172,10 @@ const App = () => {
       </LoadScriptNext>
     </Suspense>
   );
+};
+
+const App = () => {
+  return <AppContent />;
 };
 
 export default App;
