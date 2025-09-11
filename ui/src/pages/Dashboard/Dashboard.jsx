@@ -12,6 +12,7 @@ import ClientDashboard from './RoleDashboards/ClientDashboard';
 import NurseDashboard from './RoleDashboards/NurseDashboard';
 import ReceptionistDashboard from './RoleDashboards/ReceptionistDashboard';
 import MaintenanceDashboard from './RoleDashboards/MaintenanceDashboard';
+import FieldOfficerDashboard from './RoleDashboards/FieldOfficerDashboard';
 
 const Dashboard = () => {
   const [userRole, setUserRole] = useState('');
@@ -176,7 +177,7 @@ const Dashboard = () => {
               🧪 Test Mode - Switch Role:
             </Typography>
             <div className="flex flex-wrap gap-2">
-              {['admin', 'hr', 'manager', 'supervisor', 'security guard', 'client', 'nurse', 'receptionist', 'maintenance'].map((role) => (
+              {['admin', 'hr', 'manager', 'supervisor', 'security guard', 'field officer', 'client', 'nurse', 'receptionist', 'maintenance'].map((role) => (
                 <button
                   key={role}
                   onClick={() => handleRoleChange(role)}
@@ -209,6 +210,10 @@ const Dashboard = () => {
           case 'guard':
           case 'security officer':
             return <SecurityGuardDashboard />;
+          case 'field officer':
+          case 'field supervisor':
+          case 'operations officer':
+            return <FieldOfficerDashboard />;
           case 'hr':
           case 'hr manager':
           case 'human resource':
