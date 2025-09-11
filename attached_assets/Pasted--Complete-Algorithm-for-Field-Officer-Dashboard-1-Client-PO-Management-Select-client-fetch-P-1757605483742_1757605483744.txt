@@ -1,0 +1,144 @@
+🔄 Complete Algorithm for Field Officer Dashboard
+1. Client & PO Management
+
+Select client → fetch PO requirements.
+
+Allocate resources (Male/Female, role-wise).
+
+Validate allocation against PO.
+
+Save client-wise shift + staff requirements.
+
+2. Shift & Resource Mapping
+
+Define shifts (Morning/Evening/Night or custom).
+
+Map staff from organization pool → shifts & roles.
+
+Handle replacement logic (if someone is absent → assign backup).
+
+Track overtime if extra hours are allocated.
+
+3. Geofencing & Checkpoints
+
+Draw geofence polygon per client.
+
+Create checkpoints (location + activity rules).
+
+Assign employee(s) per checkpoint & shift.
+
+Patrol monitoring → check-in/out at checkpoints.
+
+Alert system if checkpoint missed.
+
+4. Random Audit
+
+Officer conducts surprise client visit.
+
+Verify:
+
+Headcount vs allocated staff.
+
+Staff presence (biometric/GPS validation).
+
+Uniform & grooming compliance.
+
+Bookkeeping/document checks.
+
+Equipment check (walkie-talkie, torch, etc.).
+
+Save audit report + photos (if needed).
+
+5. Employee Onboarding
+
+Add new candidates:
+
+Resume upload.
+
+Personal details (ID proof, address, skillset).
+
+Schedule interview & evaluation.
+
+Send to Admin for approval.
+
+Maintain candidate pipeline (Pending/Approved/Rejected).
+
+6. Employee Lifecycle Management (Extra)
+
+Manage employee transfers (reassign from one client to another).
+
+Handle resignations/terminations.
+
+Track probation & confirmations.
+
+7. Field Officer Attendance
+
+Officer marks self-attendance (with geolocation).
+
+Prevent duplicate entries.
+
+Late/early logging tracked.
+
+8. Finance (Loans, Advances, Salary Payments)
+
+Disburse staff salaries (shift-wise or client-wise).
+
+Approve/request loans & advances.
+
+Maintain outstanding balances.
+
+Generate payment acknowledgments.
+
+9. Reporting
+
+Officer Reports:
+
+Own attendance & activities.
+
+Staff attendance & leave.
+
+Finance & salary payments.
+
+Audit history.
+
+Staff allocation vs actual presence.
+
+Export options (Excel/PDF).
+
+10. Additional Officer Functionalities (often missed)
+
+✅ Incident Reporting
+
+Log incidents at client site (fights, theft, medical emergencies).
+
+Assign corrective action & follow-up.
+
+✅ Training & Drills
+
+Schedule & record staff training sessions.
+
+Track who has completed mandatory drills.
+
+✅ Communication / Notices
+
+Send circulars/notices to staff at assigned clients.
+
+Receive instructions from Admin/HO.
+
+✅ Inventory & Equipment Tracking
+
+Issue/return registers for items like uniforms, walkie-talkies, batons, etc.
+
+Maintain stock levels per client site.
+
+✅ Performance Feedback
+
+Officer gives periodic evaluation of staff at client sites.
+
+Inputs used for promotions/renewals.
+
+✅ Emergency Escalation
+
+Escalate emergencies (panic button/report) to admin or higher authority.
+
+Track resolution status.
