@@ -26,7 +26,7 @@ import {
   FaBullhorn,
   FaTools,
   FaAward,
-  FaSiren,
+  FaBell,
   FaFileAlt,
   FaCalendarCheck,
   FaComment,
@@ -34,7 +34,7 @@ import {
   FaStar,
   FaPhone,
   FaEnvelope,
-  FaBell
+  FaCheck
 } from 'react-icons/fa';
 import { 
   MdNotifications, 
@@ -670,7 +670,7 @@ const AdditionalFunctions = () => {
           onClick={() => setShowEmergencyModal(true)}
           className="flex items-center gap-2"
         >
-          <FaSiren className="h-4 w-4" />
+          <FaBell className="h-4 w-4" />
           Trigger Emergency
         </Button>
       </div>
@@ -683,7 +683,7 @@ const AdditionalFunctions = () => {
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <Typography variant="h6" color="red" className="flex items-center gap-2">
-                      <FaSiren className="h-5 w-5" />
+                      <FaBell className="h-5 w-5" />
                       {alert.type.replace('_', ' ').toUpperCase()} ALERT
                     </Typography>
                     <Typography variant="small" color="gray">
@@ -852,7 +852,7 @@ const AdditionalFunctions = () => {
           </Tab>
           <Tab value="emergency" onClick={() => setActiveTab('emergency')}>
             <div className="flex flex-col items-center gap-1">
-              <FaSiren className="h-4 w-4" />
+              <FaBell className="h-4 w-4" />
               <span className="text-xs">Emergency</span>
             </div>
           </Tab>
