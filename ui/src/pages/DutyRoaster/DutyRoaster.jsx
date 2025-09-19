@@ -1,88 +1,3 @@
-// import React from 'react'
-// import Header from '../../components/header/Header'
-// import { Typography } from '@material-tailwind/react'
-
-// const DutyRoaster = () => {
-//   const [selectFilterType, setSelectedFilterType] = React.useState("org")
-//   return (
-//     <div className="flex flex-col gap-2 p-1 w-full h-full border border-gray-100 rounded-md relative">
-//       {/* Header */}
-//       <div>
-//         <Typography variant="h6">Duty Roaster</Typography>
-//         <Typography variant="small" className="text-gray-500">Manage Duty Roaster</Typography>
-//       </div>
-//       <div className='gap-4 bg-white p-2 flex flex-col'>
-//         <div className="inline-flex rounded-md overflow-hidden shadow border border-gray-200 mb-1 w-64">
-//           {
-//             ["org", "client"].map((filterType) => (
-//               <button key={filterType} onClick={() => setSelectedFilterType(filterType)} className={`px-4 py-2 w-40 text-xs font-medium transition-all duration-150 ${filterType === selectFilterType
-//                 ? "bg-primary text-white"
-//                 : "bg-white text-gray-900 hover:bg-gray-100"
-//                 }`}>
-//                 {filterType === "org" ? "Organization" : "Client"}
-//               </button>
-//             ))
-
-//           }
-//         </div>
-//         <div className='flex flex-col'>
-//           {
-//             selectFilterType === "org" ? (
-//               <div className='flex gap-2'>
-//                 <select>
-//                   <option>Select Organization</option>
-//                 </select>
-//                 <select>
-//                   <option>Select Branch</option>
-//                 </select>
-//                 <select>
-//                   <option>Select Department</option>
-//                 </select>
-//                 <select>
-//                   <option>Select Designation</option>
-//                 </select>
-//                 <select>
-//                   <option>Select Employee</option>
-//                 </select>
-//                 <button>search</button>
-//                 <button>reset</button>
-//               </div>
-//             ) : (
-//               <div className='flex gap-2'>
-//                 <select>
-//                   <option>Select Client</option>
-//                 </select>
-//                 <select>
-//                   <option>Select Branch</option>
-//                 </select>
-//                 <select>
-//                   <option>Select Department</option>
-//                 </select>
-//                 <select>
-//                   <option>Select Designation</option>
-//                 </select>
-//                 <select>
-//                   <option>Select Employee</option>
-//                 </select>
-//                 <button>search</button>
-//                 <button>reset</button>
-//               </div>
-//             )
-//           }
-//         </div>
-//         <div>
-//           <Typography>date</Typography>
-//         </div>
-//       </div>
-
-//     </div>
-
-//   )
-// }
-
-// export default DutyRoaster
-
-
 import React, {
   useCallback,
   useEffect,
@@ -420,7 +335,6 @@ const DutyRoaster = () => {
   }, [totalRecord, limit, page]);
  
   const [shiftForms, setShiftForms] = useState([]);
-  console.log(shiftForms);
 
   const doTimeRangesOverlap = (startA, endA, startB, endB) => {
     return startA < endB && startB < endA;
@@ -631,18 +545,21 @@ const DutyRoaster = () => {
     }
   };
   const [isUpdate, setIsUpdate] = useState(false)
+
   const handleShiftAssign = () => {
     const employeeIds = [...new Set(selectedCells.map((c) => c.empId))];
     const selectedDates = selectedCells.map((c) => c.day);
-    console.log(employeeIds, selectedDates, "selectedCells");
+
     const sortedDates = selectedDates.sort((a, b) => new Date(a) - new Date(b));
     const startDate = sortedDates[0];
     const endDate = sortedDates[sortedDates.length - 1];
-    console.log(startDate, endDate, "sortedDates");
+
+    console.log('payload', selectedShiftsForms)
+
     let filteredData = removeEmptyStrings(selectedShiftsForms);
-    console.log(filteredData, selectedShiftsForms);
+
     filteredData = filteredData?.map((data) => {
-      console.log(data, 'dataffff')
+
       const {
         shifts, branches, forId, shiftId, clientList, subOrgList, shiftName, startTime, endTime, modifiedStartTime, modifiedEndTime, orgDisplayName, branchDisplayName, shiftTextColor,
         shiftBgColor, createdBy,
@@ -652,7 +569,6 @@ const DutyRoaster = () => {
 
       return { ...rest, currentShiftId: shiftId, startTime: modifiedStartTime, endTime: modifiedEndTime };
     });
-    console.log(filteredData, employeeIds, "recived");
 
     const finalData = {
       startDate: startDate,
@@ -660,12 +576,12 @@ const DutyRoaster = () => {
       shifts: isWeekOff == true ? [{ currentShiftId: 'WO' }, ...filteredData] : filteredData,
       employeeIds: employeeIds,
     };
-    console.log(finalData, isWeekOff, 'finalData to be sent to api');
+
     if (isUpdate) {
       dispatch(ShiftUpdatebyDateAction(removeEmptyStrings({ ...finalData })))
         .then(({ payload }) => {
           if (payload?.status == 200) {
-            console.log("pa", payload)
+
             getShifts();
             setSelectedShiftsForms([])
             setOpenSidebar(false)
@@ -676,7 +592,7 @@ const DutyRoaster = () => {
       dispatch(ShiftCreatebyDateAction(removeEmptyStrings({ ...finalData })))
         .then(({ payload }) => {
           if (payload?.status == 200) {
-            console.log("pa", payload)
+
             getShifts();
             setSelectedShiftsForms([])
             setOpenSidebar(false)
@@ -689,6 +605,7 @@ const DutyRoaster = () => {
     setShiftForms([{ clientId: "", clientBranchId: "", shiftId: "" }]);
     setSelectedShiftsForms([])
   };
+
   const handleUpdateAssign = () => {
     const employeeIds = [...new Set(selectedCells.map((c) => c.empId))];
     const selectedDates = selectedCells.map((c) => c.day);
@@ -886,7 +803,13 @@ const DutyRoaster = () => {
     };
 
     // ---------- Update state ----------
-    setSelectedShiftsForms((prev) => [...prev, displayForm]);
+    // setSelectedShiftsForms((prev) => [...prev, displayForm]);
+    setSelectedShiftsForms((prev) => {
+      console.log('black sheep')
+      console.log('prev', prev)
+      console.log('displayform', [...prev, displayForm])
+      return [...prev, displayForm]
+    })
 
     // ---------- Reset form ----------
     setShiftForms([
@@ -904,182 +827,6 @@ const DutyRoaster = () => {
     ]);
   };
 
-  //   const handleDisplayData = (form) => {
-  // console.log(form, 'form in display data')
-  //     const start = form?.modifiedStartTime || form?.startTime;
-  //     const end = form?.modifiedEndTime || form?.endTime;
-  //     if (!form.forId) {
-  //       toast.error("Please select For");
-  //       return;
-  //     }
-  //     if (form.forId == 'clientOrg' && !form.clientId) {
-  //       toast.error("Please select Client Organization");
-  //       return;
-  //     }
-  //     // if (form.forId == 'myOrg' && !form.orgId && chec) {
-  //     //   toast.error("Please select My Organization");
-  //     //   return;
-  //     // }
-  //     if (form.forId == 'myOrg' && !form.branchId) {
-  //       toast.error("Please select Branch");
-  //       return;
-  //     }
-  //     if (form.forId == 'clientOrg' && !form.clientBranchId) {
-  //       toast.error("Please select Branch");
-  //       return;
-  //     }
-  //     if (!form.shiftId) {
-  //       toast.error("Please select Shift");
-  //       return;
-  //     }
-  //     if (!start || !end) {
-  //       toast.error("Please select both start and end times.");
-  //       return;
-  //     }
-
-  //     // Convert times to comparable numbers (HH:MM -> minutes)
-  //     const toMinutes = (timeStr) => {
-  //       const [h, m] = timeStr.split(":").map(Number);
-  //       return h * 60 + m;
-  //     };
-
-  //     const newStart = toMinutes(start);
-  //     const newEnd = toMinutes(end);
-
-  //     // if (newStart >= newEnd) {
-  //     //   alert("End time must be after start time.");
-  //     //   return;
-  //     // }
-
-  //     // Check for overlap
-  //     const hasOverlap = selectedShiftsForms.some((shift) => {
-  //       const existingStart = toMinutes(shift.modifiedStartTime || shift.startTime);
-  //       const existingEnd = toMinutes(shift.modifiedEndTime || shift.endTime);
-  //       // Overlap condition: new shift starts before existing shift ends and ends after existing shift starts
-  //       return newStart < existingEnd && newEnd > existingStart;
-  //     });
-
-  //     if (hasOverlap &&  selectedShiftsForms?.includes(r=> r.shiftId=== form.shiftId)) {
-  //       return toast.error("Shift time overlaps with an existing shift!");
-  //     }
-
-  //     // --- If no overlap, proceed to add shift ---
-  //     const selectedOrg = form?.subOrgList?.find((s) => s._id === form?.orgId);
-  //     const selectedBranch = form?.branches?.find((s) => s._id === form?.branchId);
-  //     const selectedShift = form?.shifts?.find((s) => s._id === form?.shiftId);
-  //     const clientOrg = form?.clientList?.find((s) => s.clientId === form?.clientId);
-  //     const clientBranch = form?.branches?.find((s) => s._id === form?.clientBranchId);
-
-  //     const displayForm = {
-  //       ...form,
-  //       orgDisplayName: selectedOrg?.name || clientOrg?.name,
-  //       branchDisplayName: selectedBranch?.name || clientBranch?.name,
-  //       shiftTextColor: selectedShift?.textColor || '#000',
-  //       shiftBgColor: selectedShift?.bgColor || '#e5e7eb',
-  //     };
-  //     console.log(displayForm, 'display form')
-  //     const temp = [...selectedShiftsForms, displayForm]
-
-  //     console.log(temp, 'temp')
-
-  //     setSelectedShiftsForms(temp);
-
-  //     // Clear form
-  //     const clearedForm = {
-  //       ...initialForm,
-  //       clientList,
-  //       subOrgList,
-  //       branches: [],
-  //       shifts: [],
-  //       startTime: '',
-  //       endTime: '',
-  //       modifiedEndTime: '',
-  //       modifiedStartTime: ''
-  //     };
-
-  //     setShiftForms([clearedForm]);
-  //   };
-  // const checkIsShiftAlreadyExists = async (data, str) => {
-
-
-  //   if (moment(str).isBefore(moment(), 'day')) {
-  //     toast.error("You cannot edit for Previous Day");
-  //   }
-
-  //   else {
-  //     setOpenDialog(true);
-  //     setOpenSidebar(true)
-  //     console.log(data, "update");
-
-  //     const filteredData = data?.dates?.[str];
-  //     console.log(filteredData, "update");
-
-  //     if (!filteredData) {
-  //       console.log("New Add");
-  //       setIsUpdate(false);
-  //       return;
-  //     }
-
-  //     // console.log("Update");
-  //     setIsUpdate(true);
-  //     console.log("is checking ", filteredData)
-  //     // console.log(
-  //     //   JSON.stringify(data, null, 2),
-  //     //   selectedCells,
-  //     //   "YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYy"
-  //     // );
-  //     const isAnyWeekOff = filteredData.some((d) => d.shiftId == "WO")
-  //     console.log("is checking ", isAnyWeekOff, filteredData)
-  //     if (isAnyWeekOff) {
-  //       // setSelectedShiftsForms([])
-  //       setIsWeekOff(isAnyWeekOff)
-  //     }
-  //     else {
-  //       setIsWeekOff(false)
-  //     }
-  //     const sortedData = filteredData.map((d) => {
-  //       const shiftData = shiftByDates?.references?.shiftId?.[d?.shiftId];
-
-  //       // Determine base orgId based on permission
-  //       const baseOrgId = checkModules("suborganization", "r")
-  //         ? d?.subOrgId
-  //         : d?.orgId;
-
-  //       // Org and client data
-  //       let orgData = shiftByDates?.references?.orgId?.[baseOrgId];
-  //       let clientData = d?.clientId
-  //         ? shiftByDates?.references?.clientId?.[d?.clientId]
-  //         : null;
-
-  //       // Branch data
-  //       let branchData = null;
-  //       if (d?.clientId) {
-  //         orgData = clientData; // If client exists, orgData should refer to client
-  //         branchData = clientData?.branch?.[d?.branchId];
-  //       } else {
-  //         branchData = orgData?.branch?.[d?.branchId];
-  //       }
-
-  //       console.log(branchData, "branchData");
-  //       if (d?.shiftId !== 'WO') {
-  //         return {
-  //           ...d,
-  //           forId: d?.clientId ? "clientOrg" : "myOrg",
-  //           shiftName: shiftData?.name || "",
-  //           startTime: d?.startTime || shiftData?.startTime,
-  //           endTime: d?.endTime || shiftData?.endTime,
-  //           orgDisplayName: orgData?.name || "",
-  //           branchDisplayName: branchData?.name || "",
-  //           shiftTextColor: shiftData?.textColor || "#000",
-  //           shiftBgColor: shiftData?.bgColor || "#e5e7eb",
-  //         };
-  //       }
-  //     });
-  //     console.log(sortedData, "sortedData");
-  //     setSelectedShiftsForms(sortedData?.filter((r)=> r.shiftId).filter(Boolean));
-
-  //   }
-  // };
   const checkIsShiftAlreadyExists = async (data, str) => {
     if (moment(str).isBefore(moment(), 'day')) {
       toast.error("You cannot edit for Previous Day");
@@ -1166,16 +913,16 @@ const DutyRoaster = () => {
     optional: { bg: "#EAF8EA", text: "#1E5A1E" }, // Mint Cloud
   };
   const [empDetails, setEmpDetails] = useState({})
-  const [existingShiftDetails, setExistingShiftDetail] = useState({})
   const [selectedDate, setSelectedDate] = useState()
   const [refrencesData, setReferencesData] = useState({})
-  const manageSwap = (e, emp, date, refernce) => {
+  const [shiftA, setShiftA] = useState({});
+  
+  const manageSwap = (e, emp, date, refernce, shiftRef) => {
     e?.stopPropagation(), setSwapDiv(true)
 
-    console.log(refernce, 'json file')
+    setShiftA(shiftRef)
     setEmpDetails(emp)
     setReferencesData(refernce)
-    // setExistingShiftDetail(e)
     setSelectedDate(date)
   }
   const holidayColumnColors = useMemo(() => {
@@ -1220,7 +967,15 @@ const DutyRoaster = () => {
         ref={filterRef}
       >
 
-        <SwapDialog getShifts={getShifts} swapDiv={swapDiv} setSwapDiv={setSwapDiv} empDetails={empDetails} selectedDate={selectedDate} refrencesData={refrencesData} />
+        <SwapDialog 
+          getShifts={getShifts} 
+          swapDiv={swapDiv} 
+          setSwapDiv={setSwapDiv} 
+          empDetails={empDetails} 
+          selectedDate={selectedDate} 
+          refrencesData={refrencesData} 
+          shiftA={shiftA}
+          />
         <ShiftDialog
           initialForm={initialForm}
           removeShiftForm={removeShiftForm}

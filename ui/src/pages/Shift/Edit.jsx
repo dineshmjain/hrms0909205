@@ -16,7 +16,7 @@ import toast from "react-hot-toast";
 import { removeEmptyStrings } from "../../constants/reusableFun";
 
 const Edit = () => {
-  const { state } = useLocation();
+  // const { state } = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const BasicCon = BasicConfig();
@@ -55,7 +55,7 @@ const Edit = () => {
       if (maxIn) maxInTime = parseTime(maxIn);
       if (minOut) minOutTime = parseTime(minOut);
       if (maxOut) maxOutTime = parseTime(maxOut);
-    } catch (e) {
+    } catch (errors) {
       errors.push("Invalid time format. Use 'HH:mm'.");
       return errors;
     }
@@ -141,8 +141,9 @@ const Edit = () => {
         return;
       }
       // Clean the form data
-      const cleanedData = removeEmptyStrings(formData);
-      const result = await dispatch(ShiftUpdateAction(removeEmptyStrings(formData)));
+      // const cleanedData = removeEmptyStrings(formData);
+      const {_id,orgId,createDate,createdBy,modifiedBy,modifiedDate,actualIdx,selectedFilterType,...rest}=formData
+      const result = await dispatch(ShiftUpdateAction(removeEmptyStrings(rest)));
       const { meta, payload } = result || {};
       console.log(meta, payload, "te");
       if (meta?.requestStatus === "fulfilled") {

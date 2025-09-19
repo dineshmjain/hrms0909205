@@ -244,6 +244,7 @@ const AssignShift = ({
         
         } else {
             payload = {
+                shiftId: selectedShift._id,
                 clientMappedId: selectedClient.clientMappedId,
                 clientBranchId: selected.clientBranchId,
                 userIds: selectedEmployees,
@@ -256,6 +257,7 @@ const AssignShift = ({
                 weekOff: weekOffDays,
                 shiftsToDisable: overlappingShiftIds.map((s) => s._id)
             }
+            const response = await dispatch(ShiftGroupCreateAction(payload));
             if (response.type === 'shiftGroupCreate/rejected') {
                 if (response.payload.data.data.length > 0) {
                     handleOverlappingShifts(response.payload.data.data)
@@ -276,7 +278,7 @@ const AssignShift = ({
                 assignShift={assignShift}
                 clearInfoAndCloseSidebar={clearInfoAndCloseSidebar}
             />
-            <div className='gap-2 p-2'>
+            <div className='gap-2 p-2 flex flex-col'>
                 <div className="text-center pt-2 ">
                     <div className='flex justify-between px-4 '>
                         <h3 className="text-xl font-bold text-gray-800 m-0">Assign Shift To Employees</h3>

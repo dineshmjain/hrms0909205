@@ -136,7 +136,8 @@ const Login = () => {
             handleRememberMe();
             if (payload?.data?.pending?.organization == false) {
               toast("Please complete your organization details");
-              return navigate("../org");
+              // return navigate("../org");
+              return navigate("../assist-wizard");
             }
             checkAndNav();
           }
@@ -153,7 +154,8 @@ const Login = () => {
             handleRememberMe();
             if (payload?.data?.pending?.organization == false) {
               toast("Please complete your organization details");
-              return navigate("../org");
+              // return navigate("../org");
+              return navigate("../assist-wizard");
             }
             checkAndNav();
           }
@@ -187,17 +189,18 @@ const Login = () => {
 
       {/* Right side form */}
       <div className="absolute opacity-75 ">
-      <img
-        src={bg}
-        alt="AppLogo" className="w-[100vw] h-[100vh]"
-      />
+        <img src={bg} alt="AppLogo" className="w-[100vw] h-[100vh]" />
       </div>
-      <div className="flex items-center justify-end w-full md:w-1/2 p-6" style={{width:'90%'}}>
+      <div
+        className="flex items-center justify-end w-full md:w-1/2 p-6"
+        style={{ width: "90%" }}
+      >
         <Card className="w-full max-w-sm p-6 bg-white rounded-xl shadow-xl shadow-blue-gray-200 h-[360px] justify-center">
           <div className="flex justify-center">
             <img
               src={logo}
-              alt="AppLogo" style={{ width: '120px', height: '80px' }}
+              alt="AppLogo"
+              style={{ width: "120px", height: "80px" }}
               className="w-9 h-9 cursor-pointer rounded-md mb-4" // Set consistent width and height with rounded corners
             />
           </div>
@@ -238,7 +241,10 @@ const Login = () => {
             />
 
             {/* <Checkbox label="Remember me" className="mb-4" /> */}
-            <Button type="submit" className="bg-primary w-full hover:bg-primaryLight hover:text-primary">
+            <Button
+              type="submit"
+              className="bg-primary w-full hover:bg-primaryLight hover:text-primary"
+            >
               Login
             </Button>
           </form>

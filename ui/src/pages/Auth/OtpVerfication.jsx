@@ -30,7 +30,8 @@ const OtpVerification = ({ open, handleClose, otps, mobile }) => {
       const token = otpSuccess.user?.token;
       if (token) {
         localStorage.setItem("token", token);
-        navigate("/auth/org");
+        // navigate("/auth/org");
+          navigate("/auth/assist-wizard");
       }
       if (otpData) {
         let newOtp = otpData.split("");

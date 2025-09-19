@@ -10,7 +10,6 @@ import TooltipMaterial from "../../../components/TooltipMaterial/TooltipMaterial
 import { PiInfoBold } from "react-icons/pi";
 import { Typography } from "@material-tailwind/react";
 import { ClientDefaultSettingsListAction } from "../../../redux/Action/Client/ClientAction";
-// import { ClientDefaultSettingsListAction } from "../../../redux/Action/Client/ClientAction";
 
 // ✅ Exporting field config for Formik in parent
 export const BasicConfig = () => {
@@ -114,7 +113,7 @@ const BasicInformation = ({ isEdit, type = "add" }) => {
     }
   }, [state, isEdit, setFieldValue]);
 
-  // ✅ Load client defaults
+  //  Load client defaults
   useEffect(() => {
     if (isEdit && state?.clientId) {
       dispatch(ClientDefaultSettingsListAction({ clientId: state.clientId }));

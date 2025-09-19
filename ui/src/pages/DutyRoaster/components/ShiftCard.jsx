@@ -3,7 +3,19 @@ import { IoMdSwap } from "react-icons/io";
 import TooltipMaterial from "../../../components/TooltipMaterial/TooltipMaterial";
 import moment from "moment";
 
-function ShiftCard({ emp, dateStr, shiftRef, clientRef, clientBranch, subOrg, subOrgBranch, shiftByDates, manageSwap, startTime, endTime }) {
+function ShiftCard({ 
+    emp, 
+    dateStr, 
+    shiftRef, 
+    clientRef, 
+    clientBranch, 
+    subOrg, 
+    subOrgBranch, 
+    shiftByDates, 
+    manageSwap, 
+    startTime, 
+    endTime }) {
+
   return (
     <div
       className={`
@@ -31,7 +43,7 @@ function ShiftCard({ emp, dateStr, shiftRef, clientRef, clientBranch, subOrg, su
           <TooltipMaterial content="Swap Shifts">
             <IconButton
               onClick={(e) =>
-                manageSwap(e, emp, dateStr, shiftByDates.references)
+                manageSwap(e, emp, dateStr, shiftByDates.references, shiftRef)
               }
               size="sm"
               variant="text"

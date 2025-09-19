@@ -145,6 +145,7 @@ debugger
                 key={idx}
                 className="flex items-center justify-between gap-3 mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition"
               >
+                {console.log('selectedShiftForm', item)}
                 <div className="flex flex-col w-full">
                   <div className='flex justify-between'>
                     <Typography className='text-xs font-semibold'>

@@ -1,16 +1,7 @@
-import { FaTasks, FaUserTie } from "react-icons/fa";
-import {
-  FaBuildingUser,
-  FaBusinessTime,
-  FaListCheck,
-  FaCalendar,
-} from "react-icons/fa6";
-import { HiSquare2Stack } from "react-icons/hi2";
-import { MdDashboard, MdSecurity } from "react-icons/md";
+import { FaUserTie } from "react-icons/fa";
 import { RxDotFilled } from "react-icons/rx";
 import { BsPersonWalking } from "react-icons/bs";
 import { IoLocationSharp } from "react-icons/io5";
-import { TbLayoutDashboard } from "react-icons/tb";
 import SvgDashboard from "../assets/svgs/Dashboard";
 import SvgDashboardSelected from "../assets/svgs/DashboardSelected";
 import SvgMaster from "../assets/svgs/Master";
@@ -27,7 +18,6 @@ import SvgHoliday from "../assets/svgs/Holiday";
 import SvgHolidaySelected from "../assets/svgs/HolidaySelected";
 import SvgClient from "../assets/svgs/Client";
 import SvgClientSelected from "../assets/svgs/ClientSelected";
-import { MdOutlineSettings } from "react-icons/md";
 import SvgSecuirty from '../assets/svgs/secuirtyManagement'
 import SvgSecuirtySelected from '../assets/svgs/secuirtyManagementSelected'
 import SvgBiometric from '../assets/svgs/Biometric'
@@ -230,7 +220,31 @@ const routes = [
       },
     ],
   },
-
+   {
+    id: "salarymaster",
+    title: "Salary",
+    name: "salarymaster",
+    parent: true,
+    link: "",
+    icon: <SvgClient />,
+    iconSelected: <SvgClientSelected />,
+    child: [
+      {
+        id: "salarytemplate",
+        title: "Templates",
+        name: "salarytemplate",
+        link: "salaryTemplate",
+        icon: <RxDotFilled />,
+      },
+      {
+        id: "salarysettings",
+        title: "Components",
+        name: "salarysettings",
+        link: "salarySettings",
+        icon: <RxDotFilled />,
+      },
+    ],
+  },
   {
     id: "holidays",
     title: "Holidays",
@@ -249,6 +263,7 @@ const routes = [
     iconSelected: <SvgHolidaySelected />,
     link: "banners",
   },
+ 
   // {
   //   id: "attendance",
   //   title: "Attendance",
@@ -257,7 +272,32 @@ const routes = [
   //   icon: <FaListCheck className="w-5 h-5" />,
   //   link: "attendance",
   // },
+{
+    id: "quotation",
+    title: "Quotations",
+    name: "quotation",
+    parent: true,
+    icon: <SvgHoliday />,
+    iconSelected: <SvgHolidaySelected />,
+    link: "quotation/",
+    child: [
 
+      {
+        id: "quotation",
+        title: "quotations",
+        name: "quotation",
+      link: "quotation",
+        icon: <RxDotFilled />,
+      },
+      {
+        id: "quotationpriceconfigure",
+        title: "Configure Pricing",
+        name: "quotationpriceconfigure",
+        link: "priceconfigure",
+        icon: <RxDotFilled />,
+      },
+    ],
+  },
   {
     id: "gaurdMananagement",
     title: "Guard Management",
@@ -323,6 +363,7 @@ const routes = [
       },
     ],
   },
+
   {
     id: "biometrics",
     title: "biometrics",
@@ -346,161 +387,8 @@ const routes = [
         link: "/devices",
         icon: <BsPersonWalking />,
       },
-
-
-
     ],
   }
 ];
-const OldRoutes = [
-  {
-    id: "dashboard",
-    title: "Dasboard",
-    name: "dasboard",
-    parent: true,
-    icon: <MdDashboard className="h-5 w-5" />,
-    link: "/dashboard",
-  },
-  {
-    id: "master",
-    title: "Master",
-    name: "master",
-    parent: true,
 
-    icon: <HiSquare2Stack className="h-5 w-5" />,
-    child: [
-      {
-        id: "subOrg",
-        title: "Sub Organization",
-        name: "suborganization",
-        link: "/suborganization",
-        icon: "dot",
-      },
-      {
-        id: "branch",
-        title: "Branch",
-        name: "branch",
-        link: "/branch",
-        icon: "dot",
-      },
-      {
-        id: "department",
-        title: "Department",
-        name: "department",
-        link: "/department",
-        icon: "dot",
-      },
-      {
-        id: "designation",
-        title: "Designation",
-        name: "designation",
-        link: "/designation",
-        icon: "dot",
-      },
-      {
-        id: "roles",
-        title: "Roles",
-        name: "roles",
-        link: "/roles",
-        icon: "dot",
-      },
-    ],
-  },
-  {
-    id: "shiftMaster",
-    title: "Shift Master",
-    name: "shiftMaster",
-    parent: true,
-    icon: <FaBusinessTime className="w-5 h-5" />,
-    child: [
-      {
-        id: "shift",
-        title: "Shift",
-        name: "shift",
-        link: "/shift",
-        icon: "dot",
-      },
-      {
-        id: "shiftGroup",
-        title: "Shift Group",
-        name: "shiftgroup",
-        link: "/shiftgroup",
-        icon: "dot",
-      },
-    ],
-  },
-  //  {
-  //     id: "client",
-  //     title: "Client",
-  //     name: "client",
-  //     parent: true,
-  //     icon: <FaBuildingUser className="w-5 h-5" />,
-  //     link: "/client"
-  // },
-  // {
-  //   id: "attendance",
-  //   title: "Attendance Reports",
-  //   name: "attendance",
-  //   parent: true,
-  //   icon: <FaListCheck className="w-5 h-5" />,
-  //   link: "/attendance",
-  // },
-  {
-    id: "user",
-    title: "User",
-    name: "user",
-    parent: true,
-    icon: <FaUserTie className="w-5 h-5" />,
-    link: "/user",
-  },
-  {
-    id: "client",
-    title: "Client",
-    name: "client",
-    parent: true,
-    icon: <FaUserTie className="w-5 h-5" />,
-    link: "/client",
-  },
-  {
-    id: "attendence",
-    title: "attendence",
-    name: "attendence",
-    parent: true,
-    icon: <FaCalendar className="w-5 h-5" />,
-    link: "/attendence",
-  },
-
-  {
-    id: "leads",
-    title: "Leads",
-    name: "lead",
-    parent: true,
-    icon: <FaUserTie className="w-5 h-5" />,
-
-    child: [
-      {
-        id: "lead",
-        title: "Leads",
-        name: "lead",
-        link: "/lead",
-        icon: "dot",
-      },
-      {
-        id: "meeting",
-        title: "Meetings",
-        name: "lead",
-        link: "/meetings",
-        icon: "dot",
-      },
-      {
-        id: "quotation",
-        title: "Quotation",
-        name: "lead",
-        link: "/quotations",
-        icon: "dot",
-      },
-    ],
-  },
-];
-
-export { routes, OldRoutes };
+export { routes };

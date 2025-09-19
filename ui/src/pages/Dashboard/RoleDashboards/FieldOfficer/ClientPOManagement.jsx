@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Card, 
-  CardBody, 
-  Typography, 
-  Button, 
-  Select, 
-  Option, 
+import {
+  Card,
+  CardBody,
+  Typography,
+  Button,
+  Select,
+  Option,
   Input,
   Dialog,
   DialogHeader,
@@ -14,17 +14,18 @@ import {
   Chip,
   Progress
 } from '@material-tailwind/react';
-import { 
-  FaBuilding, 
-  FaUsers, 
-  FaUserTie, 
-  FaSave, 
-  FaCheck, 
+import {
+  FaBuilding,
+  FaUsers,
+  FaUserTie,
+  FaSave,
+  FaCheck,
   FaExclamationTriangle,
   FaPlus,
   FaEdit
 } from 'react-icons/fa';
 import { MdAdd, MdPeople, MdAssignment } from 'react-icons/md';
+import toast from 'react-hot-toast';
 
 const ClientPOManagement = () => {
   const [selectedClient, setSelectedClient] = useState('');
@@ -47,7 +48,7 @@ const ClientPOManagement = () => {
         status: 'active'
       },
       {
-        id: '2', 
+        id: '2',
         name: 'XYZ Manufacturing Plant',
         location: 'Industrial Area',
         contractValue: 180000,
@@ -68,8 +69,24 @@ const ClientPOManagement = () => {
       { id: '2', name: 'Jane Smith', role: 'Security Guard', gender: 'Female', experience: '2 years', available: true },
       { id: '3', name: 'Mike Johnson', role: 'Supervisor', gender: 'Male', experience: '5 years', available: true },
       { id: '4', name: 'Sarah Wilson', role: 'Security Guard', gender: 'Female', experience: '1 year', available: true },
-      { id: '5', name: 'Tom Brown', role: 'Team Leader', gender: 'Male', experience: '4 years', available: false }
+      { id: '5', name: 'Tom Brown', role: 'Team Leader', gender: 'Male', experience: '4 years', available: false },
+      { id: '6', name: 'Emily Davis', role: 'Security Guard', gender: 'Female', experience: '2 years', available: true },
+      { id: '7', name: 'Robert White', role: 'Security Guard', gender: 'Male', experience: '6 years', available: true },
+      { id: '8', name: 'Laura Green', role: 'Team Leader', gender: 'Female', experience: '3 years', available: true },
+      { id: '9', name: 'James Black', role: 'Security Guard', gender: 'Male', experience: '1 year', available: true },
+      { id: '10', name: 'Olivia Brown', role: 'Supervisor', gender: 'Female', experience: '4 years', available: true },
+      { id: '11', name: 'Chris Miller', role: 'Security Guard', gender: 'Male', experience: '2 years', available: true },
+      { id: '12', name: 'Sophia Taylor', role: 'Security Guard', gender: 'Female', experience: '5 years', available: true },
+      { id: '13', name: 'Daniel Wilson', role: 'Security Guard', gender: 'Male', experience: '3 years', available: false },
+      { id: '14', name: 'Grace Lee', role: 'Team Leader', gender: 'Female', experience: '6 years', available: true },
+      { id: '15', name: 'Ethan Brown', role: 'Security Guard', gender: 'Male', experience: '2 years', available: true },
+      { id: '16', name: 'Ava Martinez', role: 'Security Guard', gender: 'Female', experience: '1 year', available: true },
+      { id: '17', name: 'Liam Garcia', role: 'Supervisor', gender: 'Male', experience: '7 years', available: true },
+      { id: '18', name: 'Mia Rodriguez', role: 'Security Guard', gender: 'Female', experience: '4 years', available: true },
+      { id: '19', name: 'Noah Hernandez', role: 'Security Guard', gender: 'Male', experience: '5 years', available: true },
+      { id: '20', name: 'Isabella Martinez', role: 'Team Leader', gender: 'Female', experience: '3 years', available: true }
     ]);
+
   }, []);
 
   const fetchPORequirements = (clientId) => {
@@ -171,9 +188,11 @@ const ClientPOManagement = () => {
         requirements: poRequirements,
         allocation: resourceAllocation
       });
-      
+
       // Show success message
-      alert('Client shift and staff requirements saved successfully!');
+      // alert('Client shift and staff requirements saved successfully!');
+
+      toast.success('Client shift and staff requirements saved successfully!')
     }
   };
 
@@ -183,13 +202,59 @@ const ClientPOManagement = () => {
 
   const getAllocationProgress = () => {
     if (!poRequirements) return 0;
-    
+
     const allocatedTotal = Object.values(resourceAllocation).reduce((sum, shift) => {
       return sum + (shift.staff ? shift.staff.length : 0);
     }, 0);
-    
+
     return Math.round((allocatedTotal / poRequirements.totalStaff) * 100);
   };
+  const getRoleAllocationSummary = () => {
+    if (!poRequirements) return {};
+
+    const roleCount = {};
+
+    // Initialize with 0
+    Object.keys(poRequirements.roles).forEach(role => {
+      roleCount[role] = 0;
+    });
+
+    // Count assigned staff by role
+    Object.values(resourceAllocation).forEach(shift => {
+      if (shift.staff) {
+        shift.staff.forEach(staffId => {
+          const staff = organizationPool.find(s => s.id === staffId);
+          if (staff && roleCount.hasOwnProperty(staff.role)) {
+            roleCount[staff.role] += 1;
+          }
+        });
+      }
+    });
+
+    return roleCount;
+  };
+  // Add this function inside ClientPOManagement
+  const handleAssignStaff = (staff, shift) => {
+    const role = staff.role;
+    const assignedRoleCount = getRoleAllocationSummary()[role] || 0;
+    const requiredRoleCount = poRequirements.roles[role];
+
+    if (assignedRoleCount >= requiredRoleCount) {
+      toast.error(`You cannot assign more ${role}s. Required: ${requiredRoleCount}`)
+      // alert(`You cannot assign more ${role}s. Required: ${requiredRoleCount}`);
+      return;
+    }
+
+    setResourceAllocation(prev => {
+      const updatedShift = prev[shift] || { staff: [] };
+      if (!updatedShift.staff.includes(staff.id)) {
+        updatedShift.staff.push(staff.id);
+      }
+      return { ...prev, [shift]: updatedShift };
+    });
+  };
+
+
 
   return (
     <div className="space-y-6">
@@ -219,8 +284,8 @@ const ClientPOManagement = () => {
             <Typography variant="h6" color="blue-gray" className="mb-4">
               Select Client
             </Typography>
-            
-            <Select 
+
+            <Select
               label="Choose Client"
               value={selectedClient}
               onChange={(value) => handleClientSelect(value)}
@@ -266,7 +331,7 @@ const ClientPOManagement = () => {
             <Typography variant="h6" color="blue-gray" className="mb-4">
               PO Requirements
             </Typography>
-            
+
             {!selectedClient ? (
               <div className="text-center py-8">
                 <FaExclamationTriangle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
@@ -310,13 +375,46 @@ const ClientPOManagement = () => {
                   <Typography variant="small" color="blue-gray" className="font-medium mb-2">
                     Role Requirements:
                   </Typography>
-                  {Object.entries(poRequirements.roles).map(([role, count]) => (
-                    <div key={role} className="flex justify-between items-center py-1">
-                      <Typography variant="small" color="gray">{role}</Typography>
-                      <Chip value={count.toString()} color="indigo" size="sm" />
-                    </div>
-                  ))}
+
+                  {/* Header Row */}
+                  <div className="grid grid-cols-4 gap-2 font-medium text-sm text-blue-gray-700  pb-2 mb-2">
+                    <span>Role</span>
+                    <span className="text-center">Required</span>
+                    <span className="text-center">Assigned</span>
+                    <span className="text-center">Remaining</span>
+                  </div>
+
+                  {/* Role Rows */}
+                  {Object.entries(poRequirements.roles).map(([role, required]) => {
+                    const assigned = getRoleAllocationSummary()[role] || 0;
+                    const remaining = required - assigned;
+
+                    return (
+                      <div
+                        key={role}
+                        className="grid grid-cols-4 gap-2 items-center text-sm py-2 "
+                      >
+                        <span>{role}</span>
+
+                        <div className="flex justify-center">
+                          <Chip value={required.toString()} color="indigo" size="sm" />
+                        </div>
+                        <div className="flex justify-center">
+                          <Chip value={assigned.toString()} color="green" size="sm" />
+                        </div>
+                        <div className="flex justify-center">
+                          <Chip
+                            value={remaining.toString()}
+                            color={remaining > 0 ? "red" : "green"}
+                            size="sm"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
+
+
 
                 <div>
                   <Typography variant="small" color="blue-gray" className="font-medium mb-2">
@@ -352,8 +450,8 @@ const ClientPOManagement = () => {
                 <div className="flex items-center gap-2">
                   <Typography variant="small" color="gray">Progress:</Typography>
                   <div className="w-32">
-                    <Progress 
-                      value={getAllocationProgress()} 
+                    <Progress
+                      value={getAllocationProgress()}
                       color="blue"
                       className="h-2"
                     />
@@ -396,12 +494,12 @@ const ClientPOManagement = () => {
                     <Typography variant="h6" color="blue-gray" className="mb-3">
                       {shift} Shift
                     </Typography>
-                    
+
                     <div className="space-y-2">
                       <Typography variant="small" color="gray">
                         Allocated Staff: {resourceAllocation[shift]?.staff?.length || 0}
                       </Typography>
-                      
+
                       {resourceAllocation[shift]?.staff?.length > 0 && (
                         <div className="space-y-1">
                           {resourceAllocation[shift].staff.map((staffId) => {
@@ -439,8 +537,9 @@ const ClientPOManagement = () => {
       )}
 
       {/* Resource Allocation Modal */}
-      <Dialog 
-        open={showAllocationModal} 
+      {/* Resource Allocation Modal */}
+      <Dialog
+        open={showAllocationModal}
         handler={() => setShowAllocationModal(false)}
         size="lg"
       >
@@ -453,14 +552,14 @@ const ClientPOManagement = () => {
           <Typography color="gray" className="mb-4">
             Select staff members from the organization pool and assign them to shifts.
           </Typography>
-          
+
           {/* Available Staff Pool */}
           <div className="space-y-2">
             <Typography variant="h6" color="blue-gray">Available Staff</Typography>
             {organizationPool.filter(staff => staff.available).map((staff) => (
               <div key={staff.id} className="flex items-center justify-between p-3 border rounded-lg">
                 <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full ${staff.gender === 'Male' ? 'bg-blue-500' : 'bg-pink-500'}`}></div>
+                  <div className={`w-3 h-3 rounded-full ${staff.gender === 'Male' ? 'bg-blue-500' : 'bg-pink-500'}`} />
                   <div>
                     <Typography variant="small" color="blue-gray" className="font-medium">
                       {staff.name}
@@ -470,10 +569,22 @@ const ClientPOManagement = () => {
                     </Typography>
                   </div>
                 </div>
-                <Button size="sm" color="blue" variant="outlined">
-                  Assign
-                </Button>
+
+                <div className="flex gap-2 items-center">
+                  <Select
+                    label="Select Shift"
+                    size="sm"
+                    onChange={(shift) => handleAssignStaff(staff, shift)}
+                  >
+                    {poRequirements?.shifts.map((shift) => (
+                      <Option key={shift} value={shift}>
+                        {shift}
+                      </Option>
+                    ))}
+                  </Select>
+                </div>
               </div>
+
             ))}
           </div>
         </DialogBody>
@@ -486,6 +597,7 @@ const ClientPOManagement = () => {
           </Button>
         </DialogFooter>
       </Dialog>
+
     </div>
   );
 };

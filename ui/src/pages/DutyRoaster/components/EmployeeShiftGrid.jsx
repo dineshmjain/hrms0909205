@@ -116,6 +116,7 @@ const EmployeeShiftGrid = ({
                   {shifts.length > 0 ? (
                     <div className="flex flex-col gap-1 items-center justify-center">
                       {shifts.map((shift) => {
+                        {console.log('sss', shift)}
                         const shiftRef =
                           shiftByDates.references.shiftId?.[shift.shiftId] || {};
                         const clientRef =
@@ -128,6 +129,9 @@ const EmployeeShiftGrid = ({
                           shift.subOrgId &&
                           shiftByDates.references.orgId?.[shift.subOrgId];
                         const subOrgBranch = subOrg?.branch?.[shift.branchId];
+
+                        // console.log('hello',shiftByDates.references.orgId?.[shift.subOrgId])
+                        console.log('hello', shift.subOrgId)
 
                         const startTime = shift.startTime || shiftRef.startTime;
                         const endTime = shift.endTime || shiftRef.endTime;

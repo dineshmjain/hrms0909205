@@ -41,7 +41,7 @@ const ClientFilter = ({ filterType, setFiltersData, selectedFilters, search, set
     if (isClientOrg && clientId?.clientMappedId) {
       setPage(1);
       setLimit(10);
-      search();
+      search(selectedFilters);
     }
   }, [isClientOrg, clientId?.clientMappedId]);
 
@@ -95,7 +95,7 @@ const ClientFilter = ({ filterType, setFiltersData, selectedFilters, search, set
       const updatedData = removeEmptyStrings({
         ...selectedFilters,
         branchIds: [],
-        clientMappedId: clientId.clientMappedId,
+        clientMappedId: clientId?.clientMappedId,
         clientMappedIds: [],
         category: 'assigned',
       });
@@ -154,7 +154,7 @@ const ClientFilter = ({ filterType, setFiltersData, selectedFilters, search, set
       />
       <Button
         className="bg-primary hover:bg-primaryLight hover:text-primary transition-all duration-200 text-xs flex gap-2 justify-between"
-        onClick={search}
+        onClick={() => search(selectedFilters)}
       >
         Search
       </Button>

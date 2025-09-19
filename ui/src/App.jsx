@@ -41,13 +41,15 @@ const LeaveIndex = lazy(() => import("./pages/Leave/Policy/Index"));
 const LeaveRequestIndex = lazy(() => import("./pages/Leave/Request/Index"));
 const LeaveHistoryIndex = lazy(() => import("./pages/Leave/History/Index"));
 const AttendanceApprovals = lazy(() => import("./pages/Attendence/Approvals/Index"));
-const NotFound = lazy(() => import("./pages/Notfound/NotFound"));
+const SalaryTemplateIndex = lazy(() => import("./pages/Salary/Template/index"))
+const SalarySettingsIndex = lazy(() => import("./pages/Salary/Settings/index"))
+const NotFound = lazy(() => import("./pages/Notfound/Notfound"));
 const RolesIndex = lazy(() => import("./pages/Roles/Index"));
 const TasksIndex = lazy(() => import("./pages/Tasks/Index"));
 const CheckPointIndex = lazy(() => import("./pages/Checkpoint/Index"));
 const HolidayIndex = lazy(() => import("./pages/Holiday/Index"));
 const BannerIndex = lazy(() => import("./pages/Banners/Index"));
-const SettingIndex = lazy(() => import("./pages/settings/index"));
+const SettingIndex = lazy(() => import("./pages/settings/Index"));
 const AttendenceReportIndex = lazy(() =>
   import("./pages/Attendence/AttendenceReport/Index")
 );
@@ -55,11 +57,11 @@ const AttendanceRoprtMonthIndex = lazy(() => import('./pages/Attendence/Attenden
 const BranchRadiusSettingIndex = lazy(() => import("./pages/Attendence/BranchRadiusSetting/Index"))
 import { LoadScript, LoadScriptNext } from "@react-google-maps/api";
 import BranchRadiusSetting from "./pages/Attendence/BranchRadiusSetting/BranchRadiusSetting";
-// import Profile from "./pages/Profile/Profile";
-const BiometricIndex = lazy(() => import('./pages/Biometrics/Index'))
+import Profile from "./pages/Profile/Profile";
+const BiometricIndex = lazy(() => import('./pages/Biometrics/index'))
 const googleMapsApiKey = import.meta.env.VITE_MAPAPI;
 const GOOGLE_MAP_LIBRARIES = ["places"];
-const AppContent = () => {
+const App = () => {
   const navigate = useNavigate();
   const user = useSelector((state) => state.user.user);
   const setupMode = useSelector((state) => state.setupMode);
@@ -71,12 +73,13 @@ const AppContent = () => {
 
     if (
       !token &&
-      window.location.pathname !== "/auth/login" &&
-      window.location.pathname !== "/auth/sign-up"
+      location.pathname !== "/auth/login" &&
+      location.pathname !== "/auth/sign-up"
     ) {
+      
       navigate("/auth/login");
     }
-  }, [navigate]);
+  }, []);
 
   useEffect(() => {
     if (!user?._id) {
@@ -85,9 +88,13 @@ const AppContent = () => {
 
     if (user?.pending && !setupMode?.active) {
       console.log("User pending status:", user?.pending);
-      if (user?.pending?.organization == false) {
+      // if (user?.pending?.organization == false) {
+      //   dispatch(exitSetupMode());
+      //   return navigate("/auth/org");
+      // }
+        if (user?.pending?.organization == false) {
         dispatch(exitSetupMode());
-        return navigate("/auth/org");
+        return navigate("/auth/assist-wizard");
       }
       // let isPending = Object.values(user?.pending).some(
       //   (value) => value === false
@@ -142,7 +149,7 @@ const AppContent = () => {
             <Route element={<ClientIndex />} path="client/*" />
             <Route element={<LeadIndex />} path="lead/*" />
             <Route element={<MeetingsIndex />} path="meetings/*" />
-            <Route element={<QuotationIndex />} path="quotations/*" />
+            <Route element={<QuotationIndex />} path="quotation/*" />
             {/* <Route element={<AttendenceReportIndex />} path="attendance/*" /> */}
             <Route element={<UserIndex />} path="user/*" />
             <Route element={<LeaveIndex />} path="policy/*" />
@@ -156,6 +163,13 @@ const AppContent = () => {
             <Route element={<AttendanceApprovals />} path="attendanceapproval/*" />
             <Route element={<AttendanceRoprtMonthIndex />} path="daylogs/*" />
 
+<Route element={<SalaryTemplateIndex />} path="salaryTemplate/*" />
+            <Route element={<SalarySettingsIndex />} path="salarySettings/*" />
+
+
+            <Route element={<SalaryTemplateIndex />} path="salaryTemplate/*" />
+            <Route element={<SalarySettingsIndex />} path="salarySettings/*" />
+
             <Route element={<HolidayIndex />} path="holidays/*" />
             <Route element={<BannerIndex />} path="banners/*" />
             <Route element={<SettingIndex />} path="settings/*" />
@@ -164,7 +178,7 @@ const AppContent = () => {
               element={<TasksIndex pageName={"patrolling"} />}
               path="patrolling/*"
             />
-            {/* <Route path="Profile" element={<Profile />} /> */}
+            <Route path="Profile" element={<Profile />} />
             <Route element={<BiometricIndex />} path="biometrics/*" />
           </Route>
           <Route path="/:everythingElse" element={<NotFound />} />
@@ -172,10 +186,6 @@ const AppContent = () => {
       </LoadScriptNext>
     </Suspense>
   );
-};
-
-const App = () => {
-  return <AppContent />;
 };
 
 export default App;

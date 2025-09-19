@@ -184,11 +184,13 @@ const MonthLogs = () => {
       colorData: {
         pending: "#ffecb3",
         Error: "#ffc3bf",
+        rejected: "#ffc3bf",
         Approved: "#a0ffb0",
       },
       textColor: {
         pending: "#b37f00",
         Error: "#ac0000",
+        rejected: "#ac0000",
         Approved: "#006e04",
       },
     },

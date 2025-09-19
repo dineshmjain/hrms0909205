@@ -6,7 +6,8 @@ import {
   Button,
   Typography,
   Dialog,
-  DialogBody, DialogHeader
+  DialogBody,
+  DialogHeader,
 } from "@material-tailwind/react";
 import { useNavigate } from "react-router-dom";
 import { Modal } from "../../components/Modal/Modal";
@@ -20,7 +21,7 @@ import {
   InputWithHelperText,
   PasswordWithHelperText,
 } from "../../components/Input/Input";
-
+import OtpVerification from "./OTPVerfication";
 import toast from "react-hot-toast";
 import Otp from "./Otp";
 import logo from "../../assets/MWB_Logo (2).png";
@@ -100,13 +101,13 @@ const SignUp = () => {
   };
 
   const handleClick = () => {
-    closeDialog()
-  }
+    closeDialog();
+  };
 
   const closeDialog = () => {
-    setIAgree(true)
+    setIAgree(true);
     setOpenDialog(false);
-  }
+  };
 
   const handleChange = (e) => {
     console.log(e.target.name);
@@ -115,13 +116,12 @@ const SignUp = () => {
 
   return (
     <>
-      <Dialog open={openDialog} size='sm'>
+      <Dialog open={openDialog} size="sm">
         <DialogHeader className="flex justify-between">
           <h3 className="text-lg font-semibold">Terms And Conditions</h3>
           <HiOutlineXMark onClick={closeDialog} />
         </DialogHeader>
-        <DialogBody >
-
+        <DialogBody>
           <span className="text-[16px]">Terms and conditions</span>
           <div className="flex justify-start gap-2 mt-4">
             <button
@@ -141,7 +141,11 @@ const SignUp = () => {
         mobile={credentials.mobile}
       /> */}
         {open && (
-          <Modal size={"sm"} onClose={() => setOpen(false)} heading={"Enter OTP"}>
+          <Modal
+            size={"sm"}
+            onClose={() => setOpen(false)}
+            heading={"Enter OTP"}
+          >
             <Otp
               receivedOtp={otps?.current}
               checkOtp={(otp) => {
@@ -153,7 +157,8 @@ const SignUp = () => {
                     const token = payload?.data?.token;
                     if (token) {
                       localStorage.setItem("token", token);
-                      nav("/auth/org");
+                      // nav("/auth/org");
+                      nav("/auth/assist-wizard");
                     }
                   }
                 });
@@ -165,14 +170,19 @@ const SignUp = () => {
 
         <img
           src={bg}
-          alt="AppLogo" className="absolute opacity-75 w-full h-full" // Set consistent width and height with rounded corners
+          alt="AppLogo"
+          className="absolute opacity-75 w-full h-full" // Set consistent width and height with rounded corners
         />
-        <div className="flex items-center justify-end w-full md:w-1/2 p-4" style={{ width: '90%' }}>
+        <div
+          className="flex items-center justify-end w-full md:w-1/2 p-4"
+          style={{ width: "90%" }}
+        >
           <Card className="w-full max-w-sm p-6 bg-white rounded-xl shadow-xl shadow-blue-gray-200">
             <div className="flex justify-center">
               <img
                 src={logo}
-                alt="AppLogo" style={{ width: '120px', height: '80px' }}
+                alt="AppLogo"
+                style={{ width: "120px", height: "80px" }}
                 className="w-9 h-9 cursor-pointer rounded-md mb-4" // Set consistent width and height with rounded corners
               />
             </div>
@@ -231,12 +241,18 @@ const SignUp = () => {
                 error={errors.confirmPassword}
               />
               <div className="flex gap-4">
-                <input type="checkbox" className="w-5 h-5" checked={iAgree} onChange={() => setIAgree(!iAgree)} />
+                <input
+                  type="checkbox"
+                  className="w-5 h-5"
+                  checked={iAgree}
+                  onChange={() => setIAgree(!iAgree)}
+                />
                 <Typography
                   key={shakeKey} // 🔑 forces re-render so animation restarts
                   variant="small"
-                  className={`flex gap-1 items-center transition-all ${!iAgree ? "animate-shake text-red-500" : ""
-                    }`}
+                  className={`flex gap-1 items-center transition-all ${
+                    !iAgree ? "animate-shake text-red-500" : ""
+                  }`}
                 >
                   I agree to this{" "}
                   <a
@@ -250,10 +266,11 @@ const SignUp = () => {
               <Button
                 fullWidth
                 onClick={handleOpen}
-                className={`transition-all ${iAgree
+                className={`transition-all ${
+                  iAgree
                     ? "bg-primary hover:bg-primaryLight hover:text-primary"
                     : "bg-gray-300 text-gray-500"
-                  }`}
+                }`}
               >
                 Submit
               </Button>
@@ -273,7 +290,6 @@ const SignUp = () => {
             </div>
           </Card>
         </div>
-
       </div>
     </>
   );

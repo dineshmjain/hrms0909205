@@ -131,8 +131,8 @@ const Dashboard = () => {
   }
 
   // Role selector for testing (only show in development)
-  const isDevMode = window.location.hostname === 'localhost' || window.location.hostname.includes('replit');
-
+  // const isDevMode = window.location.hostname === 'localhost' || window.location.hostname.includes('replit');
+const isDevMode =true
   const handleRoleChange = (newRole) => {
     setLoading(true);
     localStorage.setItem('testRole', newRole);

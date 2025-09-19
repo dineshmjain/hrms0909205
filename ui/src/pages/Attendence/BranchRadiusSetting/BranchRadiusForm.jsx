@@ -5,7 +5,10 @@ import { useLocation, useNavigate } from "react-router-dom";
 import AddressNew from "../../../components/Address/AddressNew";
 import Header from "../../../components/header/Header";
 import toast from "react-hot-toast";
-import { BranchRadiusUpdateAction } from "../../../redux/Action/Branch/BranchAction";
+import {
+  BranchRadiusUpdateAction,
+  BranchPolygonUpdateAction,
+} from "../../../redux/Action/Branch/BranchAction";
 import { removeEmptyStrings } from "../../../constants/reusableFun";
 
 const BranchRadiusForm = () => {
@@ -42,6 +45,15 @@ const BranchRadiusForm = () => {
         : { type: "Point", coordinates: [] },
       geoLocation: data?.geoLocation || {},
     };
+    // Initialize polygon paths from geoBoundary if available
+    let polygonPaths = [];
+    if (
+      data?.geoBoundary?.type === "Polygon" &&
+      data.geoBoundary.coordinates.length > 0
+    ) {
+      const coords = data.geoBoundary.coordinates[0];
+      polygonPaths = coords.map(([lng, lat]) => ({ lat, lng }));
+    }
 
     setFieldValue(prefix, {
       hno: address?.hno || "",
@@ -55,11 +67,11 @@ const BranchRadiusForm = () => {
       taluk: address?.taluk || "",
       addressTypeId: address?.addressTypeId || "",
       radius: data?.radius || 0,
-      mapCenter: isValidCoords
-        ? { lat, lng }
-        : { lat: 28.6139, lng: 77.209 }, // default: Delhi
+      mapCenter: isValidCoords ? { lat, lng } : { lat: 28.6139, lng: 77.209 }, // default: Delhi
       structuredAddress,
       geoAddress: data?.geoLocation?.address || "",
+      polygon: { paths: polygonPaths }, // Add this line to initialize polygon data
+      geoType: data?.geoBoundary ? "polygon" : "radius", // Set appropriate geoType
     });
 
     setMapReady(true);
@@ -73,14 +85,15 @@ const BranchRadiusForm = () => {
 
     setIsSubmitting(true);
     try {
-
-        console.log("Updating branch radius with values:", location);
+      console.log("Updating branch radius with values:", location);
       const updateParams = {
         ...removeEmptyStrings(values?.branchAddress?.structuredAddress),
         branchId: location?.state?._id,
         subOrgId: user?.suborganization?.r ? location?.state?.subOrg : "",
         radius: values?.branchAddress?.radius,
-        clientMappedId: location?.state?.clientMappedId ? location?.state?.clientMappedId || "" : "",
+        clientMappedId: location?.state?.clientMappedId
+          ? location?.state?.clientMappedId || ""
+          : "",
       };
 
       const result = await dispatch(
@@ -96,6 +109,51 @@ const BranchRadiusForm = () => {
     } catch (error) {
       console.error("Update radius error:", error);
       toast.error("Failed to update radius");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  const updatePolygon = async () => {
+    setIsSubmitting(true);
+    try {
+      const paths = values.branchAddress.polygon.paths;
+      if (!paths || paths.length < 3) {
+        toast.error("Polygon must have at least 3 points");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Close polygon
+      const coords = paths.map((p) => [p.lng, p.lat]);
+      if (
+        coords.length > 0 &&
+        (coords[0][0] !== coords[coords.length - 1][0] ||
+          coords[0][1] !== coords[coords.length - 1][1])
+      ) {
+        coords.push(coords[0]);
+      }
+
+      const updateParams = {
+        branchId: location?.state?._id,
+        // subOrgId: user?.suborganization?.r ? location?.state?.subOrg : "",
+        // clientMappedId: location?.state?.clientMappedId || "",
+        geoBoundary: {
+          type: "Polygon",
+          coordinates: [coords],
+        },
+      };
+
+      const result = await dispatch(BranchPolygonUpdateAction(updateParams));
+
+      if (result?.meta?.requestStatus === "fulfilled") {
+        toast.success("Polygon updated successfully");
+        navigate("../");
+      } else {
+        toast.error("Failed to update polygon");
+      }
+    } catch (error) {
+      console.error("Update polygon error:", error);
+      toast.error("Failed to update polygon");
     } finally {
       setIsSubmitting(false);
     }
@@ -116,7 +174,11 @@ const BranchRadiusForm = () => {
           isBackHandler
           headerLabel="Edit Geo Fencing Settings"
           subHeaderLabel="Manage your Branch and Geo Fencing Setting"
-          handleClick={updateRadius}
+          handleClick={
+            values.branchAddress?.geoType === "polygon"
+              ? updatePolygon
+              : updateRadius
+          }
           isButton
           isEditAvaliable={isEditAvailable}
           handleEdit={() => setIsEditAvailable(!isEditAvailable)}

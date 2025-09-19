@@ -40,18 +40,18 @@ const AddBanner = () => {
                     },
                 }
             );
-            toast.success(response.data?.message)
+            toast.success(response?.data?.message)
             navigate("banners/list");
         } catch (error) {
             console.error(
                 "Image upload failed:",
-                error.response?.data || error.message
+                error?.response?.data || error.message
             );
             throw error;
         }
     };
     const handleImageChange = (e) => {
-        const file = e.target.files[0];
+        const file = e.target?.files[0];
         if (file) {
             setFile(file);
             setSelectedImage(URL.createObjectURL(file));

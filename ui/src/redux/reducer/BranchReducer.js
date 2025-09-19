@@ -10,6 +10,7 @@ import {
   BranchRadiusGetAction,
   BranchRadiusUpdateAction,
   BranchStatusUpdateAction,
+  BranchPolygonUpdateAction,
 } from "../Action/Branch/BranchAction";
 
 const initialState = {
@@ -272,45 +273,73 @@ const BranchListReducer = createSlice({
         console.log("BranchGetAction Error rejected-->", action.error);
 
         // toast.error(action.error.message || 'Failed to load branch data. Please try again.');
-      })
-      //branch radius update
+      });
+    //branch radius update
     builder
-    .addCase(BranchRadiusUpdateAction.pending, (state) => {
-      state.status = "loading";
-      state.error = false;
-      state.loading = true;
-    })
-    .addCase(BranchRadiusUpdateAction.fulfilled, (state, action) => {
-      console.log("Full payload:", action?.payload); // Check the structure of the payload
-      state.status = "success";
-      state.error = "";
-      state.loading = false;
-      state.branchCreate = action?.payload || {}; // Ensure this is the correct path to the data
-      console.log("Branch", action);
-      console.log("Showing toast success:", action.payload.message); // ADD THIS
-      if (action.payload?.message) {
+      .addCase(BranchRadiusUpdateAction.pending, (state) => {
+        state.status = "loading";
+        state.error = false;
+        state.loading = true;
+      })
+      .addCase(BranchRadiusUpdateAction.fulfilled, (state, action) => {
+        console.log("Full payload:", action?.payload); // Check the structure of the payload
+        state.status = "success";
+        state.error = "";
+        state.loading = false;
+        state.branchCreate = action?.payload || {}; // Ensure this is the correct path to the data
+        console.log("Branch", action);
+        console.log("Showing toast success:", action.payload.message); // ADD THIS
+        if (action.payload?.message) {
+          toast.dismiss();
+          toast.success(action.payload.message);
+        }
+      })
+      .addCase(BranchRadiusUpdateAction.rejected, (state, action) => {
         toast.dismiss();
-        toast.success(action.payload.message);
-      }
-    })
-    .addCase(BranchRadiusUpdateAction.rejected, (state, action) => {
-      toast.dismiss();
-      state.status = "failed";
-      state.loading = false;
+        state.status = "failed";
+        state.loading = false;
 
-      // Safe access to validation message
-      const backendError =
-        action.error?.response?.data || action.payload || action.error;
-      const validationMessage =
-        backendError?.validation?.body?.message ||
-        backendError?.message ||
-        "Something went wrong";
+        // Safe access to validation message
+        const backendError =
+          action.error?.response?.data || action.payload || action.error;
+        const validationMessage =
+          backendError?.validation?.body?.message ||
+          backendError?.message ||
+          "Something went wrong";
 
-      state.error = validationMessage;
-      console.log("Branch Create Error:", backendError?.validation?.body);
+        state.error = validationMessage;
+        console.log("Branch Create Error:", backendError?.validation?.body);
 
-      toast.error(validationMessage);
-    });
+        toast.error(validationMessage);
+      });
+
+    builder
+      .addCase(BranchPolygonUpdateAction.pending, (state) => {
+        state.status = "loading";
+        state.error = false;
+        state.loading = true;
+      })
+      .addCase(BranchPolygonUpdateAction.fulfilled, (state, action) => {
+        state.status = "success";
+        state.error = "";
+        state.loading = false;
+        state.branchCreate = action.payload || {};
+        if (action.payload?.message) {
+          toast.dismiss();
+          toast.success(action.payload.message);
+        }
+      })
+      .addCase(BranchPolygonUpdateAction.rejected, (state, action) => {
+        toast.dismiss();
+        state.status = "failed";
+        state.loading = false;
+        const backendError =
+          action.error?.response?.data || action.payload || action.error;
+        const validationMessage =
+          backendError?.message || "Something went wrong";
+        state.error = validationMessage;
+        toast.error(validationMessage);
+      });
   },
 });
 

@@ -69,7 +69,7 @@ const List = () => {
     const updated = removeEmptyStrings({
       statusType: selectedFilters.statusType,
       date: selectedFilters.date,
-      limit: selectedFilters.limit || 2,
+      limit: selectedFilters.limit,
       page: selectedFilters.page || 1,
       subOrgIds: selectedFilters.subOrgIds?.length
         ? selectedFilters.subOrgIds
@@ -109,14 +109,16 @@ const List = () => {
       DisplayName: "Status",
       type: "chip",
       colorData: {
-        Pending: "#ffecb3",
-        Error: "#ffc3bf",
-        Approved: "#a0ffb0",
+        pending: "#ffecb3",
+        error: "#ffc3bf",
+        rejected: "#ffc3bf",
+        approved: "#a0ffb0",
       },
       textColor: {
-        Pending: "#b37f00",
+        pending: "#b37f00",
         Error: "#ac0000",
-        Approved: "#006e04",
+        rejected: "#ac0000",
+        approved: "#006e04",
       },
     },
   };

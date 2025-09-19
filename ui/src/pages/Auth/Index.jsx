@@ -7,6 +7,7 @@ const Login = lazy(() => import("./Login"));
 const SignUp = lazy(() => import("./SignUp"));
 const OrgCreate = lazy(() => import("../Organization/Add"));
 const ForgotPassword = lazy(() => import("./ForgotPassword"));
+const AssistWizard = lazy(() => import("../AssistWizard/AssistWizard"));
 
 export function Index() {
   const currentPath = useLocation();
@@ -32,6 +33,7 @@ export function Index() {
           <Route element={<SignUp />} path="sign-up" />
           <Route element={<ForgotPassword />} path="forgot-password" />
           <Route element={<OrgCreate />} path="org" />
+          <Route element={<AssistWizard />} path="assist-wizard" />
         </Routes>
       </Suspense>
     </div>
