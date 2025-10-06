@@ -19,3 +19,20 @@ export const clientBranchAddApi = async (reqbody) => {
         throw error.response.data || error.message;
     }
 };
+export const ClientGetBranchRequirementApi = async (clientGetRequirements) => {
+  try {
+    console.log(
+      clientGetRequirements,
+      "<==========sent to api"
+    );
+    const response = await axiosInstance.post(
+      `settings/client/report/time`,
+      clientGetRequirements
+    );
+    console.log(response.data);
+    return response.data;
+  } catch (error) {
+    console.log(error);
+    throw error.response.data || error.message;
+  }
+};

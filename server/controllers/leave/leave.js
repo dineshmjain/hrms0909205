@@ -18,7 +18,7 @@ export const validateLeaveApplication = (request, response, next) => {
         const { days } = request.body;
         const policy = request.body.policyData[0]; 
         
-        if(policy.approval.type === 'post')return next() // Skip validation for post-approval policies
+        // if(policy.approval.type === 'post')return next() // Skip validation for post-approval policies
 
         if (!days || typeof days !== 'object') {
             return apiResponse.validationError(response, "Leave days must be provided and valid.");
@@ -61,9 +61,9 @@ export const checkPolicyRules=async(request,response,next)=>{
         const userJoiningDate = moment(request.body.user.joinDate); 
 
         // 0. Cannot apply leave in the past
-        if (policy.approval.type === 'pre' && fromDate.isBefore(today)) {
-            return apiResponse.validationError(response, "Cannot apply for leave in the past.");
-        }
+        // if (policy.approval.type === 'pre' && fromDate.isBefore(today)) {
+        //     return apiResponse.validationError(response, "Cannot apply for leave in the past.");
+        // }
     
         // 1. Validity check
         // if(fromDate.isBefore(moment(policy.validity.from)) || toDate.isAfter(moment(policy.validity.to))){
@@ -78,24 +78,24 @@ export const checkPolicyRules=async(request,response,next)=>{
         // }
 
         // Pre-approval check
-        if (policy.approval.type === 'pre') {
-            if (daysDiff < policy.approval.applyBeforeDays) {
-                return apiResponse.validationError(
-                    response,
-                    `Leave must be applied at least ${policy.approval.applyBeforeDays} day(s) in advance.`
-                );
-            }
-        }
+        // if (policy.approval.type === 'pre') {
+        //     if (daysDiff < policy.approval.applyBeforeDays) {
+        //         return apiResponse.validationError(
+        //             response,
+        //             `Leave must be applied at least ${policy.approval.applyBeforeDays} day(s) in advance.`
+        //         );
+        //     }
+        // }
 
         // Post-approval check
-        if (policy.approval.type === 'post') {
-            if (daysLate > policy.approval.applyAfterDays) {
-                return apiResponse.validationError(
-                    response,
-                    `Leave must be applied within ${policy.approval.applyAfterDays} day(s) after the leave date.`
-                );
-            }
-        }
+        // if (policy.approval.type === 'post') {
+        //     if (daysLate > policy.approval.applyAfterDays) {
+        //         return apiResponse.validationError(
+        //             response,
+        //             `Leave must be applied within ${policy.approval.applyAfterDays} day(s) after the leave date.`
+        //         );
+        //     }
+        // }
 
 
         // if (totalLeaveDays > policy.eligibleNoOfDays) {
@@ -105,19 +105,19 @@ export const checkPolicyRules=async(request,response,next)=>{
         //     );
         // }
 
-        const totalDaysSinceJoin = today.diff(userJoiningDate , 'days');
+        // const totalDaysSinceJoin = today.diff(userJoiningDate , 'days');
 
-        if (totalDaysSinceJoin < policy.eligibleNoOfDays) {
-            return apiResponse.validationError(
-                response,
-                `You are not eligible to apply for leave until you complete ${policy.eligibleNoOfDays} working day(s).`
-            );
-        }
+        // if (totalDaysSinceJoin < policy.eligibleNoOfDays) {
+        //     return apiResponse.validationError(
+        //         response,
+        //         `You are not eligible to apply for leave until you complete ${policy.eligibleNoOfDays} working day(s).`
+        //     );
+        // }
     
         // 3. Gender check
-        if (policy.genderEligibility !== 'all' && policy.genderEligibility !== request.body.user?.Gender) {
-            return apiResponse.validationError(response,"Not eligible for this leave type based on gender.")
-        }
+        // if (policy.genderEligibility !== 'all' && policy.genderEligibility !== request.body.user?.Gender) {
+        //     return apiResponse.validationError(response,"Not eligible for this leave type based on gender.")
+        // }
     
         // 4. Employment type check
         // if (!policy.employmentTypeEligibility.includes(request.body.user.employmentType)) {

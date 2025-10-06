@@ -289,14 +289,14 @@ export const updateOrg = async (body) => {
 export const addSubOrg = async (body) => {
     try {
         let query = {
-            name:body.orgName,
+            name:body.orgName || body.name,
             // type:body.type,
             orgTypeId: new ObjectId(body.orgTypeId),
-            parentOrg:new ObjectId(body.orgId),
             isActive:true,
             createdDate: new Date(),
             createdBy: new ObjectId(body.userId)
         };
+        if(body.structure == 'group') query['parentOrg'] = new ObjectId(body.orgId)
         return await create(query, "organization");
     } catch (error) {
         logger.error("Error while addSubOrg in org module")

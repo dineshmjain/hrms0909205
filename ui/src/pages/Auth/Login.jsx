@@ -15,7 +15,7 @@ import bg from "../../assets/sign-in-bg.png";
 
 import toast, { Toaster } from "react-hot-toast";
 import { login } from "../../redux/Action/Auth/AuthAction";
-import { PasswordWithHelperText } from "../../components/Input/Input";
+import { PasswordWithHelperText } from "../../components/input/Input";
 const Login = () => {
   const [credentials, setCredentials] = useState({ password: "" });
   const [inputValue, setInputValue] = useState("");

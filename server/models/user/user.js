@@ -7,7 +7,7 @@ import { QueryBuilder } from "../../helper/filter.js";
 import { logger } from '../../helper/logger.js';
 import { startOfMonth, subMonths, endOfMonth } from 'date-fns';
 import { assignment } from '../assignment/assignment.js';
-import { userGetTypeProjection, adminRoleId, allowed_user_params } from '../../helper/constants.js';
+import { userGetTypeProjection, adminRoleId, allowed_user_params, role } from '../../helper/constants.js';
 import { createDefaultDepartments } from '../department/department.js';
 import { all } from 'axios';
 
@@ -134,10 +134,16 @@ export const createUser = async (body) => {
       query['dateOfBirth'] = new Date(body.dateOfBirth),
       query['assignmentId'] = body.assignmentIds,
       query['role'] = body.roleId != null ? [new ObjectId(body.roleId)] : []
-
       if (Array.isArray(body.branchId)) {
         query['assignedBranchId'] = body.branchId.map(id => new ObjectId(id))
       }   
+      let fields = ['martialStatus','bloodGroup','qualification','employeeId']
+
+      fields.forEach(f => {
+        if (body[f]) {
+          query[f] = body[f]
+        }
+      })
     }
     if(body.profileImage) {
         query['profileImage'] = body.profileImage
@@ -2480,5 +2486,43 @@ export const getUserClients=async(body) => {
   }
   catch (error) {
     return {status : false, message: "Failed to get user clients!"}
+  }
+}
+
+export const getAdminUser = async(body) => {
+  try {
+    let query = [
+      {
+        $match: {
+          $or : [
+          {
+            orgId: new ObjectId(body.user?.orgId || body.authUser?.orgId)
+          },
+          {
+            _id : new ObjectId(body.user?._id || body.authUser?._id)
+          }
+
+          ]
+        }
+      },
+      {
+        $lookup: {
+          from: "roles",
+          localField: "role",
+          foreignField: "_id",
+          as: "roles"
+        }
+      },
+      {
+        $match:
+          {
+            "roles.name": role.ADMIN
+          }
+      }
+    ]
+    return await aggregate(query, collection_name)
+  }
+  catch (error) {
+    return {status : false, message : "Failed to get Admin Role Details"}
   }
 }

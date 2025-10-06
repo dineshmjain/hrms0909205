@@ -24,6 +24,8 @@ export const getShiftList = async (body) => {
 
         const params = query.getQueryParams();
 
+        if(body.branchId) params['branchId'] = new ObjectId(body.branchId);
+
          params.isActive = params.isActive === false ? false : true;
 
         return await getMany(params,collection_name);
@@ -46,6 +48,7 @@ export const createShift = async (body) => {
             createDate:new Date(),
             // updatedAt:new Date(),
             createdBy:new ObjectId(body.userId),
+            ...(body.branchId && {branchId : body.branchId}),
             bgColor: body.bgColor,
             textColor: body.textColor,
             ...(body.minIn && {minIn : body.minIn}),
@@ -141,12 +144,29 @@ export const getOneShift = async (body) => {
     }
 }
 
+export const getAllShifts = async (body) => {
+    try{
+
+        let query  = {
+            $or: [
+                {orgId : body.user.orgId},
+                {orgId : {$in : body.clientIds.map(cl => cl._id)}}
+            ]
+        }
+        
+        return await getMany(query,collection_name);
+    }catch(error){
+        logger.error("Error while getOneShift in shift module");
+        throw error;
+    }
+}
+
 export const updateShift = async (body) => {
     try{
 
         let query = {_id : new ObjectId(body.shiftId)}
 
-        let fields = ['name', "startTime", "endTime", "isActive", "bgColor", "textColor", "minIn", "minOut", "maxIn", "maxOut","reportTimeIn","reportTimeOut", "modifiedDate", "modifiedBy"]
+        let fields = ['name', "startTime", "endTime", "isActive", "bgColor", "textColor","branchId", "minIn", "minOut", "maxIn", "maxOut","reportTimeIn","reportTimeOut", "modifiedDate", "modifiedBy"]
         let updateObj = {}
         let unsetObj = {}
         fields.forEach(f => {
@@ -420,6 +440,16 @@ export const activateDeactivateShift= async (body) => {
         return await findOneAndUpdate(query,update,collection_name);
     }catch(error){
         logger.error("Error while activateDeactivateShift in shift module");
+        throw error;
+    }
+}
+
+export const getCurrentShift = async (body) => {
+    try{
+        const query = {_id: new ObjectId(body.currentShiftId)}
+        return await getOne(query,collection_name);
+    }catch(error){
+        logger.error("Error while get current Shift in shift module");
         throw error;
     }
 }

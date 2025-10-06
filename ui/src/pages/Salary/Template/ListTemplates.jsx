@@ -1,12 +1,23 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { IoMdAdd } from "react-icons/io";
 import { Typography } from "@material-tailwind/react";
 import MultiSelectFilter from "../../../components/Filter/MultiSelectFilter";
-import Table from "../../../components/Table/Table"; // don’t forget to import
+import Table from "../../../components/Table/Table";
+import { useDispatch, useSelector } from "react-redux";
+import { SalaryTemplatesGetAction } from "../../../redux/Action/Salary/SalaryAction";
+import { MdModeEditOutline } from "react-icons/md";
+import { FaUserPlus } from "react-icons/fa6";
+import { FaEye } from "react-icons/fa";
+import { toTitleCase } from "../../../constants/reusableFun";
+
+import AssignTemplateSidebar from "./components/AssignTemplateSidebar";
+import PreviewTemplateSidebar from "./components/PreviewTemplateSidebar";
 
 const TemplateList = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+
   const [selectedFilters, setSelectedFilters] = useState({
     orgId: "",
     branchIds: [],
@@ -14,67 +25,94 @@ const TemplateList = () => {
     designationIds: [],
   });
 
-  // Dummy data
-  const employeeList = [
-    {
-      id: 1,
-      name: "Security Guard 1",
-      description: "Less than 1 year experience",
-      modifiedDate: "2025-09-15T10:30:00Z",
-    },
-    {
-      id: 2,
-      name: "Security Guard 2",
-      description: "1 to 3 year experience",
-      modifiedDate: "2025-09-14T09:15:00Z",
-    },
-    {
-      id: 3,
-      name: "Security Guard 3",
-      description: "3 to 5 year experience",
-      modifiedDate: "2025-09-12T14:45:00Z",
-    },
-  ];
+  const [openSidebar, setOpenSidebar] = useState(false);
+  const [openPreview, setOpenPreview] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
 
-  // Labels for the table
+  const { list, loading, totalRecord, pageNo, limit } = useSelector(
+    (s) => s.salary.templates
+  );
+
+  useEffect(() => {
+    getTemplateList({ page: 1, limit: 10 });
+  }, []);
+
+  const getTemplateList = (params) => {
+    dispatch(SalaryTemplatesGetAction({ ...params }));
+  };
+
+  const handleOpenSidebar = (row) => {
+    setSelectedTemplate(row);
+    setOpenSidebar(true);
+  };
+
+  const handleCloseSidebar = () => {
+    setOpenSidebar(false);
+    setSelectedTemplate(null);
+  };
+
+  const handleOpenPreview = (row) => {
+    setSelectedTemplate(row);
+    setOpenPreview(true);
+  };
+
+  const handleClosePreview = () => {
+    setOpenPreview(false);
+    setSelectedTemplate(null);
+  };
+
   const labels = {
-    name: { DisplayName: "Name" },
+    templateName: {
+      DisplayName: "Name",
+      type: "function",
+      data: (row) => toTitleCase(row?.templateName),
+    },
     description: { DisplayName: "Description" },
     modifiedDate: {
       DisplayName: "Modified Date",
       type: "time",
-      format: "DD-MM-YYYY hh:mm A", // your Table should handle this if it follows same convention
+      format: "DD-MM-YYYY hh:mm A",
     },
   };
 
   const actions = [
     {
       title: "Edit",
-      text: "✏️",
-      onClick: (row) => {
-        console.log("Edit clicked:", row);
-        navigate("/salary/template/edit", { state: row });
-      },
+      text: <MdModeEditOutline className="w-5 h-5" />,
+      onClick: (row) => navigate("/salary/template/edit", { state: row }),
+    },
+    {
+      title: "Assign",
+      text: <FaUserPlus className="w-5 h-5" />,
+      onClick: (row) => handleOpenSidebar(row),
+    },
+    {
+      title: "Preview",
+      text: <FaEye className="w-5 h-5" />,
+      onClick: (row) => handleOpenPreview(row),
     },
   ];
 
-  const loading = false; // no API, so just hardcode
-  const totalRecord = employeeList.length;
-  const pageNo = 1;
-  const limit = 10;
-
   const editButton = (row) => {
-    console.log("Row clicked", row);
     navigate("/salary/template/edit", { state: row });
-  };
-
-  const getEmployeeList = () => {
-    // placeholder – you’ll replace this when backend is ready
-    console.log("Fetching dummy list…");
   };
 
   return (
     <div className="flex flex-col gap-4 p-2 w-full">
+      {/* Sidebar */}
+      <AssignTemplateSidebar
+        open={openSidebar}
+        onClose={handleCloseSidebar}
+        selectedTemplate={selectedTemplate}
+      />
+
+      <PreviewTemplateSidebar
+        open={openPreview}
+        onClose={handleClosePreview}
+        selectedTemplate={selectedTemplate}
+      />
+
+      {/* Header */}
       <div className="flex justify-between p-2">
         <div>
           <Typography className="text-gray-900 font-semibold text-[18px] capitalize">
@@ -96,6 +134,7 @@ const TemplateList = () => {
         </div>
       </div>
 
+      {/* Filters */}
       <div className="bg-white p-4 rounded-md shadow-hrms">
         <div className="text-gray-700 font-semibold mt-0 text-[14px] mb-1">
           Filters
@@ -104,7 +143,10 @@ const TemplateList = () => {
           showFilters={true}
           selectedFilters={selectedFilters}
           setSelectedFilters={setSelectedFilters}
-          onSet={(filters) => console.log("Salary filters", filters)}
+          onSet={(filters) => {
+            setSelectedFilters(filters);
+            getTemplateList({ page: 1, limit, ...filters });
+          }}
           pageName={"salary"}
           isBranchMulti={false}
           isDepartmentMulti={false}
@@ -112,8 +154,9 @@ const TemplateList = () => {
         />
       </div>
 
+      {/* Table */}
       <Table
-        tableJson={employeeList}
+        tableJson={list}
         labels={labels}
         actions={actions}
         isLoading={loading}
@@ -124,7 +167,7 @@ const TemplateList = () => {
           pageNo,
           limit,
           onDataChange: (page, limit, search = "") => {
-            getEmployeeList({ page, limit, search });
+            getTemplateList({ page, limit, search });
           },
         }}
       />

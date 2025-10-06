@@ -63,3 +63,12 @@ export const LeaveBalanceUserCreateApi = async (request) => {
     throw error;
   }
 };
+export const LeavePolicyNameGetApi = async (policy) => {
+  try { 
+      const response = await axiosInstance.get("leave/policy/get/policies/dropdown");
+      console.log(response.data);
+      return response.data;
+    } catch (error) {
+      throw error;
+    } 
+};

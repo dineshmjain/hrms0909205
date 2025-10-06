@@ -56,6 +56,14 @@ const Add = () => {
         departmentId: values?.departmentId,
         designationId: values?.designationId,
         roleId: values?.roleId,
+        martialStatus: values?.martialStatus,
+        bloodGroup: values?.bloodGroup,
+        qualification: values?.qualification,
+        employeeId: values?.employeeId,
+        gender: values?.gender,
+        workTimingType: values?.workTimingType,
+        shiftIds: values?.shiftIds || [],
+        salaryConfig: values?.salaryConfig || false,
         isSubOrg: !!user?.modules?.["suborganization"]?.r,
 
         // ...(values?.isSubOrg ? { isSubOrg: true } : {}), // ← Adds isSubOrg: true if applicable

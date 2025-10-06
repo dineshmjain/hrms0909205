@@ -15,7 +15,7 @@ import {
   StandaloneSearchBox,
   useJsApiLoader,
 } from "@react-google-maps/api";
-import { getLocationWithLatLong } from "../../constants/reusableFun";
+import { getLocationWithLatLong } from "../../constants/reUsableFun";
 import Modal from "../Modal/TaskModal";
 
 const libraries = ["places"];

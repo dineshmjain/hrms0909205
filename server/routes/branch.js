@@ -13,6 +13,9 @@ import * as roles from '../controllers/role/role.js';
 import * as department from '../controllers/department/department.js';
 import * as designation from '../controllers/designation/designation.js';
 import * as shift from '../controllers/shift/shift.js';
+import * as overtime from '../controllers/overtime/overtime.js';
+import * as salary from '../controllers/salary/salary.js';
+import * as leavePolicy from '../controllers/leavePolicy/leavePolicy.js';
 
 
 const router = express.Router();
@@ -123,6 +126,69 @@ router.post('/radius/update',
     branch.updateBranchRadius,
     (request, response) => {
         return apiResponse.successResponse(response, "Branch Radius updated successfully");
+    }
+)
+
+router.post('/setting/boundary',
+    celebrate(validation.updateBranchBoundary),
+    auth.isAuth,
+    user.isUserValid,
+    branch.isBranchExist,
+    branch.isBoundaryPointsValid,
+    branch.updateBranchBoundary,
+    (request, response) => {
+        return apiResponse.successResponse(response, "branch boundary  updated successfully");
+    }
+
+)
+
+router.post('/default/get',
+    auth.isAuth,
+    user.isUserValid,
+    org.getOrg,
+    branch.getDefaultBranch,
+    (request, response) => {
+        return apiResponse.successResponseWithData(response, "Default Branch fetched successfully", request.body.branchDetails);
+    }
+)
+
+router.post('/wizard/add',
+    auth.isAuth,
+    user.isUserValid,
+    org.getOrg,
+    branch.addDefaultBranch,
+    (request, response) => {
+        return apiResponse.successResponse(response, "Branch Details Added successfully");
+    }
+)
+
+router.post('/wizard/get/all',
+    (request, response, next) => {
+        request.body.wizardGetAllData = true // in wizard flow all data will be true
+        return next();
+    },
+    auth.isAuth,
+    user.isUserValid,
+    org.getOrg,
+    branch.getDefaultBranch,
+    shift.getShiftList,
+    overtime.getOvertimeList,
+    leavePolicy.getPolicy,
+    salary.listSalaryComponents,
+    user.getUserList,
+    (request, response, next) => {
+        return apiResponse.successResponseWithData(response, "All Details fetched successfully", request.body.allDataRes);
+    }
+)
+
+router.post('/client/req/get',
+    // celebrate(validation.getBranchClientReq),
+    auth.isAuth,
+    user.isUserValid,
+    org.getOrg,
+    branch.getBranchClientReq,
+    (request, response) => {
+        return apiResponse.successResponseWithData(response, "Branch Client Requirement Found successfully", request.body.clientReqDetails);
     }
 )
 export default router;

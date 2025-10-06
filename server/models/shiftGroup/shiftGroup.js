@@ -140,7 +140,6 @@ export const buildShiftGroupObject = async (body) => {
 }
 
 export const getOverlappingShift = async (body) => {
-  console.log(body)
   if (body?.shiftsToDisable?.length > 0) return { status: true };
   
   const employeeIds = body.shiftGroupObj.userIds;
@@ -307,12 +306,15 @@ export const createShiftGroup = async (body) => {
 };
 
 export const getShiftGroupListByDate = async (body) => {
-  const users = body.isClient && body.assignmentClientUserIds
-    ? body.assignmentClientUserIds
-    : body.assignmentUserIds;
+      const users=body.isClient && body.assignmentClientUserIds ? body.assignmentClientUserIds: body.dashboardStatus || body.clientCheckIn || body.teamAttendance || body.extendAttendance ? [body.userId] : body.assignmentUserIds
+      const clientBranchIds=body.isClient?body.clientBranchIds.map(cb=>new ObjectId(cb)):[];
+      let start = body?.startDate ? new Date(body?.startDate) : new Date();
+      start.setUTCHours(0, 0, 0, 0);
+      let end = body?.endDate ? new Date(body?.endDate) : new Date();
+      end.setUTCHours(23, 59, 59, 999);
 
-  const start = toIstDay(body.startDate); // inclusive
-  const end   = toIstDay(body.endDate);   // inclusive
+  // const start = toIstDay(body.startDate); // inclusive
+  // const end   = toIstDay(body.endDate);   // inclusive
 
   const groupFilter = {
     userIds: { $in: users.map((id) => new ObjectId(id)) },
@@ -322,8 +324,8 @@ export const getShiftGroupListByDate = async (body) => {
         endDate: { $gte: start }
       }
     }
-  };
-
+  }
+    // console.log(JSON.stringify(groupFilter))
   const { data: shiftGroups } = await getMany(groupFilter, shiftGroupCollection);
   const expandedDocs = [];
 

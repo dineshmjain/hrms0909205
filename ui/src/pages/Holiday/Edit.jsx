@@ -3,7 +3,7 @@ import Header from "../../components/header/Header";
 import { Typography } from "@material-tailwind/react";
 import { useDispatch } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom";
-import CustomField from "../../components/Input/CustomFeild";
+import CustomField from "../../components/input/CustomFeild";
 import { HolidayEditAction } from "../../redux/Action/Holiday/holiday";
 import { toast } from "react-hot-toast";
 

@@ -175,7 +175,7 @@ const MultiSelectDropdown = ({
       )}
       <div
         name="Feature"
-        className={`relative p-3 maxsm:w-full select-none rounded-md border cursor-pointer bg-white flex font-normal items-center justify-between ${tailwindCss} ${inputError?.error
+        className={`relative h-[40px] px-3 maxsm:w-full select-none rounded-md border cursor-pointer bg-white flex font-normal items-center justify-between ${tailwindCss} ${inputError?.error
           ? `outline-double outline-red-800`
           : isOpen
             ? `border-gray-700`
@@ -185,12 +185,12 @@ const MultiSelectDropdown = ({
           !disabled && setIsOpen((prev) => !prev);
         }}
       >
-        {/* {showTip && (isOpen || selectedData?.length > 0 || selectedData) && ( */}
+        {showTip && (isOpen || selectedData?.length > 0 || selectedData) && (
 
           <span className="absolute -top-[8px] left-3 px-1 text-[11px] text-gray-600 capitalize bg-white">
             {InputName}
           </span>
-        {/* )} */}
+         )} 
 
         <div
           className={`max-w-[250px] overflow-hidden truncate ${

@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import SalarySettings from "./SalarySettings";
+import CreateComponent from "./CreateComponent";
 
 export function Index() {
   return (
@@ -10,7 +11,7 @@ export function Index() {
 
         {/* Templates routes */}
         <Route path="" element={<SalarySettings />} />
-        {/* <Route path="create" element={<CreateTemplate />} /> */}
+        <Route path="create" element={<CreateComponent />} />
 
         {/* Handle 404 */}
         <Route path="*" element={<div>404 Not Found</div>} />

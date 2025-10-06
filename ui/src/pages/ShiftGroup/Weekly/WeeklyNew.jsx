@@ -3,7 +3,7 @@ import moment from "moment";
 import React, { useEffect, useState } from "react";
 import SubCardHeader from "../../../components/header/SubCardHeader";
 import { Button, Typography } from "@material-tailwind/react";
-import FormikInput from "../../../components/Input/FormikInput";
+import FormikInput from "../../../components/input/FormikInput";
 import { useDispatch, useSelector } from "react-redux";
 import { ShiftGetAction } from "../../../redux/Action/Shift/ShiftAction";
 // import { days, months, years } from '../../../constants/Constants';

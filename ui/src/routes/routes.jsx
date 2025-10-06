@@ -2,6 +2,7 @@ import { FaUserTie } from "react-icons/fa";
 import { RxDotFilled } from "react-icons/rx";
 import { BsPersonWalking } from "react-icons/bs";
 import { IoLocationSharp } from "react-icons/io5";
+import { MdSecurity } from "react-icons/md";
 import SvgDashboard from "../assets/svgs/Dashboard";
 import SvgDashboardSelected from "../assets/svgs/DashboardSelected";
 import SvgMaster from "../assets/svgs/Master";
@@ -255,13 +256,22 @@ const routes = [
     link: "holidays",
   },
   {
-    id: "holidays",
+    id: "banners",
     title: "Banners",
     name: "holidays",
     parent: true,
     icon: <SvgHoliday />,
     iconSelected: <SvgHolidaySelected />,
     link: "banners",
+  },
+  {
+    id: "leads",
+    title: "Leads",
+    name: "leads",
+    parent: true,
+    icon: <SvgHoliday />,
+    iconSelected: <SvgHolidaySelected />,
+    link: "leads",
   },
  
   // {
@@ -331,38 +341,38 @@ const routes = [
   //   icon: <FaBuildingUser className="w-5 h-5" />,
   //   link: "client",
   // },
-  {
-    id: "leads",
-    title: "Leads",
-    name: "lead",
-    link: "",
-    parent: true,
-    icon: <FaUserTie className="w-5 h-5" />,
+  // {
+  //   id: "leads",
+  //   title: "Leads",
+  //   name: "leads",
+  //   link: "",
+  //   parent: true,
+  //   icon: <FaUserTie className="w-5 h-5" />,
 
-    child: [
-      {
-        id: "lead",
-        title: "Leads",
-        name: "lead",
-        link: "lead",
-        icon: <RxDotFilled />,
-      },
-      {
-        id: "meeting",
-        title: "Meetings",
-        name: "lead",
-        link: "meetings",
-        icon: <RxDotFilled />,
-      },
-      {
-        id: "quotation",
-        title: "Quotation",
-        name: "lead",
-        link: "quotations",
-        icon: <RxDotFilled />,
-      },
-    ],
-  },
+  //   child: [
+  //     {
+  //       id: "lead",
+  //       title: "Leads",
+  //       name: "lead",
+  //       link: "lead",
+  //       icon: <RxDotFilled />,
+  //     },
+  //     // {
+  //     //   id: "meeting",
+  //     //   title: "Meetings",
+  //     //   name: "lead",
+  //     //   link: "meetings",
+  //     //   icon: <RxDotFilled />,
+  //     // },
+  //     // {
+  //     //   id: "quotation",
+  //     //   title: "Quotation",
+  //     //   name: "lead",
+  //     //   link: "quotations",
+  //     //   icon: <RxDotFilled />,
+  //     // },
+  //   ],
+  // },
 
   {
     id: "biometrics",

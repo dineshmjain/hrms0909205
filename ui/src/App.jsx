@@ -25,6 +25,9 @@ const SubOrgIndex = lazy(() => import("./pages/SubOrg/Index"));
 const AuthIndex = lazy(() => import("./pages/Auth/Index"));
 const BranchIndex = lazy(() => import("./pages/Branch/Index"));
 const DashboardIndex = lazy(() => import("./pages/Dashboard/Index"));
+const OrganizationWizardIndex = lazy(() =>
+  import("./pages/AssistWizard/AssistWizard")
+);
 const DepartmentIndex = lazy(() => import("./pages/Department/Index"));
 const Layout = lazy(() => import("./layouts/Layout"));
 const DesignationIndex = lazy(() => import("./pages/Designation/Index"));
@@ -40,9 +43,11 @@ const UserIndex = lazy(() => import("./pages/User/Index"));
 const LeaveIndex = lazy(() => import("./pages/Leave/Policy/Index"));
 const LeaveRequestIndex = lazy(() => import("./pages/Leave/Request/Index"));
 const LeaveHistoryIndex = lazy(() => import("./pages/Leave/History/Index"));
-const AttendanceApprovals = lazy(() => import("./pages/Attendence/Approvals/Index"));
-const SalaryTemplateIndex = lazy(() => import("./pages/Salary/Template/index"))
-const SalarySettingsIndex = lazy(() => import("./pages/Salary/Settings/index"))
+const AttendanceApprovals = lazy(() =>
+ 
+  import("./pages/Attendence/Approvals/Index")
+
+);
 const NotFound = lazy(() => import("./pages/Notfound/Notfound"));
 const RolesIndex = lazy(() => import("./pages/Roles/Index"));
 const TasksIndex = lazy(() => import("./pages/Tasks/Index"));
@@ -53,12 +58,17 @@ const SettingIndex = lazy(() => import("./pages/settings/Index"));
 const AttendenceReportIndex = lazy(() =>
   import("./pages/Attendence/AttendenceReport/Index")
 );
-const AttendanceRoprtMonthIndex = lazy(() => import('./pages/Attendence/AttendenceReport/MonthLogs'))
-const BranchRadiusSettingIndex = lazy(() => import("./pages/Attendence/BranchRadiusSetting/Index"))
+const AttendanceRoprtMonthIndex = lazy(() =>
+  import("./pages/Attendence/AttendenceReport/MonthLogs")
+);
+const BranchRadiusSettingIndex = lazy(() =>
+  import("./pages/Attendence/BranchRadiusSetting/Index")
+);
 import { LoadScript, LoadScriptNext } from "@react-google-maps/api";
 import BranchRadiusSetting from "./pages/Attendence/BranchRadiusSetting/BranchRadiusSetting";
 import Profile from "./pages/Profile/Profile";
-const BiometricIndex = lazy(() => import('./pages/Biometrics/index'))
+const BiometricIndex = lazy(() => import("./pages/Biometrics/index"));
+// const PriceConfigure = lazy(() => import("./pages/Quotations/"));
 const googleMapsApiKey = import.meta.env.VITE_MAPAPI;
 const GOOGLE_MAP_LIBRARIES = ["places"];
 const App = () => {
@@ -76,41 +86,56 @@ const App = () => {
       location.pathname !== "/auth/login" &&
       location.pathname !== "/auth/sign-up"
     ) {
-      
       navigate("/auth/login");
     }
   }, []);
 
+  // useEffect(() => {
+  //   if (!user?._id) {
+  //     dispatch(getUserByToken());
+  //   }
+
+  //   if (user?.pending && !setupMode?.active) {
+  //     console.log("User pending status:", user?.pending);
+  //     // if (user?.pending?.organization == false) {
+  //     //   dispatch(exitSetupMode());
+  //     //   return navigate("/auth/org");
+  //     // }
+  //     if (user?.pending?.organization == false) {
+  //       dispatch(exitSetupMode());
+  //       return navigate("/auth/assist-wizard");
+  //     }
+  //     // let isPending = Object.values(user?.pending).some(
+  //     //   (value) => value === false
+  //     // );
+  //     useEffect(() => {
+  //       if (!window.location.pathname.includes("/setup")) {
+  //         if (user?.pending?.organization && !user?.pending?.suborganization) {
+  //           dispatch(exitSetupMode());
+  //           navigate("/setup/suborganization");
+  //         } else if (user?.pending?.organization && !user?.pending?.branch) {
+  //           dispatch(exitSetupMode());
+  //           navigate("/setup/branch");
+  //         }
+  //       }
+  //     }, [user]);
+  //   }
+  // }, [user]);
   useEffect(() => {
     if (!user?._id) {
       dispatch(getUserByToken());
     }
 
     if (user?.pending && !setupMode?.active) {
-      console.log("User pending status:", user?.pending);
-      // if (user?.pending?.organization == false) {
-      //   dispatch(exitSetupMode());
-      //   return navigate("/auth/org");
-      // }
-        if (user?.pending?.organization == false) {
-        dispatch(exitSetupMode());
-        return navigate("/auth/assist-wizard");
-      }
-      // let isPending = Object.values(user?.pending).some(
-      //   (value) => value === false
-      // );
-      if (user?.pending?.organization == true && user?.pending?.suborganization == false) {
-        dispatch(exitSetupMode());
-        return navigate("/setup/suborganization");
-      }
-      else if (user?.pending?.organization == true && user?.pending?.branch == false) {
-        dispatch(exitSetupMode());
-        return navigate("/setup/branch");
-      }
+      const inWizard = window.location.pathname.includes("/auth/assist-wizard");
+      if (inWizard) return; // stop redirects while in wizard
 
-
+      if (user?.pending?.organization === false) {
+        dispatch(exitSetupMode());
+        navigate("/auth/assist-wizard");
+      }
     }
-  }, [user]);
+  }, [user, setupMode, dispatch, navigate]);
 
   return (
     <Suspense fallback={<Loader />}>
@@ -139,6 +164,7 @@ const App = () => {
             /> */}
             <Route element={<SubOrgIndex />} path="suborganization/*" />
             <Route element={<DashboardIndex />} path="dashboard/*" />
+            <Route element={<OrganizationWizardIndex />} path="org/*" />
             <Route element={<BranchIndex />} path="branch/*" />
             <Route element={<DepartmentIndex />} path="department/*" />
             <Route element={<DesignationIndex />} path="designation/*" />
@@ -147,7 +173,7 @@ const App = () => {
             <Route element={<ShiftGroupIndex />} path="designation/*" />
             <Route element={<AssignEmployee />} path="assignEmployee/*" />
             <Route element={<ClientIndex />} path="client/*" />
-            <Route element={<LeadIndex />} path="lead/*" />
+            <Route element={<LeadIndex />} path="leads/*" />
             <Route element={<MeetingsIndex />} path="meetings/*" />
             <Route element={<QuotationIndex />} path="quotation/*" />
             {/* <Route element={<AttendenceReportIndex />} path="attendance/*" /> */}
@@ -159,16 +185,16 @@ const App = () => {
             <Route element={<DutyRoaster />} path="dutyroaster/*" />
             <Route element={<CheckPointIndex />} path="checkpoint/*" />
             <Route element={<AttendenceReportIndex />} path="attendance/*" />
-            <Route element={<BranchRadiusSettingIndex />} path="branchradiussetting/*" />
-            <Route element={<AttendanceApprovals />} path="attendanceapproval/*" />
+            
+            <Route
+              element={<BranchRadiusSettingIndex />}
+              path="branchradiussetting/*"
+            />
+            <Route
+              element={<AttendanceApprovals />}
+              path="attendanceapproval/*"
+            />
             <Route element={<AttendanceRoprtMonthIndex />} path="daylogs/*" />
-
-<Route element={<SalaryTemplateIndex />} path="salaryTemplate/*" />
-            <Route element={<SalarySettingsIndex />} path="salarySettings/*" />
-
-
-            <Route element={<SalaryTemplateIndex />} path="salaryTemplate/*" />
-            <Route element={<SalarySettingsIndex />} path="salarySettings/*" />
 
             <Route element={<HolidayIndex />} path="holidays/*" />
             <Route element={<BannerIndex />} path="banners/*" />
@@ -180,6 +206,7 @@ const App = () => {
             />
             <Route path="Profile" element={<Profile />} />
             <Route element={<BiometricIndex />} path="biometrics/*" />
+            {/* <Route element={<PriceConfigure />} path="priceconfigure/*" /> */}
           </Route>
           <Route path="/:everythingElse" element={<NotFound />} />
         </Routes>

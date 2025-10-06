@@ -503,12 +503,38 @@ export const getBranchRadius=async (body) => {
           _id: 1,
           radius: 1,
           name: 1,
-          address: 1,
+          // address: 1,
+          address: {
+            $cond: {
+              if: { $ifNull: ["$address", false] },
+              then: {
+                addressTypeId: "$address.addressTypeId",
+                hno: "$address.hno",
+                landmark: "$address.landmark",
+                street: "$address.street",
+                city: "$address.city",
+                district: "$address.district",
+                taluk: "$address.taluk",
+                state: "$address.state",
+                country: "$address.country",
+                pincode: {
+                  $convert: {
+                    input: "$address.pincode",
+                    to: "int",
+                    onError: null,
+                    onNull: null
+                  }
+                }
+              },
+              else: null
+            }
+          },    
           geoJson: 1,
           geoLocation: 1,
           createdDate: 1,
           modifiedDate: 1,
           createdBy: "$user.name",
+          geoBoundary:1
         }
       }
     ]
@@ -728,5 +754,64 @@ export const branchCount =async(body)=>{
   catch(error){
     logger.error("Error while Branch count in branch module");
     throw error;
+  }
+}
+
+           
+export const updateBranchBoundaryPoints=async(body)=>{
+  try{
+
+    const query = {
+      _id : new ObjectId(body.branchId)
+    }
+
+    const updateObj={
+      modifiedBy: new ObjectId(body.user._id),
+      modifiedDate: new Date()
+    }
+   
+    if(body.geoBoundary){
+      updateObj['geoBoundary'] = body.geoBoundary;
+    }
+    
+
+    let update = {$set : updateObj};
+
+    return await updateOne(query,update, collection_name);
+
+
+  }catch(error){
+    logger.error("Error while update branch boundary points",{stack:error.stack})
+    throw error
+  }
+}
+
+export const getDefaultBranch=async(body)=>{
+  try{
+
+    const query = {
+      orgId : new ObjectId(body.user.orgId),
+    }
+         
+    if(body.branchId) query['_id'] = new ObjectId(body.branchId)
+    return await getOne(query, collection_name,{},{_id:1}); //sort {_id:1}
+  }catch(error){
+    logger.error("Error while get default branch",{stack:error.stack})
+    throw error
+  }
+}
+
+export const getBranchClientReq =async(body)=>{
+  try{
+
+    const query = {
+      orgId : new ObjectId(body.clientMappedId),
+      _id : new ObjectId(body.branchId)
+    }
+
+    return await getOne(query, collection_name,{address:0,isActive:0,createdDate:0,createdBy:0},{_id:1}); //sort {_id:1}
+  }catch(error){
+    logger.error("Error while get client req data",{stack:error.stack})
+    throw error
   }
 }

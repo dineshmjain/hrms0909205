@@ -12,6 +12,7 @@ export const getSavedLanguage = async (body) => {
         return await getMany({},collection_name);
 
     }catch(error){
+        console.log(error);
         logger.error("Error while getSavedLanguage in globle module");
         throw error;
     }
@@ -55,6 +56,7 @@ export const listOrgType = async (body) => {
        return await getMany({name:{$ne:null}},"typesOfOrganization");
 
     }catch(error) {
+            console.log(error);
         logger.error("Error while creating org type in createOrgType function");
         throw error;
     }

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Form, useFormikContext } from 'formik';
 import * as Yup from 'yup';
-import FormikInput from '../../../../components/Input/FormikInput';
+import FormikInput from '../../../../components/input/FormikInput';
 import SubCardHeader from '../../../../components/header/SubCardHeader';
 
 // Validation schema and initial values

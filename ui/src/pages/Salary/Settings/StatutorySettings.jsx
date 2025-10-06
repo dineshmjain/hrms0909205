@@ -1,92 +1,131 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { IoMdAdd } from "react-icons/io";
 import { Typography, Chip } from "@material-tailwind/react";
-import Table from "../../../components/Table/Table"; // reuse your custom table
+import { useDispatch, useSelector } from "react-redux";
+import Table from "../../../components/Table/Table";
+import { SalaryComponentsGetAction } from "../../../redux/Action/Salary/SalaryAction";
+import { usePrompt } from "../../../context/PromptProvider";
+import { toTitleCase } from "../../../constants/reusableFun";
 
 const StatutorySettings = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { showPrompt, hidePrompt } = usePrompt();
 
-  // Dummy data for statutory heads
-  const statutoryList = [
-    {
-      id: 1,
-      name: "Provident Fund (PF)",
-      employeeContribution: "12%",
-      employerContribution: "12%",
-      wageLimit: "₹15,000",
-      calculationComponents: "Basic, DA",
-      isActive: true,
-      modifiedDate: "2025-09-15T10:30:00Z",
-      createdBy: "System",
-    },
-    {
-      id: 2,
-      name: "Employees' State Insurance (ESI)",
-      employeeContribution: "0.75%",
-      employerContribution: "1.75%",
-      wageLimit: "₹21,000",
-      calculationComponents: "Basic, DA, HRA",
-      isActive: true,
-      modifiedDate: "2025-09-14T09:15:00Z",
-      createdBy: "System",
-    },
-    {
-      id: 3,
-      name: "Professional Tax",
-      employeeContribution: "₹200 (Monthly)",
-      employerContribution: "-",
-      wageLimit: "-",
-      calculationComponents: "Gross Salary",
-      isActive: false,
-      modifiedDate: "2025-09-13T12:00:00Z",
-      createdBy: "System",
-    },
-    {
-      id: 4,
-      name: "TDS",
-      employeeContribution: "As per slabs",
-      employerContribution: "-",
-      wageLimit: "₹2,50,000",
-      calculationComponents: "Gross Salary",
-      isActive: true,
-      modifiedDate: "2025-09-12T08:20:00Z",
-      createdBy: "System",
-    },
-  ];
+  // Grab statutory slice from redux
+  const { list, loading, totalRecord, pageNo, limit } = useSelector(
+    (s) => s.salary.statutory
+  );
+
+  // Fetch statutory components on mount
+  useEffect(() => {
+    getStatutoryList({ page: 1, limit: 10 });
+  }, []);
+
+  const getStatutoryList = (params) => {
+    dispatch(
+      SalaryComponentsGetAction({
+        ...params,
+        category: "statutory", // updated filter
+      })
+    );
+  };
+
+  const handleShowPrompt = (data) => {
+    showPrompt({
+      heading: "Are you sure?",
+      message: (
+        <span>
+          Are you sure you want to{" "}
+          <b>{data?.isActive ? `Deactivate` : `Activate`}</b> the{" "}
+          <b>{toTitleCase(data.name)}</b> statutory component?
+        </span>
+      ),
+      buttons: [
+        {
+          label: "Yes",
+          type: 1,
+          onClick: () => {
+            // stub for now
+            hidePrompt();
+          },
+        },
+        {
+          label: "No",
+          type: 0,
+          onClick: () => hidePrompt(),
+        },
+      ],
+    });
+  };
+
+  // Formatter helpers
+  const formatContribution = (value, row) => {
+    if (typeof value === "number") {
+      return `${value * 100}%`;
+    }
+    if (value === null && row?.statutoryDetails?.note) {
+      return row.statutoryDetails.note;
+    }
+    return "-";
+  };
+
+  const formatLimit = (limit, row) => {
+    if (typeof limit === "number") {
+      return `₹${limit.toLocaleString("en-IN")}`;
+    }
+    if (limit === null && row?.statutoryDetails?.note) {
+      return row.statutoryDetails.note;
+    }
+    return "-";
+  };
 
   // Labels for the table
   const labels = {
-    name: { DisplayName: "Statutory Component" },
-    employeeContribution: { DisplayName: "Employee Contribution" },
-    employerContribution: { DisplayName: "Employer Contribution" },
-    wageLimit: { DisplayName: "Wage Limit" },
-    calculationComponents: { DisplayName: "Calculation Components" },
-    createdBy: { DisplayName: "Created By" },
+    name: {
+      DisplayName: "Statutory Component",
+      type: "function",
+      data: (row) => toTitleCase(row?.name),
+    },
+    employeeContribution: {
+      DisplayName: "Employee Contribution",
+      type: "function",
+      data: (row) =>
+        formatContribution(row?.statutoryDetails?.contribution?.employee, row),
+    },
+    employerContribution: {
+      DisplayName: "Employer Contribution",
+      type: "function",
+      data: (row) =>
+        formatContribution(row?.statutoryDetails?.contribution?.employer, row),
+    },
+    wageLimit: {
+      DisplayName: "Wage Limit",
+      type: "function",
+      data: (row) => formatLimit(row?.statutoryDetails?.limit, row),
+    },
+    createdByName: {
+      DisplayName: "Created By",
+      type: "function",
+      data: (row) => row?.createdByName || "System",
+    },
     isActive: {
-            DisplayName: "Status",
-            type: "function",
-            data: (data, idx, subData, subIdx) => {
-                return (
-                  <div className="flex justify-center items-center gap-2" key={idx}>
-                    <Chip
-                      color={data?.isActive ? "green" : "red"}
-                      variant="ghost"
-                      value={data?.isActive ? "Active" : "Inactive"}
-                      className="cursor-pointer font-poppins"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleShowPrompt(data);
-                      }}
-                    />
-                  </div>
-                );
-              },
-            },
-    modifiedDate: {
-      DisplayName: "Last Modified",
-      type: "time",
-      format: "DD-MM-YYYY hh:mm A",
+      DisplayName: "Status",
+      type: "function",
+      data: (data, idx) => (
+        <div className="flex justify-center items-center gap-2" key={idx}>
+          <Chip
+            color={data?.isActive ? "green" : "red"}
+            variant="ghost"
+            value={data?.isActive ? "Active" : "Inactive"}
+            className="cursor-pointer font-poppins"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleShowPrompt(data);
+            }}
+          />
+        </div>
+      ),
     },
   };
 
@@ -95,23 +134,13 @@ const StatutorySettings = () => {
       title: "Edit",
       text: "✏️",
       onClick: (row) => {
-        console.log("Edit clicked:", row);
         navigate("/salary/statutory/edit", { state: row });
       },
     },
   ];
 
-  const loading = false;
-  const totalRecord = statutoryList.length;
-  const pageNo = 1;
-  const limit = 10;
-
   const editButton = (row) => {
     navigate("/salary/statutory/edit", { state: row });
-  };
-
-  const getStatutoryList = () => {
-    console.log("Fetching statutory list…");
   };
 
   return (
@@ -126,21 +155,11 @@ const StatutorySettings = () => {
             Configure statutory components like PF, ESI, PT, and TDS
           </Typography>
         </div>
-        <div>
-          <button
-            size="sm"
-            className="bg-primary p-2 px-2 h-10 flex items-center gap-2 rounded-md text-white font-medium tracking-tight text-sm hover:bg-primaryLight hover:text-primary"
-            onClick={() => navigate("/salary/statutory/create")}
-          >
-            <IoMdAdd className="w-4 h-4 cursor-pointer" />
-            Add Statutory Component
-          </button>
-        </div>
       </div>
 
       {/* Table */}
       <Table
-        tableJson={statutoryList}
+        tableJson={list}
         labels={labels}
         actions={actions}
         isLoading={loading}

@@ -8,11 +8,11 @@ import { HiMagnifyingGlass, HiXMark } from "react-icons/hi2";
 import { checkDataFucntion } from "./FilterComponents/dataTypeSerchValidations";
 import { FaCheckSquare, FaPen } from "react-icons/fa";
 import {
-  ArrowClockwise,
-  ColumnsPlusRight,
-  FileCsv,
-  X,
-} from "@phosphor-icons/react";
+  PiArrowClockwise,
+  PiColumnsPlusRight,
+  PiFileCsv,
+  PiXBold,
+} from "react-icons/pi";
 import TootlipMaterial from "../TooltipMaterial/TooltipMaterial";
 
 const TableFilters = ({
@@ -114,7 +114,7 @@ const TableFilters = ({
         {globalSerch.length == 0 ? (
           <HiMagnifyingGlass className="w-4 h-4 cursor-pointer text-gray-500 " />
         ) : (
-          <X
+          <PiXBold
             className="w-4 h-4 cursor-pointer text-gray-500 "
             onClick={clearSearch}
           />
@@ -134,7 +134,7 @@ const TableFilters = ({
               }
             >
               <span className="maxsm:hidden"> Reload</span>{" "}
-              <ArrowClockwise className={`w-6 h-6 cursor-pointer `} />
+              <PiArrowClockwise className={`w-6 h-6 cursor-pointer `} />
             </div>
           </TootlipMaterial>
         )}
@@ -144,7 +144,7 @@ const TableFilters = ({
             onClick={exportToCSV}
           >
             <span className="maxsm:hidden"> Export CSV</span>{" "}
-            <FileCsv className="w-6 h-6 cursor-pointer" />
+            <PiFileCsv className="w-6 h-6 cursor-pointer" />
           </div>
         </TootlipMaterial>
         <div
@@ -152,7 +152,7 @@ const TableFilters = ({
           onClick={() => setShowFilter((prev) => !prev)}
         >
           <span className="maxsm:hidden">Columns</span>
-          <ColumnsPlusRight className="w-6 h-6 cursor-pointer" />
+          <PiColumnsPlusRight className="w-6 h-6 cursor-pointer" />
         </div>
       </div>
 

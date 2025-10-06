@@ -94,7 +94,7 @@ const List = () => {
                 />
                 <div className="flex flex-wrap gap-4">
                     {Object.entries(BannerList).map(([data, details], idx) => {
-                        const url = import.meta.env.VITE_BASE_URL?.replace(/\/+$/, "");
+                        const url = import.meta.env.VITE_BASE_URL.replace(/\/+$/, "");
                         return (
                             <div
                                 key={idx}

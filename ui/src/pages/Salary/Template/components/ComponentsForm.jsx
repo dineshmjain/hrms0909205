@@ -1,18 +1,24 @@
 import SubCardHeader from "../../../../components/header/SubCardHeader";
-import FormikInput from "../../../../components/Input/FormikInput";
+import FormikInput from "../../../../components/input/FormikInput";
+import MultiSelectDropdown from "../../../../components/MultiSelectDropdown/MultiSelectDropdown";
 import { IoMdAdd } from "react-icons/io";
-import { componentNames, componentTypes, valueTypes } from "../temp";
+import { valueTypes } from "../../../../constants/Constants";
 
-const ComponentsForm = ({ values, setFieldValue, setAddedComponents }) => {
+const ComponentsForm = ({
+  values,
+  setFieldValue,
+  setAddedComponents,
+  componentNames,
+  percentageOptions,
+  loading,
+}) => {
   return (
     <div>
-      <div className="flex items-center justify-between mt-4 mb-2">
+      <div className="flex items-center justify-between mt-4">
         <div>
           <SubCardHeader headerLabel="Components" />
           <div className="text-xs text-gray-600 italic mb-2">
-            Note: Some components require others to be added first. For example,
-            HRA and DA typically require Basic Pay to be defined before they can
-            be used.
+            Assign Components To The Template
           </div>
         </div>
         <button
@@ -21,15 +27,14 @@ const ComponentsForm = ({ values, setFieldValue, setAddedComponents }) => {
           onClick={() => {
             if (
               values.componentName &&
-              values.componentType &&
               values.valueType &&
               values.componentValue
             ) {
               setAddedComponents((prev) => [...prev, { ...values }]);
               setFieldValue("componentName", "");
-              setFieldValue("componentType", "");
               setFieldValue("valueType", "");
               setFieldValue("componentValue", "");
+              setFieldValue("percentageOf", []); // reset multi-select
             }
           }}
         >
@@ -40,40 +45,26 @@ const ComponentsForm = ({ values, setFieldValue, setAddedComponents }) => {
 
       <div className="flex flex-col lg:flex-row justify-between py-2 gap-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 flex-1 gap-4">
+          {/* Component Name */}
           <FormikInput
             name="componentName"
             label="Component Name *"
             inputType="dropdown"
             listData={componentNames}
-            inputName="Select Component"
+            inputName={loading ? "Loading..." : "Select Component"}
             feildName="name"
             hideLabel
             showTip={false}
             showSerch
             handleClick={(selected) => {
-              setFieldValue("componentName", selected?.id);
+              setFieldValue("componentName", selected?._id); // API returns _id
+              setFieldValue("componentType", selected?.category); 
             }}
             selectedOption={values?.componentName}
-            selectedOptionDependency="id"
+            selectedOptionDependency="_id"
           />
 
-          <FormikInput
-            name="componentType"
-            label="Component Type *"
-            inputType="dropdown"
-            listData={componentTypes}
-            inputName="Select Component Type"
-            feildName="name"
-            hideLabel
-            showTip={false}
-            showSerch
-            handleClick={(selected) => {
-              setFieldValue("componentType", selected?.id);
-            }}
-            selectedOption={values?.componentType}
-            selectedOptionDependency="id"
-          />
-
+          {/* Value Type */}
           <FormikInput
             name="valueType"
             label="Value Type *"
@@ -91,6 +82,22 @@ const ComponentsForm = ({ values, setFieldValue, setAddedComponents }) => {
             selectedOptionDependency="id"
           />
 
+           {/* Percentage Of (only when valueType = "percentage") */}
+          {values.valueType === "percentage" && (
+            <MultiSelectDropdown
+              data={percentageOptions}
+              FeildName="name"
+              Dependency="_id"
+              InputName="Percentage Of"
+              selectedData={values.percentageOf || []}
+              setSelectedData={(val) => setFieldValue("percentageOf", val)}
+              selectType="multiple"
+              enableSearch
+              showTip={false}
+            />
+          )}
+
+          {/* Component Value */}
           <FormikInput
             name="componentValue"
             label="Component Value *"

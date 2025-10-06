@@ -1,4 +1,5 @@
 import * as shiftGroup from '../../models/shiftGroup/shiftGroup.js';
+import * as shift from '../../models/shift/shift.js';
 import * as apiResponse from '../../helper/apiResponse.js';
 import moment from 'moment';
 import {shiftTypes} from '../../helper/constants.js';
@@ -96,6 +97,7 @@ export const addGroupExceptions = async (request, response, next) => {
 export const getShiftGroupListByDate = async (request,response,next) => {
     try
     {
+        // if(request.body.dashboardStatus && request.body.currentShift?.length > 0) return next();
         shiftGroup.getShiftGroupListByDate(request.body).then(res => {
             if(!res.status) return apiResponse.ErrorResponse(response,"Something went worng",res.error);
 
@@ -105,6 +107,51 @@ export const getShiftGroupListByDate = async (request,response,next) => {
             logger.error("Error while getListShiftDate in shift by date controller ",{ stack: error.stack });
             return apiResponse.somethingResponse(response, error.message)
         })
+    }
+    catch(error)
+    {
+        logger.error("Error while getListShiftDate in shift by date controller ",{ stack: error.stack });
+        return apiResponse.somethingResponse(response, error.message)
+    }
+}
+
+export const getCurrentDateShift = async (request,response,next) => {
+    try
+    {
+        request.body.shiftGroupDataListResponse = request.body.shiftGroupDataListResponse.find(sg => sg.employeeId.toString() == request.body.userId.toString())
+
+        let mergedData = [...request.body.shiftByDate]
+
+        if(request.body.shiftGroupDataListResponse && request.body.shiftGroupDataListResponse.length > 0) mergedData.push(request.body.shiftGroupDataListResponse)
+        
+
+        request.body.currentShift = [];
+        let currentShift = mergedData;
+        for (let i = 0; i < currentShift.length; i++) {
+            let shiftDate = currentShift[i];
+            let currentDateTime = request.body.transactionDate ? new Date(request.body.transactionDate) : new Date();
+
+            const shiftStart = new Date();
+            const [startHour, startMin] = request.body.shiftObjData[shiftDate.currentShiftId.toString()].startTime.split(":").map(Number);
+            shiftStart.setHours(startHour, startMin, 0, 0);
+
+            const shiftEnd = new Date();
+            const [endHour, endMin] = request.body.shiftObjData[shiftDate.currentShiftId.toString()].endTime.split(":").map(Number);
+            shiftEnd.setHours(endHour, endMin, 0, 0);
+
+            if (shiftEnd <= shiftStart) {
+                shiftEnd.setDate(shiftEnd.getDate() + 1);
+            }
+
+            if (currentDateTime <= shiftEnd) {
+                request.body.currentShift.push(request.body.shiftObjData[shiftDate.currentShiftId.toString()])
+            }
+        }
+
+        if(request.body.dashboardStatus && request.body.currentShift.length <= 0 && !request.body.existingCheckInOutData) return apiResponse.successResponseWithData(response, "No shift Available", { isCheckIn: false });
+        
+    return next();
+
     }
     catch(error)
     {

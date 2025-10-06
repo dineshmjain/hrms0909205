@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Typography } from '@material-tailwind/react';
 import { useDispatch } from 'react-redux';
-import CustomField from '../../../components/Input/CustomFeild';
+import CustomField from '../../../components/input/CustomFeild';
 import SubCardHeader from '../../../components/header/SubCardHeader';
 
 const BasicInformation = ({ onChange, onValidate ,isEditAvaliable=false,state={}}) => {

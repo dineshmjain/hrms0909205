@@ -98,7 +98,12 @@ export const getPolicy=async(request,response,next)=>{
                 request.body.policydata=res.data
                 // console.log('res',JSON.stringify(res))
                 return next()
-                
+
+            }
+
+            if(request.body.wizardGetAllData) {
+                if(res.status && res.data && res.data.length > 0) request.body.allDataRes['salaryComponents'] = res.data
+                return next()
             }
             return apiResponse.notFoundResponse(response,'No leave policy found')
         }).catch(error=>{
@@ -149,3 +154,62 @@ export const activeDeactivatePolicy=(request,response,next)=>{
         return apiResponse.somethingResponse(response, error.message)
     }
 }
+
+export const isExistPolicyName=(request,response,next)=>{
+    try{
+        leavePolicy.getPolicy(request.body).then(res=>{
+            if(res.data.length>=1){
+                return apiResponse.validationError(response,'leave policy name alreday exists')
+            }
+            return next()
+        }).catch(error=>{
+            request.logger.error("error while isExistPolicyName in leavePolicy controller",{stack:error.stack})
+            return apiResponse.somethingResponse(response,error.message)
+        })
+
+    }catch(error){
+        request.logger.error("error while addPolcies in leavePolicy controller",{stack:error.stack})
+        return apiResponse.somethingResponse(response,error.message)
+    }
+}
+
+
+export const addPolicies=(request,response,next)=>{
+    try{
+        leavePolicy.addPolicy(request.body).then(res=>{
+            if(!res.status){
+                return apiResponse.validationError(response,'failed to add policy')
+            }
+            return next()
+            
+        }).catch(error=>{
+            request.logger.error("error while addPolcies in leavePolicy controller",{stack:error.stack})
+            return apiResponse.somethingResponse(response,error.message)
+        })
+
+    }catch(error){
+        request.logger.error("error while addPolcies in leavePolicy controller",{stack:error.stack})
+        return apiResponse.somethingResponse(response,error.message)
+    }
+}
+
+
+export const getPolicies=(request,response,next)=>{
+    try{
+        leavePolicy.getPolicy(request.body).then(res=>{
+            if(!res.status){
+                return apiResponse.validationError(response,'failed to add policy')
+            }
+            request.body.policies=res.data
+            return next()
+        }).catch(error=>{
+            request.logger.error("error while addPolcies in leavePolicy controller",{stack:error.stack})
+            return apiResponse.somethingResponse(response,error.message)
+        })
+
+    }catch(error){
+        request.logger.error("error while addPolcies in leavePolicy controller",{stack:error.stack})
+        return apiResponse.somethingResponse(response,error.message)
+    }
+}
+

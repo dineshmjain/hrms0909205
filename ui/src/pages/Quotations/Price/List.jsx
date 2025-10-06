@@ -1,1587 +1,976 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
+import Header from '../../../components/header/Header'
+import { Button } from '@material-tailwind/react'
+import { useCheckEnabledModule } from '../../../hooks/useCheckEnabledModule';
 import { 
-  Settings, 
-  Users, 
-  MapPin, 
-  Clock, 
-  DollarSign, 
-  Plus, 
-  Edit3, 
-  Save, 
-  X, 
+  Building2, 
   History, 
-  Building2,
-  Calendar,
-  TrendingUp,
-  TrendingDown,
-  Eye,
-  Search,
+  Plus, 
+  Search, 
+  Settings, 
+  TrendingUp, 
   Filter,
   Download,
-  Upload,
-  CheckCircle,
-  AlertCircle,
-  Info,
-  ChevronDown,
-  ChevronUp,
-  Calculator
+  RefreshCw,
+  Eye,
+  Edit,
+  Calendar,
+  Users,
+  MapPin,
+  Clock,
+  GitBranch,
+  Home,
+  Info
 } from 'lucide-react';
+import BasePrice from './BasePrice';
+import PriceDetailsModal from './PriceDetailsModal';
+import { useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
+import { getStandardPrice } from '../../../apis/Quotation/Price';
+import { QuotationStandardPriceList } from '../../../redux/Action/Quotation/Price';
+import moment from 'moment';
+
+import BranchManagement from './BranchManagement'
+import { useNavigate } from 'react-router-dom';
 
 const List = () => {
-  const [activeTab, setActiveTab] = useState('pricing');
-  const [selectedBranch, setSelectedBranch] = useState('all');
-  const [showPriceModal, setShowPriceModal] = useState(false);
-  const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [editingPrice, setEditingPrice] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterCategory, setFilterCategory] = useState('all');
-  const [designationOptions, setDesignationOptions] = useState({});
-  const [showDesignationDropdown, setShowDesignationDropdown] = useState(false);
+  const checkModules = useCheckEnabledModule();
+  const dispatch = useDispatch();
+  const { quotationPriceList } = useSelector((state) => state?.quotation);
+  const navigate = useNavigate()
+  
+  // Track initial load to prevent duplicate calls
+  const hasInitialLoaded = useRef(false);
+  const lastFetchedDate = useRef(null);
 
-  // Designation options for each category
+  // State Management
+  const [activeTab, setActiveTab] = useState('pricing');
+  const [showPriceModal, setShowPriceModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [basePriceDetails, setBasePriceDetails] = useState({});
+  const [selectedPriceData, setSelectedPriceData] = useState(null);
+  
+  // Filters
+  const [searchTerm, setSearchTerm] = useState('');
+  const [effectiveDateFilter, setEffectiveDateFilter] = useState(new Date().toISOString().split('T')[0]);
+  const [sourceFilter, setSourceFilter] = useState('all');
+  const [branchFilter, setBranchFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('designationName');
+  const [sortOrder, setSortOrder] = useState('asc');
+  const [priceRangeFilter, setPriceRangeFilter] = useState({ min: '', max: '' });
+  const [adjustmentTypeFilter, setAdjustmentTypeFilter] = useState('all');
+
+  // Loading states
+  const [loading, setLoading] = useState(false);
+
+  // Centralized getPriceList function
+  const getPriceList = useCallback(async (date = effectiveDateFilter) => {
+    try {
+      setLoading(true);
+      await dispatch(QuotationStandardPriceList({ 
+        limit: 100, 
+        page: 1,
+        date: date
+      }));
+      lastFetchedDate.current = date;
+    } catch (error) {
+      console.error('Error fetching price list:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [dispatch, effectiveDateFilter]);
+
+  // Initialize data - fetch only once on component mount
   useEffect(() => {
-    setDesignationOptions({
-      securityGuards: ['Basic', 'Trained', 'Armed', 'Ex-Serviceman'],
-      supervisors: ['Basic', 'Experienced', 'Certified'],
-      housekeeping: ['Basic', 'Skilled'],
-      facilityManagement: ['Basic', 'Technical']
-    });
+    if (!hasInitialLoaded.current) {
+      hasInitialLoaded.current = true;
+      lastFetchedDate.current = effectiveDateFilter;
+      getPriceList(effectiveDateFilter);
+    }
   }, []);
 
-  // Base pricing structure with daily, monthly, and yearly rates
-  const [basePricing, setBasePricing] = useState({
-    securityGuards: {
-      male: {
-        cityLimit: {
-          basic: { 
-            day: 500, 
-            night: 567, 
-            rotating: 533,
-            monthly: 15000,
-            yearly: 180000
-          },
-          trained: { 
-            day: 600, 
-            night: 667, 
-            rotating: 633,
-            monthly: 18000,
-            yearly: 216000
-          },
-          armed: { 
-            day: 733, 
-            night: 833, 
-            rotating: 783,
-            monthly: 21990,
-            yearly: 267545
-          },
-          exServiceman: { 
-            day: 833, 
-            night: 933, 
-            rotating: 883,
-            monthly: 24990,
-            yearly: 304045
-          }
-        },
-        outOfCity: {
-          basic: { 
-            day: 567, 
-            night: 633, 
-            rotating: 600,
-            monthly: 17010,
-            yearly: 206955
-          },
-          trained: { 
-            day: 667, 
-            night: 733, 
-            rotating: 700,
-            monthly: 20010,
-            yearly: 243455
-          },
-          armed: { 
-            day: 800, 
-            night: 900, 
-            rotating: 850,
-            monthly: 24000,
-            yearly: 292000
-          },
-          exServiceman: { 
-            day: 900, 
-            night: 1000, 
-            rotating: 950,
-            monthly: 27000,
-            yearly: 328500
-          }
-        }
-      },
-      female: {
-        cityLimit: {
-          basic: { 
-            day: 533, 
-            night: 600, 
-            rotating: 567,
-            monthly: 15990,
-            yearly: 194545
-          },
-          trained: { 
-            day: 633, 
-            night: 700, 
-            rotating: 667,
-            monthly: 18990,
-            yearly: 231045
-          }
-        },
-        outOfCity: {
-          basic: { 
-            day: 600, 
-            night: 667, 
-            rotating: 633,
-            monthly: 18000,
-            yearly: 219000
-          },
-          trained: { 
-            day: 700, 
-            night: 767, 
-            rotating: 733,
-            monthly: 21000,
-            yearly: 255500
-          }
-        }
-      }
-    },
-    supervisors: {
-      male: {
-        cityLimit: {
-          basic: { 
-            day: 733, 
-            night: 833, 
-            rotating: 783,
-            monthly: 21990,
-            yearly: 267545
-          },
-          experienced: { 
-            day: 933, 
-            night: 1033, 
-            rotating: 983,
-            monthly: 27990,
-            yearly: 340545
-          },
-          certified: { 
-            day: 1067, 
-            night: 1167, 
-            rotating: 1117,
-            monthly: 32010,
-            yearly: 389455
-          }
-        },
-        outOfCity: {
-          basic: { 
-            day: 833, 
-            night: 933, 
-            rotating: 883,
-            monthly: 24990,
-            yearly: 304045
-          },
-          experienced: { 
-            day: 1033, 
-            night: 1133, 
-            rotating: 1083,
-            monthly: 30990,
-            yearly: 377045
-          },
-          certified: { 
-            day: 1167, 
-            night: 1267, 
-            rotating: 1217,
-            monthly: 35010,
-            yearly: 425955
-          }
-        }
-      },
-      female: {
-        cityLimit: {
-          basic: { 
-            day: 767, 
-            night: 867, 
-            rotating: 817,
-            monthly: 23010,
-            yearly: 279955
-          },
-          experienced: { 
-            day: 967, 
-            night: 1067, 
-            rotating: 1017,
-            monthly: 29010,
-            yearly: 352955
-          }
-        },
-        outOfCity: {
-          basic: { 
-            day: 867, 
-            night: 967, 
-            rotating: 917,
-            monthly: 26010,
-            yearly: 316455
-          },
-          experienced: { 
-            day: 1067, 
-            night: 1167, 
-            rotating: 1117,
-            monthly: 32010,
-            yearly: 389455
-          }
-        }
-      }
-    },
-    housekeeping: {
-      male: {
-        cityLimit: {
-          basic: { 
-            day: 400, 
-            night: 467, 
-            rotating: 433,
-            monthly: 12000,
-            yearly: 146000
-          },
-          skilled: { 
-            day: 500, 
-            night: 567, 
-            rotating: 533,
-            monthly: 15000,
-            yearly: 182500
-          }
-        },
-        outOfCity: {
-          basic: { 
-            day: 467, 
-            night: 533, 
-            rotating: 500,
-            monthly: 14010,
-            yearly: 170455
-          },
-          skilled: { 
-            day: 567, 
-            night: 633, 
-            rotating: 600,
-            monthly: 17010,
-            yearly: 206955
-          }
-        }
-      },
-      female: {
-        cityLimit: {
-          basic: { 
-            day: 417, 
-            night: 483, 
-            rotating: 450,
-            monthly: 12510,
-            yearly: 152205
-          },
-          skilled: { 
-            day: 517, 
-            night: 583, 
-            rotating: 550,
-            monthly: 15510,
-            yearly: 188705
-          }
-        },
-        outOfCity: {
-          basic: { 
-            day: 483, 
-            night: 550, 
-            rotating: 517,
-            monthly: 14490,
-            yearly: 176295
-          },
-          skilled: { 
-            day: 583, 
-            night: 650, 
-            rotating: 617,
-            monthly: 17490,
-            yearly: 212795
-          }
-        }
-      }
-    },
-    facilityManagement: {
-      male: {
-        cityLimit: {
-          basic: { 
-            day: 600, 
-            night: 667, 
-            rotating: 633,
-            monthly: 18000,
-            yearly: 219000
-          },
-          technical: { 
-            day: 733, 
-            night: 800, 
-            rotating: 767,
-            monthly: 21990,
-            yearly: 267545
-          }
-        },
-        outOfCity: {
-          basic: { 
-            day: 667, 
-            night: 733, 
-            rotating: 700,
-            monthly: 20010,
-            yearly: 243455
-          },
-          technical: { 
-            day: 800, 
-            night: 867, 
-            rotating: 833,
-            monthly: 24000,
-            yearly: 292000
-          }
-        }
-      },
-      female: {
-        cityLimit: {
-          basic: { 
-            day: 617, 
-            night: 683, 
-            rotating: 650,
-            monthly: 18510,
-            yearly: 225205
-          },
-          technical: { 
-            day: 750, 
-            night: 817, 
-            rotating: 783,
-            monthly: 22500,
-            yearly: 273750
-          }
-        },
-        outOfCity: {
-          basic: { 
-            day: 683, 
-            night: 750, 
-            rotating: 717,
-            monthly: 20490,
-            yearly: 249295
-          },
-          technical: { 
-            day: 817, 
-            night: 883, 
-            rotating: 850,
-            monthly: 24510,
-            yearly: 298205
-          }
-        }
-      }
-    }
-  });
+  // Handle effective date filter changes with debouncing
+  useEffect(() => {
+    if (!hasInitialLoaded.current) return;
+    
+    if (lastFetchedDate.current === effectiveDateFilter) return;
 
-  // Calculate monthly and yearly rates from daily rate
-  const calculateDerivedRates = (dayRate) => {
+    const timeoutId = setTimeout(() => {
+      getPriceList(effectiveDateFilter);
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [effectiveDateFilter, getPriceList]);
+
+  // Manual refresh function
+  const handleRefresh = useCallback(() => {
+    getPriceList(effectiveDateFilter);
+  }, [getPriceList, effectiveDateFilter]);
+
+  // Helper function to get price values from array structure
+  const getPriceFromArray = (priceArray, gender, priceType = 'cityLimit') => {
+    if (!Array.isArray(priceArray)) return 0;
+    const genderData = priceArray.find(item => item.gender === gender);
+    return genderData ? (genderData[priceType] || 0) : 0;
+  };
+
+  // Helper function to get min/max from array structure
+  const getMinMaxFromArray = (priceArray) => {
+    if (!Array.isArray(priceArray)) return { min: 0, max: 0 };
+    
+    let values = [];
+    priceArray.forEach(item => {
+      if (item.cityLimit) values.push(item.cityLimit);
+      if (item.outCityLimit) values.push(item.outCityLimit);
+      if (item.dayShift) values.push(item.dayShift);
+      if (item.nightShift) values.push(item.nightShift);
+    });
+    
     return {
-      monthly: Math.round(dayRate * 30),
-      yearly: Math.round(dayRate * 365)
+      min: values.length ? Math.min(...values) : 0,
+      max: values.length ? Math.max(...values) : 0,
     };
   };
 
-  // Branches data
-  const [branches, setBranches] = useState([
-    { 
-      id: 'BR001', 
-      name: 'Mumbai Central', 
-      location: 'Mumbai, Maharashtra',
-      status: 'active',
-      adjustments: [],
-      lastUpdated: '2024-09-15'
-    },
-    { 
-      id: 'BR002', 
-      name: 'Delhi NCR', 
-      location: 'Gurgaon, Haryana',
-      status: 'active',
-      adjustments: [
-        {
-          id: 'ADJ001',
-          category: 'securityGuards',
-          adjustmentType: 'percentage',
-          value: 10,
-          effectiveDate: '2024-09-01',
-          createdBy: 'Admin',
-          reason: 'Market rate adjustment'
-        }
-      ],
-      lastUpdated: '2024-09-10'
-    },
-    { 
-      id: 'BR003', 
-      name: 'Bangalore Tech Hub', 
-      location: 'Bangalore, Karnataka',
-      status: 'active',
-      adjustments: [],
-      lastUpdated: '2024-09-12'
-    },
-    { 
-      id: 'BR004', 
-      name: 'Chennai Operations', 
-      location: 'Chennai, Tamil Nadu',
-      status: 'active',
-      adjustments: [
-        {
-          id: 'ADJ002',
-          category: 'housekeeping',
-          adjustmentType: 'fixed',
-          value: -50,
-          effectiveDate: '2024-08-15',
-          createdBy: 'Admin',
-          reason: 'Regional cost optimization'
-        }
-      ],
-      lastUpdated: '2024-09-08'
-    }
-  ]);
+  // Process and filter data based on API structure
+  const processedData = useMemo(() => {
+    if (!quotationPriceList || !Array.isArray(quotationPriceList)) return [];
 
-  // Price history
-  const [priceHistory, setPriceHistory] = useState([
-    {
-      id: 'HIST001',
-      branch: 'Delhi NCR',
-      category: 'Security Guards',
-      changeType: 'Percentage Increase',
-      value: '+10%',
-      effectiveDate: '2024-09-01',
-      createdBy: 'John Admin',
-      reason: 'Market rate adjustment',
-      timestamp: '2024-09-01 14:30:00'
-    },
-    {
-      id: 'HIST002',
-      branch: 'Chennai Operations',
-      category: 'Housekeeping',
-      changeType: 'Fixed Decrease',
-      value: '-₹50',
-      effectiveDate: '2024-08-15',
-      createdBy: 'Sarah Manager',
-      reason: 'Regional cost optimization',
-      timestamp: '2024-08-15 10:15:00'
-    },
-    {
-      id: 'HIST003',
-      branch: 'Mumbai Central',
-      category: 'All Categories',
-      changeType: 'Base Price Update',
-      value: 'Multiple',
-      effectiveDate: '2024-08-01',
-      createdBy: 'Admin System',
-      reason: 'Annual price revision',
-      timestamp: '2024-08-01 09:00:00'
-    }
-  ]);
+    let data = quotationPriceList.map(item => ({
+      ...item,
+      _id: item.baseQuotePriceId || item._id,
+      dailyPrices: getMinMaxFromArray(item.priceData?.daily),
+      monthlyPrices: getMinMaxFromArray(item.priceData?.monthly),
+      yearlyPrices: getMinMaxFromArray(item.priceData?.yearly),
+      adjustmentType: item.priceData?.adjustment?.type || 'N/A',
+      adjustmentValue: item.priceData?.adjustment?.value || 0,
+      historyCount: item.history?.length || 0
+    }));
 
-  // Calculate effective price with adjustments
-  const getEffectivePrice = (basePrice, branchAdjustments, category) => {
-    if (!branchAdjustments || branchAdjustments.length === 0) return basePrice;
-    
-    const applicableAdjustment = branchAdjustments.find(adj => 
-      adj.category === category || adj.category === 'all'
-    );
-    
-    if (!applicableAdjustment) return basePrice;
-    
-    if (applicableAdjustment.adjustmentType === 'percentage') {
-      return Math.round(basePrice * (1 + applicableAdjustment.value / 100));
+    // Apply filters
+    data = data.filter(item => {
+      // Search filter
+      if (searchTerm && !item.designationName?.toLowerCase().includes(searchTerm.toLowerCase())) {
+        return false;
+      }
+
+      // Source filter
+      if (sourceFilter !== 'all' && item.source !== sourceFilter) {
+        return false;
+      }
+
+      // Branch filter
+      if (branchFilter !== 'all') {
+        if (branchFilter === 'base' && item.source !== 'base') return false;
+        if (branchFilter !== 'base' && item.branchInfo?.branchId !== branchFilter) return false;
+      }
+
+      // Adjustment type filter
+      if (adjustmentTypeFilter !== 'all' && item.adjustmentType !== adjustmentTypeFilter) {
+        return false;
+      }
+
+      // Price range filter
+      if (priceRangeFilter.min || priceRangeFilter.max) {
+        const dailyMin = item.dailyPrices.min;
+        const dailyMax = item.dailyPrices.max;
+
+        if (priceRangeFilter.min && dailyMin < parseInt(priceRangeFilter.min)) return false;
+        if (priceRangeFilter.max && dailyMax > parseInt(priceRangeFilter.max)) return false;
+      }
+
+      return true;
+    });
+
+    // Apply sorting
+    data.sort((a, b) => {
+      let aValue, bValue;
+
+      switch (sortBy) {
+        case 'designationName':
+          aValue = a.designationName || '';
+          bValue = b.designationName || '';
+          break;
+        case 'effectiveFrom':
+          aValue = new Date(a.effectiveFrom);
+          bValue = new Date(b.effectiveFrom);
+          break;
+        case 'dailyPrice':
+          aValue = a.dailyPrices.min || 0;
+          bValue = b.dailyPrices.min || 0;
+          break;
+        case 'source':
+          aValue = a.source || '';
+          bValue = b.source || '';
+          break;
+        case 'adjustmentValue':
+          aValue = a.adjustmentValue || 0;
+          bValue = b.adjustmentValue || 0;
+          break;
+        default:
+          aValue = a[sortBy] || '';
+          bValue = b[sortBy] || '';
+      }
+
+      if (sortOrder === 'desc') {
+        return aValue < bValue ? 1 : -1;
+      }
+      return aValue > bValue ? 1 : -1;
+    });
+
+    return data;
+  }, [quotationPriceList, searchTerm, sourceFilter, branchFilter, adjustmentTypeFilter, priceRangeFilter, sortBy, sortOrder]);
+
+  // Get unique branches for filter dropdown
+  const availableBranches = useMemo(() => {
+    const branches = new Set();
+    quotationPriceList?.forEach(item => {
+      if (item.branchInfo?.branchId) {
+        branches.add(item.branchInfo.branchId);
+      }
+    });
+    return Array.from(branches);
+  }, [quotationPriceList]);
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
-      return Math.max(0, basePrice + applicableAdjustment.value);
+      setSortBy(field);
+      setSortOrder('asc');
     }
   };
 
-  // Format category name
-  const formatCategoryName = (category) => {
-    return category
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/^./, str => str.toUpperCase())
-      .trim();
+  const resetFilters = useCallback(() => {
+    setSearchTerm('');
+    setEffectiveDateFilter(new Date().toISOString().split('T')[0]);
+    setSourceFilter('all');
+    setBranchFilter('all');
+    setAdjustmentTypeFilter('all');
+    setPriceRangeFilter({ min: '', max: '' });
+    setSortBy('designationName');
+    setSortOrder('asc');
+  }, []);
+
+  const exportData = () => {
+    const csvContent = [
+      ['Designation', 'Source', 'Adjustment Type', 'Adjustment Value', 'Daily Min', 'Daily Max', 'Monthly Min', 'Monthly Max', 'Yearly Min', 'Yearly Max', 'Effective From', 'History Count'],
+      ...processedData.map(item => [
+        item.designationName,
+        item.source,
+        item.adjustmentType,
+        item.adjustmentValue,
+        item.dailyPrices.min,
+        item.dailyPrices.max,
+        item.monthlyPrices.min,
+        item.monthlyPrices.max,
+        item.yearlyPrices.min,
+        item.yearlyPrices.max,
+        moment(item.effectiveFrom).format('DD-MM-YYYY'),
+        item.historyCount
+      ])
+    ].map(row => row.join(',')).join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `price-list-${moment().format('YYYY-MM-DD')}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
-  // Pricing Overview Tab
+  // Enhanced statistics calculation
+  const stats = useMemo(() => {
+    const totalRecords = processedData.length;
+    const basePrices = processedData.filter(item => item.source === 'base').length;
+    const branchPrices = processedData.filter(item => item.source === 'branch').length;
+    const uniqueDesignations = new Set(processedData.map(item => item.designationId)).size;
+    const uniqueBranches = new Set(
+      processedData
+        .filter(item => item.branchInfo?.branchId)
+        .map(item => item.branchInfo.branchId)
+    ).size;
+    const percentageAdjustments = processedData.filter(item => item.adjustmentType === 'percentage').length;
+    const fixedAdjustments = processedData.filter(item => item.adjustmentType === 'fixed').length;
+
+    return {
+      totalRecords,
+      basePrices,
+      branchPrices,
+      uniqueDesignations,
+      uniqueBranches,
+      percentageAdjustments,
+      fixedAdjustments
+    };
+  }, [processedData]);
+
   const PricingOverviewTab = () => (
     <div className="space-y-6">
-      {/* Stats Cards */}
-    
+      {/* Enhanced Filter Controls */}
+      <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+        <div className="flex flex-col space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="font-semibold text-gray-900 flex items-center">
+              <Filter className="h-5 w-5 mr-2" />
+              Filters & Controls
+            </h4>
+            <div className="flex gap-2">
+              <button
+                onClick={resetFilters}
+                className="text-sm text-gray-600 hover:text-gray-900 underline"
+              >
+                Reset All
+              </button>
+              <button
+                onClick={exportData}
+                className="bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1 text-sm"
+              >
+                <Download className="h-4 w-4" />
+                Export CSV
+              </button>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+            {/* Date Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Effective Date
+              </label>
+              <input
+                type="date"
+                value={effectiveDateFilter}
+                onChange={(e) => setEffectiveDateFilter(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
 
-      {/* Control Panel */}
+            {/* Source Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Price Source
+              </label>
+              <select
+                value={sourceFilter}
+                onChange={(e) => setSourceFilter(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Sources</option>
+                <option value="base">Base Prices</option>
+                <option value="branch">Branch Prices</option>
+              </select>
+            </div>
+
+            {/* Branch Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Branch
+              </label>
+              <select
+                value={branchFilter}
+                onChange={(e) => setBranchFilter(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Branches</option>
+                <option value="base">Base Only</option>
+                {availableBranches.map(branchId => (
+                  <option key={branchId} value={branchId}>
+                    Branch: {branchId.slice(-6)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Adjustment Type Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Adjustment Type
+              </label>
+              <select
+                value={adjustmentTypeFilter}
+                onChange={(e) => setAdjustmentTypeFilter(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Types</option>
+                <option value="percentage">Percentage</option>
+                <option value="fixed">Fixed</option>
+              </select>
+            </div>
+
+            {/* Price Range Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Daily Price Range (₹)
+              </label>
+              <div className="flex gap-1">
+                <input
+                  type="number"
+                  placeholder="Min"
+                  value={priceRangeFilter.min}
+                  onChange={(e) => setPriceRangeFilter(prev => ({ ...prev, min: e.target.value }))}
+                  className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                />
+                <input
+                  type="number"
+                  placeholder="Max"
+                  value={priceRangeFilter.max}
+                  onChange={(e) => setPriceRangeFilter(prev => ({ ...prev, max: e.target.value }))}
+                  className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* Sort Options */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Sort By
+              </label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="designationName">Designation Name</option>
+                <option value="effectiveFrom">Effective Date</option>
+                <option value="dailyPrice">Daily Price</option>
+                <option value="source">Source Type</option>
+                <option value="adjustmentValue">Adjustment Value</option>
+              </select>
+            </div>
+          </div>
+          
+          <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+            Showing {processedData.length} prices effective as of {moment(effectiveDateFilter).format('DD MMM YYYY')}
+            {sourceFilter !== 'all' && ` • Filtered by: ${sourceFilter} prices`}
+            {branchFilter !== 'all' && ` • Branch: ${branchFilter}`}
+            {adjustmentTypeFilter !== 'all' && ` • Adjustment: ${adjustmentTypeFilter}`}
+          </div>
+        </div>
+      </div>
+
+      {/* Enhanced Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+          <div className="flex items-center">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <TrendingUp className="h-5 w-5 text-blue-600" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">Total</p>
+              <p className="text-xl font-semibold text-gray-900">{stats.totalRecords}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+          <div className="flex items-center">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <Home className="h-5 w-5 text-green-600" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">Base</p>
+              <p className="text-xl font-semibold text-gray-900">{stats.basePrices}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+          <div className="flex items-center">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <GitBranch className="h-5 w-5 text-purple-600" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">Branch</p>
+              <p className="text-xl font-semibold text-gray-900">{stats.branchPrices}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+          <div className="flex items-center">
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <Users className="h-5 w-5 text-orange-600" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">Roles</p>
+              <p className="text-xl font-semibold text-gray-900">{stats.uniqueDesignations}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+          <div className="flex items-center">
+            <div className="p-2 bg-yellow-100 rounded-lg">
+              <Building2 className="h-5 w-5 text-yellow-600" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">Branches</p>
+              <p className="text-xl font-semibold text-gray-900">{stats.uniqueBranches}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+          <div className="flex items-center">
+            <div className="p-2 bg-pink-100 rounded-lg">
+              <TrendingUp className="h-5 w-5 text-pink-600" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">% Adj</p>
+              <p className="text-xl font-semibold text-gray-900">{stats.percentageAdjustments}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+          <div className="flex items-center">
+            <div className="p-2 bg-indigo-100 rounded-lg">
+              <Info className="h-5 w-5 text-indigo-600" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">Fixed Adj</p>
+              <p className="text-xl font-semibold text-gray-900">{stats.fixedAdjustments}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Action Panel */}
       <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-6">
           <h3 className="text-lg font-semibold text-gray-900">Price Management</h3>
           <div className="flex flex-wrap gap-3">
             <button
-              onClick={() => setShowPriceModal(true)}
+              onClick={() => {setShowPriceModal(true); setBasePriceDetails({})}}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
             >
               <Plus className="h-4 w-4" />
-              Add New Price
+              Add New Prices
             </button>
             <button
-              onClick={() => setShowAdjustmentModal(true)}
+              onClick={() => navigate('/quotation/priceconfigure/branchPrice')}
               className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
             >
               <Settings className="h-4 w-4" />
-              Branch Adjustments
+              Branch Settings
             </button>
             <button
-              onClick={() => setShowHistoryModal(true)}
-              className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
+              onClick={handleRefresh}
+              disabled={loading}
+              className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2 disabled:opacity-50"
             >
-              <History className="h-4 w-4" />
-              View History
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
             </button>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="h-5 w-5 absolute left-3 top-3 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search by category, designation..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <input
+              type="text"
+              placeholder="Search designations..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500"
+            />
           </div>
-          <select
-            value={selectedBranch}
-            onChange={(e) => setSelectedBranch(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="all">All Branches</option>
-            {branches.map(branch => (
-              <option key={branch.id} value={branch.id}>{branch.name}</option>
-            ))}
-          </select>
-          <select
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="all">All Categories</option>
-            <option value="securityGuards">Security Guards</option>
-            <option value="supervisors">Supervisors</option>
-            <option value="housekeeping">Housekeeping</option>
-            <option value="facilityManagement">Facility Management</option>
-          </select>
         </div>
 
-        {/* Pricing Table */}
+        {/* Enhanced Table */}
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Designation</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Day Rate</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monthly Rate</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Yearly Rate</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+          <table className="min-w-full border border-gray-200 rounded-lg shadow-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th 
+                  className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('designationName')}
+                >
+                  Designation {sortBy === 'designationName' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </th>
+                <th 
+                  className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('source')}
+                >
+                  Source {sortBy === 'source' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Adjustment
+                </th>
+                <th 
+                  className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('dailyPrice')}
+                >
+                  Daily Rate {sortBy === 'dailyPrice' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Monthly Rate
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Yearly Rate
+                </th>
+                <th 
+                  className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('effectiveFrom')}
+                >
+                  Effective Date {sortBy === 'effectiveFrom' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {Object.entries(basePricing).map(([category, categoryData]) => 
-                Object.entries(categoryData).map(([gender, genderData]) =>
-                  Object.entries(genderData).map(([location, locationData]) =>
-                    Object.entries(locationData).map(([designation, rates]) => {
-                      const branchData = selectedBranch === 'all' ? null : branches.find(b => b.id === selectedBranch);
-                      const effectiveDayRate = getEffectivePrice(rates.day, branchData?.adjustments, category);
-                      const effectiveMonthlyRate = getEffectivePrice(rates.monthly, branchData?.adjustments, category);
-                      const effectiveYearlyRate = getEffectivePrice(rates.yearly, branchData?.adjustments, category);
-                      
-                      // Filter logic
-                      if (filterCategory !== 'all' && category !== filterCategory) return null;
-                      if (searchTerm && !formatCategoryName(category).toLowerCase().includes(searchTerm.toLowerCase()) &&
-                          !designation.toLowerCase().includes(searchTerm.toLowerCase())) return null;
+              {processedData.map((data, i) => {
+                const effectiveDate = new Date(data.effectiveFrom);
+                const currentDate = new Date();
+                const effective = new Date(effectiveDate.toDateString());
+                const today = new Date(currentDate.toDateString());
 
-                      return (
-                        <tr key={`${category}-${gender}-${location}-${designation}`} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                            {formatCategoryName(category)}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-500 capitalize">{gender}</td>
-                          <td className="px-4 py-3 text-sm text-gray-500">
-                            {location === 'cityLimit' ? 'In City' : 'Out of City'}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-500 capitalize">{designation}</td>
-                          <td className="px-4 py-3 text-sm font-medium">
-                            ₹{effectiveDayRate}
-                            {effectiveDayRate !== rates.day && (
-                              <span className="text-xs text-gray-400 block">Base: ₹{rates.day}</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-sm font-medium">
-                            ₹{effectiveMonthlyRate.toLocaleString()}
-                            {effectiveMonthlyRate !== rates.monthly && (
-                              <span className="text-xs text-gray-400 block">Base: ₹{rates.monthly.toLocaleString()}</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-sm font-medium">
-                            ₹{effectiveYearlyRate.toLocaleString()}
-                            {effectiveYearlyRate !== rates.yearly && (
-                              <span className="text-xs text-gray-400 block">Base: ₹{rates.yearly.toLocaleString()}</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-500">
-                            <button
-                              onClick={() => {
-                                setEditingPrice({ category, gender, location, designation, rates });
-                                setShowPriceModal(true);
-                              }}
-                              className="text-blue-600 hover:text-blue-800 p-1 rounded"
-                            >
-                              <Edit3 className="h-4 w-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )
-                )
-              )}
+                const isFuture = effective > today;
+                const isCurrentlyActive = effective.getTime() === today.getTime();
+
+                return (
+                  <tr
+                    key={`${data.designationId}-${data.priceId}-${i}`}
+                    className={`hover:bg-gray-50 transition-colors ${
+                      isFuture ? 'bg-yellow-50' : ''
+                    }`}
+                  >
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="flex flex-col">
+                        <div className="font-medium text-gray-900">
+                          {data?.designationName || 'Unknown'}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          ID: {data.designationId?.slice(-6)}
+                        </div>
+                        {data.historyCount > 0 && (
+                          <div className="flex items-center gap-1 text-xs text-blue-600 mt-1">
+                            <History className="h-3 w-3" />
+                            {data.historyCount} versions
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        data.source === 'base' 
+                          ? 'bg-blue-100 text-blue-800' 
+                          : 'bg-purple-100 text-purple-800'
+                      }`}>
+                        {data.source === 'base' ? (
+                          <>
+                            <Home className="h-3 w-3 mr-1" />
+                            Base
+                          </>
+                        ) : (
+                          <>
+                            <GitBranch className="h-3 w-3 mr-1" />
+                            Branch
+                          </>
+                        )}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="text-sm">
+                        <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          data.adjustmentType === 'percentage'
+                            ? 'bg-green-100 text-green-800'
+                            : data.adjustmentType === 'fixed'
+                            ? 'bg-orange-100 text-orange-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {data.adjustmentType === 'percentage' && `${data.adjustmentValue}%`}
+                          {data.adjustmentType === 'fixed' && `₹${data.adjustmentValue}`}
+                          {data.adjustmentType === 'N/A' && 'N/A'}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="text-sm">
+                        <div className="font-medium text-gray-900">
+                          {data.dailyPrices.min === data.dailyPrices.max 
+                            ? formatCurrency(data.dailyPrices.min) 
+                            : `${formatCurrency(data.dailyPrices.min)} - ${formatCurrency(data.dailyPrices.max)}`
+                          }
+                        </div>
+                        <div className="text-gray-500 text-xs">
+                          M: {getPriceFromArray(data.priceData?.daily, 'male', 'cityLimit')} | 
+                          F: {getPriceFromArray(data.priceData?.daily, 'female', 'cityLimit')}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="text-sm">
+                        <div className="font-medium text-gray-900">
+                          {data.monthlyPrices.min === data.monthlyPrices.max 
+                            ? formatCurrency(data.monthlyPrices.min) 
+                            : `${formatCurrency(data.monthlyPrices.min)} - ${formatCurrency(data.monthlyPrices.max)}`
+                          }
+                        </div>
+                        <div className="text-gray-500 text-xs">
+                          M: {getPriceFromArray(data.priceData?.monthly, 'male', 'cityLimit')} | 
+                          F: {getPriceFromArray(data.priceData?.monthly, 'female', 'cityLimit')}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="text-sm">
+                        <div className="font-medium text-gray-900">
+                          {data.yearlyPrices.min === data.yearlyPrices.max 
+                            ? formatCurrency(data.yearlyPrices.min) 
+                            : `${formatCurrency(data.yearlyPrices.min)} - ${formatCurrency(data.yearlyPrices.max)}`
+                          }
+                        </div>
+                        <div className="text-gray-500 text-xs">
+                          M: {getPriceFromArray(data.priceData?.yearly, 'male', 'cityLimit')} | 
+                          F: {getPriceFromArray(data.priceData?.yearly, 'female', 'cityLimit')}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="text-sm">
+                        <div className="font-medium text-gray-900">
+                          {moment(data?.effectiveFrom).format('DD MMM YYYY')}
+                        </div>
+                        <div className="text-gray-500 text-xs">
+                          {moment(data?.effectiveFrom).fromNow()}
+                        </div>
+                        {isCurrentlyActive && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-1">
+                            Active
+                          </span>
+                        )}
+                        {isFuture && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 mt-1">
+                            Future
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="flex gap-2">
+                        <Button 
+                          color='blue' 
+                          variant='outlined' 
+                          size="sm"
+                          onClick={() => {
+                            setShowPriceModal(true); 
+                            setBasePriceDetails({
+                              ...data,
+                              docId: data.baseQuotePriceId,
+                              historyId: data.priceId
+                            });
+                          }}
+                          className="flex items-center gap-1"
+                        >
+                          <Edit className="h-3 w-3" />
+                          Edit
+                        </Button>
+                        
+                        <Button 
+                          color='green' 
+                          variant='outlined' 
+                          size="sm"
+                          onClick={() => {
+                            setSelectedPriceData(data);
+                            setShowDetailsModal(true);
+                          }}
+                          className="flex items-center gap-1"
+                        >
+                          <Eye className="h-3 w-3" />
+                          Details
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Branch Management Tab
-  const BranchManagementTab = () => (
-    <div className="space-y-6">
-      <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">Branch Management</h3>
-          <button
-            onClick={() => setShowAdjustmentModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Add Adjustment
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {branches.map(branch => (
-            <div key={branch.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <h4 className="font-semibold text-gray-900">{branch.name}</h4>
-                  <p className="text-sm text-gray-500">{branch.location}</p>
-                  <p className="text-xs text-gray-400">ID: {branch.id}</p>
-                </div>
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                  branch.status === 'active' 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-red-100 text-red-800'
-                }`}>
-                  {branch.status}
-                </span>
+          
+          {processedData?.length === 0 && (
+            <div className="text-center py-12">
+              <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <div className="text-gray-500">
+                {loading ? 'Loading price data...' : 'No price data found'}
               </div>
-
-              <div className="space-y-2 mb-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Adjustments:</span>
-                  <span className="font-medium">{branch.adjustments.length}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Last Updated:</span>
-                  <span className="font-medium">{branch.lastUpdated}</span>
-                </div>
-              </div>
-
-              {branch.adjustments.length > 0 && (
-                <div className="space-y-2 mb-4">
-                  <p className="text-sm font-medium text-gray-700">Active Adjustments:</p>
-                  {branch.adjustments.map(adj => (
-                    <div key={adj.id} className="bg-gray-50 p-2 rounded text-xs">
-                      <div className="flex justify-between">
-                        <span className="font-medium">{formatCategoryName(adj.category)}</span>
-                        <span className={`font-bold ${adj.value > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {adj.adjustmentType === 'percentage' ? `${adj.value > 0 ? '+' : ''}${adj.value}%` : `${adj.value > 0 ? '+' : ''}₹${Math.abs(adj.value)}`}
-                        </span>
-                      </div>
-                      <p className="text-gray-500">Effective: {adj.effectiveDate}</p>
-                    </div>
-                  ))}
-                </div>
+              {!loading && searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="text-blue-600 hover:text-blue-800 underline mt-2"
+                >
+                  Clear search
+                </button>
               )}
+              {!loading && (sourceFilter !== 'all' || branchFilter !== 'all' || adjustmentTypeFilter !== 'all') && (
+                <button
+                  onClick={resetFilters}
+                  className="text-blue-600 hover:text-blue-800 underline mt-2 ml-4"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
+        </div>
 
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    // Set selected branch and open adjustment modal
-                    setSelectedBranch(branch.id);
-                    setShowAdjustmentModal(true);
-                  }}
-                  className="flex-1 bg-blue-100 text-blue-700 py-2 px-3 rounded text-sm font-medium hover:bg-blue-200 transition-colors"
-                >
-                  Adjust Prices
-                </button>
-                <button
-                  onClick={() => {
-                    setSelectedBranch(branch.id);
-                    setShowHistoryModal(true);
-                  }}
-                  className="bg-gray-100 text-gray-700 p-2 rounded hover:bg-gray-200 transition-colors"
-                >
-                  <History className="h-4 w-4" />
-                </button>
+        {/* Enhanced Price Breakdown Summary */}
+        {processedData.length > 0 && (
+          <div className="mt-6 bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-medium text-gray-900">Price Summary</h4>
+              <div className="flex items-center gap-4 text-sm text-gray-600">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-blue-100 rounded border border-blue-300"></div>
+                  <span>Base: {stats.basePrices}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-purple-100 rounded border border-purple-300"></div>
+                  <span>Branch: {stats.branchPrices}</span>
+                </div>
               </div>
             </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  // Price Update Modal
- const PriceUpdateModal = () => {
-    const [formStep, setFormStep] = useState(1); // 1: Basic info, 2: Adjustment settings
-    const [formData, setFormData] = useState({
-      category: editingPrice?.category || '',
-      gender: editingPrice?.gender || 'male',
-      location: editingPrice?.location || 'cityLimit',
-      designation: editingPrice?.designation || '',
-      basePrice: editingPrice?.rates?.day || '',
-      nightRate: editingPrice?.rates?.night || '',
-      rotatingRate: editingPrice?.rates?.rotating || '',
-      monthlyRate: editingPrice?.rates?.monthly || '',
-      yearlyRate: editingPrice?.rates?.yearly || '',
-      adjustmentType: 'percentage',
-      adjustmentValue: '',
-      nightAdjustment: 15, // Default percentage for night shift
-      rotatingAdjustment: 10, // Default percentage for rotating shift
-      locationAdjustment: 12, // Default percentage for out of city
-      genderAdjustment: 8, // Default percentage for female
-      applyToAll: false,
-      applyToAllShifts: false,
-      applyToAllGenders: false,
-      applyToAllLocations: false
-    });
-
-    // Calculate derived rates when base price or adjustments change
-    useEffect(() => {
-      if (formData.basePrice) {
-        const base = parseInt(formData.basePrice);
-        const derivedRates = calculateDerivedRates(base);
-        
-        // Calculate rates based on adjustments
-        const nightRate = Math.round(base * (1 + parseInt(formData.nightAdjustment || 0) / 100));
-        const rotatingRate = Math.round(base * (1 + parseInt(formData.rotatingAdjustment || 0) / 100));
-        const monthlyRate = Math.round(derivedRates.monthly);
-        const yearlyRate = Math.round(derivedRates.yearly);
-        
-        setFormData(prev => ({
-          ...prev,
-          nightRate,
-          rotatingRate,
-          monthlyRate,
-          yearlyRate
-        }));
-      }
-    }, [formData.basePrice, formData.nightAdjustment, formData.rotatingAdjustment]);
-
-    // Calculate location-based rates
-    const calculateLocationRates = (baseRate, location) => {
-      if (location === 'outOfCity') {
-        return Math.round(baseRate * (1 + parseInt(formData.locationAdjustment || 0) / 100));
-      }
-      return baseRate;
-    };
-
-    // Calculate gender-based rates
-    const calculateGenderRates = (baseRate, gender) => {
-      if (gender === 'female') {
-        return Math.round(baseRate * (1 + parseInt(formData.genderAdjustment || 0) / 100));
-      }
-      return baseRate;
-    };
-
-    const handleSave = () => {
-      // Create the new price structure with all calculated rates
-      const baseRate = parseInt(formData.basePrice);
-      
-      const newPrice = {
-        day: baseRate,
-        night: parseInt(formData.nightRate),
-        rotating: parseInt(formData.rotatingRate),
-        monthly: parseInt(formData.monthlyRate),
-        yearly: parseInt(formData.yearlyRate)
-      };
-
-      // Update pricing structure
-      const updatedPricing = { ...basePricing };
-      
-      // If applying to all categories
-      if (formData.applyToAll) {
-        Object.keys(updatedPricing).forEach(category => {
-          Object.keys(updatedPricing[category]).forEach(gender => {
-            Object.keys(updatedPricing[category][gender]).forEach(location => {
-              Object.keys(updatedPricing[category][gender][location]).forEach(designation => {
-                // Apply location and gender adjustments
-                let adjustedPrice = { ...newPrice };
-                
-                // Apply location adjustment
-                if (location === 'outOfCity') {
-                  Object.keys(adjustedPrice).forEach(key => {
-                    adjustedPrice[key] = calculateLocationRates(adjustedPrice[key], location);
-                  });
-                }
-                
-                // Apply gender adjustment
-                if (gender === 'female') {
-                  Object.keys(adjustedPrice).forEach(key => {
-                    adjustedPrice[key] = calculateGenderRates(adjustedPrice[key], gender);
-                  });
-                }
-                
-                updatedPricing[category][gender][location][designation] = adjustedPrice;
-              });
-            });
-          });
-        });
-      } else {
-        // Apply to specific category
-        if (!updatedPricing[formData.category]) {
-          updatedPricing[formData.category] = {};
-        }
-        
-        // Apply to all genders if selected
-        const genders = formData.applyToAllGenders 
-          ? ['male', 'female'] 
-          : [formData.gender];
-        
-        genders.forEach(gender => {
-          if (!updatedPricing[formData.category][gender]) {
-            updatedPricing[formData.category][gender] = {};
-          }
-          
-          // Apply to all locations if selected
-          const locations = formData.applyToAllLocations 
-            ? ['cityLimit', 'outOfCity'] 
-            : [formData.location];
-          
-          locations.forEach(location => {
-            if (!updatedPricing[formData.category][gender][location]) {
-              updatedPricing[formData.category][gender][location] = {};
-            }
-            
-            // Apply to all designations if selected or specific one
-            const designations = formData.applyToAll 
-              ? Object.keys(updatedPricing[formData.category][gender][location])
-              : [formData.designation];
-            
-            designations.forEach(designation => {
-              // Apply location and gender adjustments
-              let adjustedPrice = { ...newPrice };
-              
-              // Apply location adjustment
-              if (location === 'outOfCity') {
-                Object.keys(adjustedPrice).forEach(key => {
-                  adjustedPrice[key] = calculateLocationRates(adjustedPrice[key], location);
-                });
-              }
-              
-              // Apply gender adjustment
-              if (gender === 'female') {
-                Object.keys(adjustedPrice).forEach(key => {
-                  adjustedPrice[key] = calculateGenderRates(adjustedPrice[key], gender);
-                });
-              }
-              
-              updatedPricing[formData.category][gender][location][designation] = adjustedPrice;
-            });
-          });
-        });
-      }
-
-      setBasePricing(updatedPricing);
-      
-      // Add to history
-      const historyEntry = {
-        id: `HIST${Date.now()}`,
-        branch: 'Base Pricing',
-        category: formData.applyToAll ? 'All Categories' : formatCategoryName(formData.category),
-        changeType: 'Base Price Update',
-        value: 'Updated',
-        effectiveDate: new Date().toISOString().split('T')[0],
-        createdBy: 'Current Admin',
-        reason: 'Manual price update',
-        timestamp: new Date().toISOString()
-      };
-      setPriceHistory([historyEntry, ...priceHistory]);
-
-      setShowPriceModal(false);
-      setEditingPrice(null);
-    };
-
-    const renderBasicInfoStep = () => (
-      <div className="space-y-4">
-        {/* Category Selection */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
-          <select
-            value={formData.category}
-            onChange={(e) => setFormData({ ...formData, category: e.target.value, designation: '' })}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            required
-          >
-            <option value="">Select Category</option>
-            <option value="securityGuards">Security Guards</option>
-            <option value="supervisors">Supervisors</option>
-            <option value="housekeeping">Housekeeping</option>
-            <option value="facilityManagement">Facility Management</option>
-          </select>
-        </div>
-
-        {/* Designation Selection */}
-        {formData.category && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Designation *</label>
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowDesignationDropdown(!showDesignationDropdown)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex justify-between items-center"
-              >
-                {formData.designation ? formData.designation.charAt(0).toUpperCase() + formData.designation.slice(1) : 'Select Designation'}
-                {showDesignationDropdown ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-              </button>
-              {showDesignationDropdown && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                  {designationOptions[formData.category]?.map((option) => (
-                    <div
-                      key={option}
-                      className="p-3 hover:bg-gray-100 cursor-pointer"
-                      onClick={() => {
-                        setFormData({ ...formData, designation: option.toLowerCase() });
-                        setShowDesignationDropdown(false);
-                      }}
-                    >
-                      {option}
-                    </div>
-                  ))}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div>
+                <div className="font-medium text-gray-600">Daily Price Range</div>
+                <div className="text-gray-900">
+                  ₹{Math.min(...processedData.map(item => item.dailyPrices.min))} - 
+                  ₹{Math.max(...processedData.map(item => item.dailyPrices.max))}
                 </div>
-              )}
+              </div>
+              <div>
+                <div className="font-medium text-gray-600">Monthly Price Range</div>
+                <div className="text-gray-900">
+                  ₹{Math.min(...processedData.map(item => item.monthlyPrices.min))} - 
+                  ₹{Math.max(...processedData.map(item => item.monthlyPrices.max))}
+                </div>
+              </div>
+              <div>
+                <div className="font-medium text-gray-600">Yearly Price Range</div>
+                <div className="text-gray-900">
+                  ₹{Math.min(...processedData.map(item => item.yearlyPrices.min))} - 
+                  ₹{Math.max(...processedData.map(item => item.yearlyPrices.max))}
+                </div>
+              </div>
             </div>
           </div>
         )}
-
-        {/* Base Price Input */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Base Price (Daily) *</label>
-          <input
-            type="number"
-            value={formData.basePrice}
-            onChange={(e) => setFormData({ ...formData, basePrice: e.target.value })}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Enter base daily rate"
-            required
-          />
-        </div>
-
-        {/* Gender and Location Selection */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
-            <select
-              value={formData.gender}
-              onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-            <select
-              value={formData.location}
-              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="cityLimit">In City</option>
-              <option value="outOfCity">Out of City</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <div className="flex justify-end pt-4">
-          <button
-            onClick={() => setFormStep(2)}
-            // disabled={!formData.category || !formData.designation || !formData.basePrice}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Next
-            <ChevronDown className="h-4 w-4" />
-          </button>
-        </div>
       </div>
-    );
-
-    const renderAdjustmentStep = () => (
-      <div className="space-y-4">
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <h4 className="font-medium text-blue-800 mb-2 flex items-center gap-2">
-            <Calculator className="h-5 w-5" />
-            Rate Calculations
-          </h4>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-blue-700">Base Daily Rate:</p>
-              <p className="font-medium">₹{formData.basePrice || 0}</p>
-            </div>
-            <div>
-              <p className="text-blue-700">Monthly Rate:</p>
-              <p className="font-medium">₹{formData.monthlyRate ? formData.monthlyRate.toLocaleString() : 0}</p>
-            </div>
-            <div>
-              <p className="text-blue-700">Yearly Rate:</p>
-              <p className="font-medium">₹{formData.yearlyRate ? formData.yearlyRate.toLocaleString() : 0}</p>
-            </div>
-            <div>
-              <p className="text-blue-700">Night Shift Rate:</p>
-              <p className="font-medium">₹{formData.nightRate || 0}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Adjustment Settings */}
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h4 className="font-medium text-gray-900 mb-3">Adjustment Settings</h4>
-          
-          {/* Shift Adjustments */}
-          <div className="mb-4">
-            <h5 className="text-sm font-medium text-gray-700 mb-2">Shift Adjustments</h5>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Night Shift (%)</label>
-                <input
-                  type="number"
-                  value={formData.nightAdjustment}
-                  onChange={(e) => setFormData({ ...formData, nightAdjustment: e.target.value })}
-                  className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="e.g., 15"
-                />
-                <p className="text-xs text-gray-500 mt-1">+{formData.nightAdjustment}% of base rate</p>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Rotating Shift (%)</label>
-                <input
-                  type="number"
-                  value={formData.rotatingAdjustment}
-                  onChange={(e) => setFormData({ ...formData, rotatingAdjustment: e.target.value })}
-                  className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="e.g., 10"
-                />
-                <p className="text-xs text-gray-500 mt-1">+{formData.rotatingAdjustment}% of base rate</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Location and Gender Adjustments */}
-          <div className="mb-4">
-            <h5 className="text-sm font-medium text-gray-700 mb-2">Location & Gender Adjustments</h5>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Out of City (%)</label>
-                <input
-                  type="number"
-                  value={formData.locationAdjustment}
-                  onChange={(e) => setFormData({ ...formData, locationAdjustment: e.target.value })}
-                  className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="e.g., 12"
-                />
-                <p className="text-xs text-gray-500 mt-1">+{formData.locationAdjustment}% for out of city</p>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Female Staff (%)</label>
-                <input
-                  type="number"
-                  value={formData.genderAdjustment}
-                  onChange={(e) => setFormData({ ...formData, genderAdjustment: e.target.value })}
-                  className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="e.g., 8"
-                />
-                <p className="text-xs text-gray-500 mt-1">+{formData.genderAdjustment}% for female staff</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Apply To Options */}
-          <div className="space-y-2">
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={formData.applyToAll}
-                onChange={(e) => setFormData({ ...formData, applyToAll: e.target.checked })}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="ml-2 text-sm font-medium text-gray-700">Apply to all categories</span>
-            </label>
-            
-            {!formData.applyToAll && (
-              <>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={formData.applyToAllGenders}
-                    onChange={(e) => setFormData({ ...formData, applyToAllGenders: e.target.checked })}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm font-medium text-gray-700">Apply to all genders</span>
-                </label>
-                
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={formData.applyToAllLocations}
-                    onChange={(e) => setFormData({ ...formData, applyToAllLocations: e.target.checked })}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm font-medium text-gray-700">Apply to all locations</span>
-                </label>
-                
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={formData.applyToAllShifts}
-                    onChange={(e) => setFormData({ ...formData, applyToAllShifts: e.target.checked })}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm font-medium text-gray-700">Apply to all shifts</span>
-                </label>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Calculated Rates Preview */}
-        <div className="bg-green-50 p-4 rounded-lg">
-          <h4 className="font-medium text-green-800 mb-2">Final Rates Preview</h4>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-green-700">Daily Rate:</p>
-              <p className="font-medium">₹{formData.basePrice || 0}</p>
-            </div>
-            <div>
-              <p className="text-green-700">Night Shift:</p>
-              <p className="font-medium">₹{formData.nightRate || 0}</p>
-            </div>
-            <div>
-              <p className="text-green-700">Rotating Shift:</p>
-              <p className="font-medium">₹{formData.rotatingRate || 0}</p>
-            </div>
-            <div>
-              <p className="text-green-700">Monthly Rate:</p>
-              <p className="font-medium">₹{formData.monthlyRate ? formData.monthlyRate.toLocaleString() : 0}</p>
-            </div>
-            <div>
-              <p className="text-green-700">Yearly Rate:</p>
-              <p className="font-medium">₹{formData.yearlyRate ? formData.yearlyRate.toLocaleString() : 0}</p>
-            </div>
-            <div>
-              <p className="text-green-700">Out of City:</p>
-              <p className="font-medium">₹{calculateLocationRates(parseInt(formData.basePrice || 0), 'outOfCity')}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <div className="flex justify-between pt-4">
-          <button
-            onClick={() => setFormStep(1)}
-            className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
-          >
-            <ChevronUp className="h-4 w-4" />
-            Back
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!formData.basePrice}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Save className="h-4 w-4" />
-            {editingPrice ? 'Update Price' : 'Add Price'}
-          </button>
-        </div>
-      </div>
-    );
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {editingPrice ? 'Edit Price' : 'Add New Price'}
-                <span className="text-sm font-normal text-gray-500 ml-2">
-                  Step {formStep} of 2
-                </span>
-              </h3>
-              <button
-                onClick={() => {
-                  setShowPriceModal(false);
-                  setEditingPrice(null);
-                }}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-
-          <div className="p-6">
-            {formStep === 1 ? renderBasicInfoStep() : renderAdjustmentStep()}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Branch Price Adjustment Modal
-  const BranchAdjustmentModal = () => {
-    const [adjustmentData, setAdjustmentData] = useState({
-      branchId: selectedBranch === 'all' ? '' : selectedBranch,
-      category: 'all',
-      adjustmentType: 'percentage',
-      value: '',
-      effectiveDate: new Date().toISOString().split('T')[0],
-      reason: ''
-    });
-
-    const handleSave = () => {
-      const selectedBranchData = branches.find(b => b.id === adjustmentData.branchId);
-      if (!selectedBranchData) return;
-
-      const newAdjustment = {
-        id: `ADJ${Date.now()}`,
-        category: adjustmentData.category,
-        adjustmentType: adjustmentData.adjustmentType,
-        value: parseFloat(adjustmentData.value),
-        effectiveDate: adjustmentData.effectiveDate,
-        createdBy: 'Current Admin',
-        reason: adjustmentData.reason
-      };
-
-      // Update branches
-      const updatedBranches = branches.map(branch => {
-        if (branch.id === adjustmentData.branchId) {
-          return {
-            ...branch,
-            adjustments: [...branch.adjustments, newAdjustment],
-            lastUpdated: new Date().toISOString().split('T')[0]
-          };
-        }
-        return branch;
-      });
-      setBranches(updatedBranches);
-
-      // Add to history
-      const historyEntry = {
-        id: `HIST${Date.now()}`,
-        branch: selectedBranchData.name,
-        category: adjustmentData.category === 'all' ? 'All Categories' : formatCategoryName(adjustmentData.category),
-        changeType: adjustmentData.adjustmentType === 'percentage' ? 
-          (adjustmentData.value > 0 ? 'Percentage Increase' : 'Percentage Decrease') : 
-          (adjustmentData.value > 0 ? 'Fixed Increase' : 'Fixed Decrease'),
-        value: adjustmentData.adjustmentType === 'percentage' ? 
-          `${adjustmentData.value > 0 ? '+' : ''}${adjustmentData.value}%` : 
-          `${adjustmentData.value > 0 ? '+' : ''}₹${Math.abs(adjustmentData.value)}`,
-        effectiveDate: adjustmentData.effectiveDate,
-        createdBy: 'Current Admin',
-        reason: adjustmentData.reason,
-        timestamp: new Date().toISOString()
-      };
-      setPriceHistory([historyEntry, ...priceHistory]);
-
-      setShowAdjustmentModal(false);
-      setAdjustmentData({
-        branchId: '',
-        category: 'all',
-        adjustmentType: 'percentage',
-        value: '',
-        effectiveDate: new Date().toISOString().split('T')[0],
-        reason: ''
-      });
-    };
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-gray-900">Branch Price Adjustment</h3>
-              <button
-                onClick={() => setShowAdjustmentModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-
-          <div className="p-6 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Select Branch *</label>
-              <select
-                value={adjustmentData.branchId}
-                onChange={(e) => setAdjustmentData({ ...adjustmentData, branchId: e.target.value })}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">Select a branch</option>
-                {branches.map(branch => (
-                  <option key={branch.id} value={branch.id}>{branch.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
-              <select
-                value={adjustmentData.category}
-                onChange={(e) => setAdjustmentData({ ...adjustmentData, category: e.target.value })}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="all">All Categories</option>
-                <option value="securityGuards">Security Guards</option>
-                <option value="supervisors">Supervisors</option>
-                <option value="housekeeping">Housekeeping</option>
-                <option value="facilityManagement">Facility Management</option>
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Adjustment Type *</label>
-                <select
-                  value={adjustmentData.adjustmentType}
-                  onChange={(e) => setAdjustmentData({ ...adjustmentData, adjustmentType: e.target.value })}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="percentage">Percentage (%)</option>
-                  <option value="fixed">Fixed Amount (₹)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Value * {adjustmentData.adjustmentType === 'percentage' ? '(%)' : '(₹)'}
-                </label>
-                <input
-                  type="number"
-                  step={adjustmentData.adjustmentType === 'percentage' ? '0.1' : '1'}
-                  value={adjustmentData.value}
-                  onChange={(e) => setAdjustmentData({ ...adjustmentData, value: e.target.value })}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder={adjustmentData.adjustmentType === 'percentage' ? 'e.g., 10 or -5' : 'e.g., 100 or -50'}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Effective Date *</label>
-              <input
-                type="date"
-                value={adjustmentData.effectiveDate}
-                onChange={(e) => setAdjustmentData({ ...adjustmentData, effectiveDate: e.target.value })}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Reason for Adjustment</label>
-              <textarea
-                value={adjustmentData.reason}
-                onChange={(e) => setAdjustmentData({ ...adjustmentData, reason: e.target.value })}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                rows="3"
-                placeholder="Enter reason for this price adjustment..."
-              />
-            </div>
-
-            {/* Preview */}
-            {adjustmentData.value && adjustmentData.branchId && (
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h4 className="font-medium text-blue-800 mb-2">Preview Adjustment</h4>
-                <div className="text-sm text-blue-700 space-y-1">
-                  <p><span className="font-medium">Branch:</span> {branches.find(b => b.id === adjustmentData.branchId)?.name}</p>
-                  <p><span className="font-medium">Category:</span> {adjustmentData.category === 'all' ? 'All Categories' : formatCategoryName(adjustmentData.category)}</p>
-                  <p><span className="font-medium">Adjustment:</span> 
-                    <span className={`font-bold ml-1 ${parseFloat(adjustmentData.value) > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {adjustmentData.adjustmentType === 'percentage' ? 
-                        `${parseFloat(adjustmentData.value) > 0 ? '+' : ''}${adjustmentData.value}%` : 
-                        `${parseFloat(adjustmentData.value) > 0 ? '+' : ''}₹${Math.abs(parseFloat(adjustmentData.value))}`}
-                    </span>
-                  </p>
-                  <p><span className="font-medium">Example:</span> ₹500/day → ₹{
-                    adjustmentData.adjustmentType === 'percentage' ? 
-                      Math.round(500 * (1 + parseFloat(adjustmentData.value || 0) / 100)) :
-                      Math.max(0, 500 + parseFloat(adjustmentData.value || 0))
-                  }/day</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="p-6 border-t border-gray-200 flex gap-3">
-            <button
-              onClick={() => setShowAdjustmentModal(false)}
-              className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={!adjustmentData.branchId || !adjustmentData.value}
-              className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Save className="h-4 w-4" />
-              Apply Adjustment
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // History Modal
-  const HistoryModal = () => {
-    const filteredHistory = selectedBranch === 'all' ? 
-      priceHistory : 
-      priceHistory.filter(entry => {
-        const branch = branches.find(b => b.id === selectedBranch);
-        return branch && entry.branch === branch.name;
-      });
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Price Change History
-                {selectedBranch !== 'all' && ` - ${branches.find(b => b.id === selectedBranch)?.name}`}
-              </h3>
-              <div className="flex items-center gap-3">
-                <button className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
-                  <Download className="h-4 w-4" />
-                  Export
-                </button>
-                <button
-                  onClick={() => setShowHistoryModal(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-6">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Change Type</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created By</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredHistory.map(entry => (
-                    <tr key={entry.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm text-gray-900">
-                        <div>
-                          <p className="font-medium">{entry.effectiveDate}</p>
-                          <p className="text-xs text-gray-500">{new Date(entry.timestamp).toLocaleTimeString()}</p>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{entry.branch}</td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{entry.category}</td>
-                      <td className="px-4 py-3 text-sm text-gray-500">
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                          entry.changeType.includes('Increase') ? 'bg-green-100 text-green-800' :
-                          entry.changeType.includes('Decrease') ? 'bg-red-100 text-red-800' :
-                          'bg-blue-100 text-blue-800'
-                        }`}>
-                          {entry.changeType}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm font-medium">
-                        <span className={
-                          entry.value.includes('+') ? 'text-green-600' :
-                          entry.value.includes('-') ? 'text-red-600' :
-                          'text-gray-900'
-                        }>
-                          {entry.value}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{entry.createdBy}</td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{entry.reason}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <div className="flex flex-col gap-4 p-2 w-full h-full">   
-      {/* Navigation */}
-    
-        <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg mb-6 w-fit">
-          <button
-            onClick={() => setActiveTab('pricing')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'pricing' 
-                ? 'bg-white text-blue-600 shadow-sm' 
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Pricing Overview
-          </button>
-          <button
-            onClick={() => setActiveTab('branches')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'branches' 
-                ? 'bg-white text-blue-600 shadow-sm' 
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Branch Management
-          </button>
-        </div>
-
-        {/* Content */}
-        {activeTab === 'pricing' && <PricingOverviewTab />}
-        {activeTab === 'branches' && <BranchManagementTab />}
-
-        {/* Modals */}
-        {showPriceModal && <PriceUpdateModal />}
-        {showAdjustmentModal && <BranchAdjustmentModal />}
-        {showHistoryModal && <HistoryModal />}
-  
     </div>
-  )
-}
-export default List
+  );
+
+  const BranchManagementTab = () => (
+    <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+      <BranchManagement
+        quotationPriceList={quotationPriceList}
+        onRefresh={handleRefresh}
+        loading={loading}
+      />
+    </div>
+  );
+  
+  return (
+    <div className="flex flex-col gap-6 p-4 w-full min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Price Management</h1>
+            <p className="text-gray-600 mt-1">Manage pricing structures and adjustments across organization and branches</p>
+          </div>
+          
+          {/* Tab Navigation */}
+          <div className="flex bg-gray-100 p-1 rounded-lg">
+            <button
+              onClick={() => setActiveTab('pricing')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'pricing'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <TrendingUp className="h-4 w-4 inline mr-2" />
+              Pricing Overview
+            </button>
+            <button
+              onClick={() => navigate('/quotation/priceconfigure/branchprice')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'branches'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Building2 className="h-4 w-4 inline mr-2" />
+              Branch Management
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      {/* Summary Alert */}
+      {quotationPriceList && quotationPriceList.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <TrendingUp className="h-5 w-5 text-blue-400" />
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-blue-800">
+                Price Data Summary
+              </h3>
+              <div className="mt-2 text-sm text-blue-700">
+                <p>
+                  Showing {stats.totalRecords} total price records: 
+                  <span className="font-medium"> {stats.basePrices} base prices</span> and 
+                  <span className="font-medium"> {stats.branchPrices} branch-specific prices</span> 
+                  across {stats.uniqueDesignations} designations and {stats.uniqueBranches} branches.
+                </p>
+                <p className="mt-1">
+                  Adjustments: <span className="font-medium">{stats.percentageAdjustments} percentage</span>, 
+                  <span className="font-medium"> {stats.fixedAdjustments} fixed</span>
+                </p>
+                <p className="mt-1">
+                  Effective as of: <span className="font-medium">{moment(effectiveDateFilter).format('DD MMM YYYY')}</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Main Content */}
+      {activeTab === 'pricing' ? <PricingOverviewTab /> : <BranchManagementTab />}
+
+      {/* Modals */}
+      <BasePrice 
+        showPriceModal={showPriceModal} 
+        setShowPriceModal={setShowPriceModal} 
+        basePriceDetails={basePriceDetails} 
+        getPriceList={handleRefresh}
+      />
+
+      <PriceDetailsModal 
+        isOpen={showDetailsModal}
+        onClose={() => setShowDetailsModal(false)}
+        priceData={selectedPriceData}
+      />
+    </div>
+  );
+};
+
+export default List;

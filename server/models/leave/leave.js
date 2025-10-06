@@ -322,7 +322,7 @@ export const getUserLeaveTransaction=async(body)=>{
               
             {
                 $lookup:{
-                    from:'leavePolicy',
+                    from:'leavePolicyList',
                     localField:'leavePolicyId',
                     foreignField:'_id',
                     as:'leavePolicyDetails'
@@ -535,14 +535,15 @@ export const createLeaveBalance = async (body) => {
         // const policy = body.policyData[0]; 
         const joinDate = moment(body.user.joinDate).startOf("day");
 
-        const policywiseUserLeaveBalance = body.policydata.filter(policy => !body.userBalancePolicyIds.includes(policy._id.toString()))
+        const policywiseUserLeaveBalance = body.policydata.filter(policy => !body.userBalancePolicyIds.includes(policy.leavePolicyId.toString()))
             .map(policy => {
 
                 const leaveBalance = {
                     userId: body.employeeId !== undefined ? new ObjectId(body.employeeId) : new ObjectId(body.user._id),
                     orgId: new ObjectId(body.user.orgId),
                     isActive: true,
-                    policyId: new ObjectId(policy._id),
+                    // policyId: new ObjectId(policy._id),
+                    policyId:new ObjectId(policy.leavePolicyId),
                     totalAccrued: 0,
                     usedLeaves: 0,
                     currentBalance: 0,
@@ -581,10 +582,11 @@ export const createLeaveBalance = async (body) => {
                         leaveBalance.lastCreditedMonth = moment(firstCreditDate)
                             .add(cyclesPassed - 1, "month")
                             .format("YYYY-MM");
-                        leaveBalance.nextCreditingDate = moment(firstCreditDate)
-                            .add(cyclesPassed, "month")
-                            .date(creditedDay)
-                            .toISOString();
+                        // leaveBalance.nextCreditingDate = moment(firstCreditDate)
+                        //     .add(cyclesPassed, "month")
+                        //     .date(creditedDay)
+                        //     .toISOString();
+                        leaveBalance.nextCreditingDate = moment(firstCreditDate).add(cyclesPassed, "month").date(creditedDay).toDate()
                     }
 
                 } else if (policy.cycle?.type === "yearly") {
@@ -607,11 +609,13 @@ export const createLeaveBalance = async (body) => {
                             });
                             leaveBalance.firstCreditedMonth = creditDate.format("YYYY-MM");
                             leaveBalance.lastCreditedMonth = creditDate.format("YYYY-MM");
-                            leaveBalance.nextCreditingDate = moment(creditDate)
-                                .add(1, "year")
-                                .toISOString();
+                            // leaveBalance.nextCreditingDate = moment(creditDate)
+                            //     .add(1, "year")
+                            //     .toISOString();
+                            leaveBalance.nextCreditingDate = moment(creditDate).add(1, "year").toDate()
                         } else {
-                            leaveBalance.nextCreditingDate = creditDate.toISOString();
+                            // leaveBalance.nextCreditingDate = creditDate.toISOString();
+                            leaveBalance.nextCreditingDate = creditDate.toDate();
                         }
                     } else {
                         // Joined after credit date, next year
@@ -636,7 +640,8 @@ export const createLeaveBalance = async (body) => {
 
                         leaveBalance.firstCreditedMonth = joinDate.format("YYYY-MM");
                         leaveBalance.lastCreditedMonth = moment().format("YYYY-MM");
-                        leaveBalance.nextCreditingDate = moment(creditDate).add(1, "year").toISOString();
+                        // leaveBalance.nextCreditingDate = moment(creditDate).add(1, "year").toISOString();
+                        leaveBalance.nextCreditingDate = moment(creditDate).add(1, "year").toDate();
                     }
                 }
 
@@ -687,9 +692,17 @@ export const getLeaveBalance=async(body)=>{
             {
                 $match: query
             },
+            // {
+            //     $lookup: {
+            //         from: 'leavePolicy',
+            //         localField: 'policyId',
+            //         foreignField: '_id',
+            //         as: 'policyDetails'
+            //     }
+            // },
             {
                 $lookup: {
-                    from: 'leavePolicy',
+                    from: 'leavePolicyList',
                     localField: 'policyId',
                     foreignField: '_id',
                     as: 'policyDetails'
@@ -835,5 +848,41 @@ export  const getUserAppliedLeavesTransaction=async (body) => {
     } catch (error) {
         logger.error("Error while getUserAppliedLeavesTransaction in leave module");
         throw error;
+    }
+}
+
+
+export const leaveBalanceUsers=async(body)=>{
+    try{
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const query={
+            isActive:true,
+            nextCreditingDate: { $lte:today }
+        }
+
+        const pipeline=[
+            {
+                $match:query
+            },
+            // {
+            //     $project:{
+            //         transaction:0,
+            //         usedTransaction:0
+            //     }
+            // }
+        ]
+
+        const paginationQuery={
+            page:body.page,
+            limit:body.limit
+        }
+
+        // return await aggregationWithPegination(pipeline,paginationQuery,'leaveBalance')
+        return await aggregate(query,'leaveBalance')
+
+    }catch(error){
+        logger.error('error in leave balance users',{ stack: error.stack })
+        throw error
     }
 }

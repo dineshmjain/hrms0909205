@@ -4,10 +4,12 @@ import toast from "react-hot-toast";
 import {
   clientBranchCreateAction,
   clientBranchListAction,
+  clientBranchRequirementAction,
 } from "../Action/ClientBranch/ClientBranchAction";
 
 const initialState = {
   clientBranchList: [],
+  clientRequirements:{},
   loading: false,
   error: "",
   totalRecord: 0,
@@ -75,6 +77,29 @@ const ClientBranchReducer = createSlice({
         );
 
         toast.error(validationMessage);
+      });
+//client Branch Requirement
+         builder
+      .addCase(clientBranchRequirementAction.pending, (state, action) => {
+        state.pageNo = action?.meta?.arg?.page || 1;
+        state.limit = action?.meta?.arg?.limit || 10;
+        state.status = "loading";
+        state.error = "";
+        state.loading = true;
+      })
+      .addCase(clientBranchRequirementAction.fulfilled, (state, action) => {
+        state.error = "";
+        state.loading = false;
+        state.clientRequirements = action.payload?.data || {}; // Ensure correct path to data and handle empty cases
+        state.totalRecord = action.payload?.totalRecord;
+      })
+      .addCase(clientBranchRequirementAction.rejected, (state, action) => {
+        toast.dismiss();
+        console.log("Action failed:", action);
+        state.error = action.error.message;
+        state.loading = false;
+        state.clientRequirements = {};
+        console.log("BranchGetAction Error rejected-->", action.error);
       });
   },
 });

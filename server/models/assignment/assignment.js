@@ -473,5 +473,69 @@ export const removeMultiple = async(body)=>{
     }
 }
 
+export const getUserDetailsbyAssignmentId = async (assignmentId) => {
+    try {
+        const query = [
+            {
+                $match: {
+                    _id: new ObjectId(assignmentId)
+                }
+            },
+            {
+                $lookup: {
+                    from: "organization",
+                    localField: "orgId",
+                    foreignField: "_id",
+                    as: "Org"
+                }
+            },
+            {
+                $addFields: {
+                    OrgName: { $arrayElemAt: ["$Org.name", 0] }
+                }
+            },
+            {
+                $lookup: {
+                    from: "organization",
+                    localField: "subOrgId",
+                    foreignField: "_id",
+                    as: "subOrg"
+                }
+            },
+            {
+                $addFields: {
+                    subOrgName: { $arrayElemAt: ["$subOrg.name", 0] }
+                }
+            },
+            {
+                $lookup: {
+                    from: "branches",
+                    localField: "branchId",
+                    foreignField: "_id",
+                    as: "branches"
+                }
+            },
+            {
+                $addFields: {
+                    branchName: { $arrayElemAt: ["$branches.name", 0] }
+                }
+            },
+
+            {
+                $project: {
+                    branches: 0,
+                    subOrg: 0,
+                    Org: 0
+                }
+            }
+        ]
+        return aggregate(query, collection_name)
+    }
+    catch (error) {
+        logger.error("Error while get UserDetailsbyAssignmentIds function in assignment model");
+        throw error;
+    }
+}
+
 
 

@@ -1,17 +1,43 @@
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import * as Yup from "yup";
-import FormikInput from "../../../components/Input/FormikInput";
+import FormikInput from "../../../components/input/FormikInput";
 import SubCardHeader from "../../../components/header/SubCardHeader";
 import { getTypeOfIndustyAction } from "../../../redux/Action/Global/GlobalAction";
+import SingleSelectDropdown from "../../../components/SingleSelectDropdown/SingleSelectDropdown";
 import { useFormikContext } from "formik";
 import { Form, useNavigate } from "react-router-dom";
 import moment from "moment";
 import { FaEye, FaEyeSlash, FaUserCircle } from "react-icons/fa";
 import axiosInstance from "../../../config/axiosInstance";
-import { Avatar } from "@material-tailwind/react";
+import { Avatar, Typography } from "@material-tailwind/react";
 import ProfileImageUploader from "./ProfileImageUploader";
+import { ShiftGetAction } from "../../../redux/Action/Shift/ShiftAction";
 
+const genderOptions = [
+  { label: "Male", value: "male" },
+  { label: "Female", value: "female" },
+];
+
+const maritalStatusOptions = [
+  { label: "Single", value: "single" },
+  { label: "Married", value: "married" },
+];
+
+const bloodGroupOptions = [
+  { label: "A+", value: "A+" },
+  { label: "A-", value: "A-" },
+  { label: "B+", value: "B+" },
+  { label: "B-", value: "B-" },
+  { label: "O+", value: "O+" },
+  { label: "O-", value: "O-" },
+  { label: "AB+", value: "AB+" },
+  { label: "AB-", value: "AB-" },
+];
+const settingOptions = [
+  { label: "Branch Setting", value: "branch" },
+  { label: "Shift Setting", value: "shift" },
+];
 //  Exporting field config for Formik in parent
 export const BasicConfig = () => {
   return {
@@ -25,6 +51,14 @@ export const BasicConfig = () => {
       joinDate: moment().format("yyyy-MM-DD"),
       dateOfBirth: "",
       profileImage: "",
+      employeeId: "",
+      gender: "",
+      qualification: "",
+      maritalStatus: "",
+      bloodGroup: "",
+      workTimingType: "", // 'branch' or 'shift'
+      shiftIds: [], // store selected shift IDs
+      salaryConfig: false, // default false
     },
     validationSchema: {
       firstName: Yup.string().required("First Name is required").min(3),
@@ -42,16 +76,22 @@ export const BasicConfig = () => {
         "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$",
         "Not a valid Email"
       ),
-      dateOfBirth:Yup.date().max(moment().subtract(14, 'years').toDate(), 'Employee must be at least 14 years old').required("Date Of Birth is required"),
+      dateOfBirth: Yup.date()
+        .max(
+          moment().subtract(14, "years").toDate(),
+          "Employee must be at least 14 years old"
+        )
+        .required("Date Of Birth is required"),
       joinDate: Yup.string().required("Joining Date is required"),
     },
   };
 };
 
 // ✅ React component
-const BasicInformation = () => {
+const BasicInformation = ({ showProfileImage = true, columns = 4 }) => {
   const dispatch = useDispatch();
-
+  const shiftList = useSelector((state) => state.shift?.shiftList || []);
+  console.log("Shift List Logs", shiftList);
   // ✅ Use Redux state correctly
   const { typeOfIndustries = [] } = useSelector((state) => state.global);
   const { values, setFieldValue } = useFormikContext();
@@ -59,6 +99,7 @@ const BasicInformation = () => {
   // ✅ Fetch dropdown data
   useEffect(() => {
     dispatch(getTypeOfIndustyAction());
+    dispatch(ShiftGetAction());
   }, [dispatch]);
 
   const [profileImage, setProfileImage] = useState(null);
@@ -74,7 +115,10 @@ const BasicInformation = () => {
 
     const baseURL = import.meta.env.VITE_BASE_URL?.replace(/\/+$/, "");
     const imagePath = path.startsWith("/") ? path : `/${path}`; // Ensure the path starts with /
-    console.log(`${baseURL}${imagePath}`,'======================================recived image')
+    console.log(
+      `${baseURL}${imagePath}`,
+      "======================================recived image"
+    );
     return `${baseURL}${imagePath}`; // Combine base URL with image path
   }
   const handleImageChange = async (event) => {
@@ -136,8 +180,16 @@ const BasicInformation = () => {
   return (
     <div className="w-full">
       <SubCardHeader headerLabel={"Basic Information"} />
-      <div className="flex flex-col lg:flex-row justify-between py-2 gap-4">
-        <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 flex-1 flex-wrap gap-4">
+      <div className="flex flex-col lg:flex-row justify-between py-2 gap-2">
+        <div
+          className={`text-start grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-${columns} flex-1 flex-wrap gap-6`}
+        >
+          <FormikInput
+            name="employeeId"
+            size="sm"
+            label="Employee ID"
+            inputType="input"
+          />
           <FormikInput
             name="firstName"
             size="sm"
@@ -186,12 +238,48 @@ const BasicInformation = () => {
             type="date"
             max={moment().subtract(14, "y").endOf("Year").format("yyyy-MM-DD")}
           />
+
+          <FormikInput
+            name="qualification"
+            size="sm"
+            label="Qualification"
+            inputType="input"
+          />
+          <SingleSelectDropdown
+            inputName="Gender"
+            listData={genderOptions}
+            selectedOption={values.gender} // from Formik
+            selectedOptionDependency="value"
+            feildName="label"
+            handleClick={(option) => setFieldValue("gender", option.value)}
+          />
+
+          <SingleSelectDropdown
+            inputName="maritalStatus"
+            listData={maritalStatusOptions}
+            selectedOption={values.maritalStatus} // from Formik
+            selectedOptionDependency="value"
+            feildName="label"
+            handleClick={(option) =>
+              setFieldValue("maritalStatus", option.value)
+            }
+          />
+          <SingleSelectDropdown
+            inputName="Blood Group"
+            listData={bloodGroupOptions}
+            selectedOption={values.bloodGroup} // from Formik
+            selectedOptionDependency="value"
+            feildName="label"
+            handleClick={(option) => setFieldValue("bloodGroup", option.value)}
+          />
         </div>
 
-        <ProfileImageUploader
-          onUpload={uploadImage}
-          defaultImage={getProfileImageUrl(values.profileImage)}
-        />
+        {showProfileImage && (
+          <ProfileImageUploader
+            onUpload={uploadImage}
+            defaultImage={getProfileImageUrl(values.profileImage)}
+          />
+        )}
         {console.log(
           "Final profile image URL:",
           getProfileImageUrl(values.profileImage)
@@ -228,6 +316,60 @@ const BasicInformation = () => {
                       Click to upload profile image
                     </span>
         </div> */}
+      </div>
+      <Typography variant="h6" className="font-semibold text-gray-800 mt-4">
+        Employee Settings
+      </Typography>
+      <div className="col-span-full flex items-center gap-6 mb-4 mt-2 flex-wrap">
+        {/* Radio Buttons for Work Timing Type */}
+        {settingOptions.map((option) => (
+          <label
+            key={option.value}
+            className="flex items-center gap-2 cursor-pointer"
+          >
+            <input
+              type="radio"
+              name="workTimingType"
+              value={option.value}
+              className="accent-blue-600"
+              checked={values.workTimingType === option.value}
+              onChange={() => {
+                setFieldValue("workTimingType", option.value);
+                // Reset shift when changing from shift to branch
+                if (option.value !== "shift") setFieldValue("shiftIds", []);
+              }}
+            />
+            <span className="text-gray-700">{option.label}</span>
+          </label>
+        ))}
+
+        {/* Shift Dropdown shown only when shift is selected */}
+        {values.workTimingType === "shift" && (
+          <div className="w-64">
+            <SingleSelectDropdown
+              inputName="Shift"
+              placeholder="Select Shift"
+              listData={shiftList}
+              selectedOption={values.shiftIds[0] || ""}
+              selectedOptionDependency="_id"
+              feildName="name"
+              handleClick={(option) => setFieldValue("shiftIds", [option._id])}
+              hideLabel={true}
+            />
+          </div>
+        )}
+      </div>
+      <div className="col-span-full flex items-center gap-2 mt-2">
+        <input
+          type="checkbox"
+          name="salaryConfig"
+          className="accent-blue-600"
+          checked={values.salaryConfig}
+          onChange={(e) => setFieldValue("salaryConfig", e.target.checked)}
+        />
+        <span className="text-gray-700">
+          Would you like to add default salary setting to this employee?
+        </span>
       </div>
     </div>
   );

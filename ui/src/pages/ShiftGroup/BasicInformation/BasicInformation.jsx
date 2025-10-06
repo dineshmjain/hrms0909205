@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useLocation } from 'react-router-dom';
 import { Form, useFormikContext } from 'formik';
 import * as Yup from 'yup';
-import FormikInput from '../../../components/Input/FormikInput';
+import FormikInput from '../../../components/input/FormikInput';
 
 import { SubOrgListAction } from '../../../redux/Action/SubOrgAction/SubOrgAction';
 import { BranchGetAction } from '../../../redux/Action/Branch/BranchAction';

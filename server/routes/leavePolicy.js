@@ -34,7 +34,8 @@ router.post('/create',
 
 // create leave policy
 router.post('/add',
-    celebrate(validation.addPolicy),
+    // celebrate(validation.addPolicy),
+    celebrate(validation.addPolicyMaster),
     auth.isAuth,
     user.isUserValid,
     leavePolicy.createPolicy
@@ -55,7 +56,8 @@ router.post('/get',
 
 // update leave policy
 router.post('/edit',
-    celebrate(validation.updatePolicy),
+    // celebrate(validation.updatePolicy),
+    celebrate(validation.updaatePolicyMaster),
     auth.isAuth,
     user.isUserValid,
     leavePolicy.isPolicyExists,
@@ -76,6 +78,31 @@ router.post('/active/deactivate',
         return apiResponse.successResponse(response, `Leave policy ${request.body.isActive?'Activated':'Deactivated'}  successfully!`)
     }
 )
+
+
+// create leave policies based on 
+router.post('/add/dropdown',
+    celebrate(validation.addLeavePolicyDropddown),
+    auth.isAuth,
+    user.isUserValid,
+    leavePolicy.isExistPolicyName,
+    leavePolicy.addPolicies,
+    (request,response)=>{
+        return apiResponse.successResponse(response,'leave policy added successfully')
+    }
+)
+
+
+router.get('/get/policies/dropdown',
+    auth.isAuth,
+    user.isUserValid,
+    leavePolicy.getPolicies,
+    (request,response)=>{
+        return apiResponse.successResponseWithData(response,'leave policy added successfully',request.body.policies)
+    }
+
+)
+
 
 
 export default router

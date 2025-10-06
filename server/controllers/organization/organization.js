@@ -108,7 +108,12 @@ export const getOrg = async(request, response, next) => {
             request.body.subOrgId = request.query.subOrgId;
         }
         orgModel.get(request.body).then(async result=>{
-            if(!result.status && !request.body.getOrgResponseSkip) return apiResponse.notFoundResponse(response, "No organization")
+            if(!result.status && !request.body.getOrgResponseSkip && !request.body.wizardGetAllData) return apiResponse.notFoundResponse(response, "No organization")
+            if(request.body.wizardGetAllData) {
+                request.body.allDataRes = {}
+
+                if(result.status && result.data) request.body.allDataRes['organization'] = result.data
+            }
             request.body.orgDetails = result.data
             
             return next()
@@ -194,6 +199,7 @@ export const addClientOrganization=async(request,response,next)=>{
 // add suborganiation defaultely
 export const addSubOrganization=(request,response,next)=>{
     try{
+        if(request.body.wizardAdd && request.body.structure != 'group') return next() // in wizard flow if org exist then skip this middleware
         if(request.body.orgExist) return next();
         // if(!request.body.addSubOrg) return next()
         orgModel.addSubOrg(request.body).then(result=>{
@@ -337,6 +343,33 @@ export const findOrgData = (request,response,next) => {
         }else return next()
     } catch (error) {
         logger.error("Error while findOrgData in organization controller ",{ stack: error.stack });
+        return apiResponse.somethingResponse(response, error.message)
+    }
+}
+
+export const getOrgStructure = async (request, response, next) => {
+    try {
+        let activeFeat = request.body.activeFeatures
+
+        request.body.structureOrg = ""
+
+        let structureObj = {
+            branch : "structure1",
+            organization : "structure2",
+            group : "structure3",
+        }
+
+        for(const sObj in structureObj) {
+            let val = structureObj[sObj]
+
+            if(activeFeat[val]) request.body.structureOrg = sObj
+        }
+
+        return next()
+
+    }
+    catch (error) {
+        logger.error("Error while get structure in organization controller ",{ stack: error.stack });
         return apiResponse.somethingResponse(response, error.message)
     }
 }

@@ -67,14 +67,14 @@ export const getMany = async (query = {},collection_name,projection) => {
   } 
 }
 
-export const getOne = async (query,collection_name,projection) => {
+export const getOne = async (query,collection_name,projection, sort = {}) => {
     let db;
     try {
       db = await connectToDB();
       const collection = db.collection(collection_name);
       projection = projection || {};
      
-      const result = await collection.findOne(query,{ projection : projection });
+      const result = await collection.findOne(query,{ projection : projection },sort);
       if(result == null || result.length==0) return {status:false}
       
       return {status:true, data:result}  

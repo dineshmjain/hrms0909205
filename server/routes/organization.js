@@ -10,6 +10,8 @@ import {validation} from '../helper/validationSchema.js';
 import * as department from '../controllers/department/department.js';
 import * as designation from '../controllers/designation/designation.js';
 import * as shift from '../controllers/shift/shift.js';
+import * as subscription from '../controllers/subscription/subscription.js';
+import * as salary from '../controllers/salary/salary.js'
 const router = Router(); 
 
 router.use((request,response,next)=>{
@@ -32,6 +34,8 @@ router.post('/add/group',
     department.addDefaultDepartments,
     designation.addDefaultDesignations,
     shift.AddDefaultShifts,
+    salary.addDefaultSalaryComponents,
+
     (request, response, next) => {
         return apiResponse.successResponse(response, "Group Added successfully")
     }
@@ -50,8 +54,30 @@ router.post('/add',
     department.addDefaultDepartments,
     designation.addDefaultDesignations,
     shift.AddDefaultShifts,
+    salary.addDefaultSalaryComponents,
     (request, response, next) => {
         return apiResponse.successResponse(response, "Organization Added successfully")
+    }
+)
+
+router.post('/wizard/add',
+    // celebrate(validation.addGroup),
+    (request, response, next) => {
+        request.body.wizardAdd = true // in wizard flow sub org will be true
+        return next();
+    },
+    auth.isAuth,
+    user.isUserValid,
+    org.isOrgExist,
+    org.addOrgStructureParameters,
+    org.addOrganization,
+    org.addSubOrganization,
+    department.addDefaultDepartments,
+    designation.addDefaultDesignations,
+    // shift.AddDefaultShifts,
+    salary.addDefaultSalaryComponents,
+    (request, response, next) => {
+        return apiResponse.successResponse(response, "Organization and Branch Details Added successfully")
     }
 )
 
@@ -80,6 +106,17 @@ router.post(
     }
 )
 
+router.post(
+    "/structure/get",
+    auth.isAuth,
+    user.isUserValid,  
+    user.getAdminUser,
+    subscription.getActiveFeatures,
+    org.getOrgStructure,
+    (request,response) => {
+        return apiResponse.successResponseWithData(response,"Structure Found successfully",request.body.structureOrg)
+    }
+)
 export default router;
 
 

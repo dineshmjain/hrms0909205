@@ -1,5 +1,14 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { LeavePolicyCreateApi, LeavePolicyGetApi , LeavePolicyUpdateApi , LeaveRequestGetApi , LeavePolicyStatusApi , LeaveRequestApproveRejectCreateApi, LeaveBalanceUserCreateApi } from "../../../apis/Leave/Leave";
+import {
+  LeavePolicyCreateApi,
+  LeavePolicyGetApi,
+  LeavePolicyUpdateApi,
+  LeaveRequestGetApi,
+  LeavePolicyStatusApi,
+  LeaveRequestApproveRejectCreateApi,
+  LeaveBalanceUserCreateApi,
+  LeavePolicyNameGetApi,
+} from "../../../apis/Leave/Leave";
 
 export const LeavePolicyCreateAction = createAsyncThunk(
   "LeavePolicyCreate",
@@ -47,18 +56,18 @@ export const LeavePolicyGetAction = createAsyncThunk(
   }
 );
 export const LeavePolicyStatusUpdateAction = createAsyncThunk(
-  'LeavePolicy',
-   async (PolicyDetails,{ rejectWithValue }) => {
-    console.log(PolicyDetails)
+  "LeavePolicy",
+  async (PolicyDetails, { rejectWithValue }) => {
+    console.log(PolicyDetails);
     try {
-        const data = await LeavePolicyStatusApi(PolicyDetails);
-        console.log('LeavePolicy Successs -->', data)
-        return data;
+      const data = await LeavePolicyStatusApi(PolicyDetails);
+      console.log("LeavePolicy Successs -->", data);
+      return data;
     } catch (error) {
-        console.log('LeavePolicy Error -->', error)
-        return rejectWithValue(error || { message: 'Unknown error occurred' });
+      console.log("LeavePolicy Error -->", error);
+      return rejectWithValue(error || { message: "Unknown error occurred" });
     }
-}
+  }
 );
 
 export const LeaveRequestGetAction = createAsyncThunk(
@@ -80,7 +89,9 @@ export const LeaveRequestApproveRejectAction = createAsyncThunk(
   "LeaveRequestApproveReject",
   async (requestApproveReject, { rejectWithValue }) => {
     try {
-      const data = await LeaveRequestApproveRejectCreateApi(requestApproveReject);
+      const data = await LeaveRequestApproveRejectCreateApi(
+        requestApproveReject
+      );
       console.log("Leave Request Success -->", data);
       return data;
     } catch (error) {
@@ -100,6 +111,21 @@ export const LeaveBalanceUserAction = createAsyncThunk(
       return data;
     } catch (error) {
       console.log("Leave Balance App Rej Error -->", error);
+      return rejectWithValue(
+        error?.response || error || { message: "Unknown error occurred" }
+      );
+    }
+  }
+);
+export const LeavePolicyNameGetAction = createAsyncThunk(
+  "LeavePolicyNameGet",
+  async (policyGetCredentials, { rejectWithValue }) => {
+    try {
+      const data = await LeavePolicyNameGetApi(policyGetCredentials);
+      console.log("Leave Policy Name Success -->", data);
+      return data;
+    } catch (error) {
+      console.log("Leave Policy  Name create Error -->", error);
       return rejectWithValue(
         error?.response || error || { message: "Unknown error occurred" }
       );

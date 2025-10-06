@@ -1,53 +1,44 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import Header from "../../../components/header/Header";
-import { Typography, Input } from "@material-tailwind/react";
-import SingleSelectDropdown from "../../../components/SingleSelectDropdown/SingleSelectDropdown";
 import { useNavigate } from "react-router-dom";
-import { PiInfoBold } from "react-icons/pi";
-import TooltipMaterial from "../../../components/TooltipMaterial/TooltipMaterial";
-import SubCardHeader from "../../../components/header/SubCardHeader";
-import { LeavePolicyCreateAction } from "../../../redux/Action/Leave/LeaveAction";
+import {
+  LeavePolicyCreateAction,
+  LeavePolicyUpdateAction,
+  LeavePolicyNameGetAction,
+} from "../../../redux/Action/Leave/LeaveAction";
 import { useDispatch, useSelector } from "react-redux";
 import PolicyForm from "./PolicyForm";
-
+import { BranchGetAction } from "../../../redux/Action/Branch/BranchAction";
 const AddConfig = () => {
   const [errors, setErrors] = useState({});
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const leavePolicyList = useSelector(
+    (state) => state.leave?.LeavePolicyNameList || []
+  );
+
+  const [leavePolicyOptions, setLeavePolicyOptions] = useState([]);
+
   const [form, setForm] = useState({
-    leaveName: "",
-    type: {},
-    days: null,
-    appType: {},
+    leavePolicy: {},
+    yearlyCount: "",
+    isMonthly: false,
+    monthlyCount: "",
     creditedDay: {},
     creditedMonth: {},
-    gender: {},
-    paidType: {},
-    eligibleNoOfDays: "",
-    applyBeforeDays: 0,
-    applyAfterDays: 0,
+    leaveHandling: {},
+    handlingType: {},
+    maxAllowedLeave: "",
+    salaryBasis: {},
+    salaryPercent: "",
+    branchId: "", // Make sure to set this from somewhere
   });
-  const typeList = [
-    { label: "Monthly", value: "monthly" },
-    { label: "Yearly", value: "yearly" },
-  ];
-  const appTypes = [
-    { label: "Pre", value: "pre" },
-    { label: "Post", value: "post" },
-  ];
-  const genders = [
-    { label: "All", value: "all" },
-    { label: "Male", value: "male" },
-    { label: "Female", value: "female" },
-  ];
-  const paidTypes = [
-    { label: "Yes", value: "Yes" },
-    { label: "No", value: "No" },
-  ];
+
   const monthDay = Array.from({ length: 28 }, (_, i) => ({
     label: `${i + 1}`,
     value: `${i + 1}`,
   }));
+
   const YearlyMonth = [
     { label: "January", value: "January" },
     { label: "February", value: "February" },
@@ -62,96 +53,199 @@ const AddConfig = () => {
     { label: "November", value: "November" },
     { label: "December", value: "December" },
   ];
+  const { branchList } = useSelector((state) => state?.branch);
+  console.log("branchList from Redux:", branchList);
+  // Convert branchList to dropdown options
+  const branchOptions = branchList.map((b) => ({
+    label: b.name,
+    value: b._id,
+  }));
+  useEffect(() => {
+    dispatch(LeavePolicyNameGetAction());
+  }, [dispatch]);
+  useEffect(() => {
+    dispatch(BranchGetAction({ mapedData: "branch", orgLevel: true }));
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (leavePolicyList.length) {
+      const options = leavePolicyList.map((item) => ({
+        label: item.name,
+        value: item._id,
+      }));
+      setLeavePolicyOptions(options);
+    }
+  }, [leavePolicyList]);
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+
+    setForm((prev) => {
+      let updatedForm = {
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      };
+
+      // Auto-calc monthlyCount when yearlyCount changes
+      if (name === "yearlyCount" && updatedForm.isMonthly) {
+        updatedForm.monthlyCount = Math.floor(value / 12) || 0;
+      }
+
+      // Auto-calc monthlyCount when toggling isMonthly
+      if (name === "isMonthly") {
+        if (checked && updatedForm.yearlyCount) {
+          updatedForm.monthlyCount =
+            Math.floor(updatedForm.yearlyCount / 12) || 0;
+        } else {
+          updatedForm.monthlyCount = "";
+        }
+      }
+
+      return updatedForm;
+    });
+
+    // Clear error for this field
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: null }));
+    }
   };
+
   const handleDropdownChange = (field) => (selected) => {
-    setForm((prev) => ({
-      ...prev,
-      [field]: selected || ""
-    }));
+    setForm((prev) => {
+      // If selecting branch, update branchId as well
+      if (field === "branch") {
+        return {
+          ...prev,
+          branch: selected || {},
+          branchId: selected?.value || "", // <-- crucial
+        };
+      }
+      return {
+        ...prev,
+        [field]: selected || {},
+      };
+    });
     setErrors((prev) => ({ ...prev, [field]: null }));
   };
+
   const validate = () => {
     const temp = {};
-    if (!form.leaveName) {
-      temp.leaveName = "Name is required";
-    } else if (/^\s/.test(form.leaveName)) {
-        temp.leaveName = "Name cannot start with a whitespace";
+
+    // Validate leave policy selection
+    if (!form.leavePolicy?.value) {
+      temp.leavePolicy = "Please select a leave policy";
+    }
+
+    // Validate yearly count
+    if (!form.yearlyCount) {
+      temp.yearlyCount = "Yearly count is required";
+    } else if (form.yearlyCount <= 0) {
+      temp.yearlyCount = "Yearly count must be greater than 0";
+    }
+
+    // Validate credited day
+    if (!form.creditedDay?.value) {
+      temp.creditedDay = "Please select a credited day";
+    }
+
+    // Validate credited month (only if not monthly)
+    if (!form.isMonthly && !form.creditedMonth?.value) {
+      temp.creditedMonth = "Please select a credited month";
+    }
+
+    // Validate leave handling
+    if (!form.leaveHandling?.value) {
+      temp.leaveHandling = "Please select leave handling option";
+    }
+
+    // Validate handling type if carry or salary
+    if (
+      (form.leaveHandling?.value === "carry" ||
+        form.leaveHandling?.value === "salary") &&
+      !form.handlingType?.value
+    ) {
+      temp.handlingType = "Please select handling type";
+    }
+
+    // Validate salary conversion fields
+    if (form.leaveHandling?.value === "salary") {
+      if (!form.maxAllowedLeave) {
+        temp.maxAllowedLeave = "Max allowed leave is required";
       }
-    if (!form.type.value) {
-      temp.type = "Select Repeat Cycle";
+      if (!form.salaryBasis?.value) {
+        temp.salaryBasis = "Please select salary basis";
+      }
+      if (!form.salaryPercent) {
+        temp.salaryPercent = "Salary percent is required";
+      }
     }
-    if (!form.days) {
-      temp.days = "No Of Days is Required";
-    }else if(form.days.length>3){
-       temp.days = "Only 3 Digits allowed";
-    }
-    if (!form.gender.value) {
-      temp.gender = "Gender is Required";
-    }
-    if (!form.appType.value) {
-      temp.appType = "Approval Type is Required";
-    }
-    if (!form.paidType.value) {
-      temp.paidType = "Paid Type is Required";
-    }
-    // if (!form.applyBeforeDays) {
-    //   temp.applyBeforeDays = "Applied Before Days Is Required";
-    // }else if(form.applyBeforeDays.length>3){
-    //    temp.applyBeforeDays = "Only 3 Digits allowed";
-    // }
-    // if (!form.applyAfterDays) {
-    //   temp.applyAfterDays = "Applied After Days Is Required";
-    // }else if(form.applyAfterDays.length>3){
-    //    temp.applyAfterDays = "Only 3 Digits allowed";
-    // }
-    // if (!form.eligibleNoOfDays) {
-    //   temp.eligibleNoOfDays = "Eligible Days Is Required";
-    // }else if(form.eligibleNoOfDays.length>3){
-    //    temp.eligibleNoOfDays = "Only 3 Digits allowed";
-    // } 
+
     setErrors(temp);
     return Object.keys(temp).length === 0;
   };
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+
+  const handleSubmit = async () => {
+    console.log("Submit clicked - validating...");
+
     if (!validate()) {
+      console.log("Validation failed:", errors);
       return;
     }
+
     try {
-      const json = {
-        "name": form.leaveName,
-        "cycle": {
-          "type": form.type?.value,
-          "creditedDay": form.creditedDay?.value,
+      // Base payload
+      const payload = {
+        branchId: form.branchId,
+        noOfDays: form.isMonthly ? form.monthlyCount : form.yearlyCount,
+        cycle: {
+          type: form.isMonthly ? "monthly" : "yearly",
+          creditedDay: form.creditedDay?.value,
+          ...(form.isMonthly
+            ? {}
+            : { creditedMonth: form.creditedMonth?.value }),
         },
-        "noOfDays": form.days,
-        "genderEligibility": form.gender?.value,
-        "eligibleNoOfDays": form.eligibleNoOfDays,
-        "approval": {
-          "type": form.appType.value,
-          "applyBeforeDays": form.applyBeforeDays,
-          "applyAfterDays": form.applyAfterDays
-        },
-        "isPaid": form.paidType.value === "Yes" ? true : false
+        carryForwardEnabled: form.leaveHandling?.value === "carry",
+        ...(form.leaveHandling?.value === "carry"
+          ? { carryForwardCycle: form.handlingType?.value }
+          : {}),
+        salaryConversionEnabled: form.leaveHandling?.value === "salary",
+        ...(form.leaveHandling?.value === "salary"
+          ? {
+              salaryConversionCycle: form.handlingType?.value,
+              maxLeavesConvertSalary:
+                form.handlingType?.value === "yearly"
+                  ? form.maxAllowedLeave
+                  : undefined,
+              leaveEncashmentRatePerDaySalary: form.salaryPercent,
+              salaryConversionBase: form.salaryBasis?.value,
+            }
+          : {}),
+        isExpiredLeaveAtMonthEnd: false,
+      };
+
+      // CREATE: include leavePolicyId
+      if (!form._id) {
+        payload.leavePolicyId = form.leavePolicy?.value;
       }
-      if (form.creditedMonth) {
-        json.cycle["creditedMonth"] = form.creditedMonth?.value
-      }
-      console.log(json, "give json");
-      const result = await dispatch(LeavePolicyCreateAction({ ...json }));
+
+      console.log("Payload for API:", payload);
+
+      const result = await dispatch(
+        form._id
+          ? LeavePolicyUpdateAction({ _id: form._id, ...payload })
+          : LeavePolicyCreateAction(payload)
+      );
+
+      console.log("API Result:", result);
+
       if (result?.meta?.requestStatus === "fulfilled") {
         navigate("/policy/list");
       }
     } catch (error) {
       console.error("Submission Error:", error);
     }
-  }
+  };
+
   return (
     <div className="flex flex-col w-full p-2 flex-1 bg-white border border-gray-100 rounded-md shadow-hrms overflow-auto">
       <Header
@@ -163,20 +257,18 @@ const AddConfig = () => {
       <PolicyForm
         form={form}
         errors={errors}
+        branchOptions={branchOptions}
         handleChange={handleChange}
         handleDropdownChange={handleDropdownChange}
-        typeList={typeList}
+        leavePolicyOptions={leavePolicyOptions}
         monthDay={monthDay}
         YearlyMonth={YearlyMonth}
-        genders={genders}
-        appTypes={appTypes}
-        paidTypes={paidTypes}
         setErrors={setErrors}
+        onSubmit={(e) => e.preventDefault()} // Prevent default form submission
         isEdit={false}
       />
     </div>
-  )
+  );
 };
-
 
 export default AddConfig;

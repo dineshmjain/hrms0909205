@@ -7,6 +7,11 @@ export const getShiftList = async (request,response,next) => {
     try
     {
         shiftModel.getShiftList(request.body).then(res => {
+
+            if(request.body.wizardGetAllData) {
+                if(res.status && res.data && res.data.length > 0) request.body.allDataRes['shift'] = res.data
+                return next()
+            }
             if(!res.status) return apiResponse.ErrorResponse(response,"Something went worng",res.error);
 
             // if(!res.data.length) return apiResponse.notFoundResponse(response,"Shift not found");
@@ -61,6 +66,27 @@ export const getOneShift = async (request,response,next) => {
             if(!res.status) return next()
 
             request.body.shift = res.data;
+            return next();
+        }).catch(error => {
+            request.logger.error("Error while getOneShift in shift controller ",{ stack: error.stack });
+            return apiResponse.somethingResponse(response, error.message)
+        })
+    }catch(error){
+        request.logger.error("Error while getOneShift in shift controller ",{ stack: error.stack });
+        return apiResponse.somethingResponse(response, error.message)
+    }
+};
+
+export const getAllShifts = async (request,response,next) => {
+    try{
+        
+        shiftModel.getAllShifts(request.body).then(res => {
+            if(!res.status) return next()
+
+            request.body.shiftObjData = res.data.reduce((acc,shift) => {
+                acc[shift._id] = shift;
+                return acc
+            },{});
             return next();
         }).catch(error => {
             request.logger.error("Error while getOneShift in shift controller ",{ stack: error.stack });

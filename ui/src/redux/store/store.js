@@ -20,11 +20,15 @@ import TaskReducer from '../reducer/TaskReducer'
 import ProjectReducer from '../reducer/projectReducer'
 import commentReducer from '../reducer/commentReducer'
 import errorReducer from '../reducer/ErrorReducer'
-import checkpointReducer from '../reducer/checkpointReducer'
+import checkpointReducer from '../reducer/CheckpointReducer'
 import PageLoaderReducer from '../reducer/PageLoaderReducer'
 import LeaveReducer from '../reducer/LeaveReducer'
 import HolidayReducer from '../reducer/HolidayReducer'
 import BannerReducer from "../reducer/BannerReducer";
+import WizardReducer from "../reducer/WizardReducer";
+import LeadReducer  from "../reducer/LeadReducer"
+import QuotationReducer from "../reducer/QuotationPriceReducer"
+import SalaryReducer from '../reducer/SalaryReducer'
 
 const appReducer = combineReducers({
   branch: BranchReducer,
@@ -53,6 +57,11 @@ const appReducer = combineReducers({
   leave:LeaveReducer,
   holidays: HolidayReducer,
   banner: BannerReducer,
+  wizard: WizardReducer,
+  leads:LeadReducer,
+  quotation:QuotationReducer,
+  salary: SalaryReducer,
+  wizard: WizardReducer,
   //  login:LoginReducer,
 });
 

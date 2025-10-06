@@ -26,7 +26,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <Toaster />
 
     <Provider store={store}>
-      <BrowserRouter base="/hrms">
+      <BrowserRouter basename="/hrms">
         <ThemeProvider value={theme}>
           <PromptProvider>
             <App />

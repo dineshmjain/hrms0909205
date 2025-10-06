@@ -60,7 +60,7 @@ const FormikInput = ({
             {...props}
             variant="outlined"
             size="md"
-            className="!border !border-gray-400 bg-white text-gray-900 focus:!border-gray-900 focus:ring-gray-900/10 rounded-md"
+            className="!border !border-gray-400 bg-white text-gray-900 placeholder-gray-600 focus:!border-gray-900 focus:ring-gray-900/10 rounded-md [&::placeholder]:opacity-100 [&::placeholder]:text-gray-600"
             onChange={(e) => {
               field.onChange(e);
               onChange?.(e);

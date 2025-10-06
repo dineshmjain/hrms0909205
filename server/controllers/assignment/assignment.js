@@ -7,6 +7,7 @@ import * as designation from '../../models/designation/designation.js';
 import * as branch from '../../models/branch/branch.js';
 import * as user from '../../models/user/user.js'
 import {matchesConditions} from '../../helper/formatting.js'
+import { request } from 'express';
 
 
 
@@ -594,6 +595,20 @@ export const getAssignmentIdBasedDesignation=(request,response,next)=>{
         })
     }catch(error){
         request.logger.error("Error while getAssignmentIdBasedDesignation in assignment controller ",{ stack: error.stack });
+        return apiResponse.somethingResponse(response, error.toString())
+    }
+}
+
+export const getUserDetailsbyAssignmentId = async (request, response, next) => {
+    try {
+        const result = await assignmentModel.getUserDetailsbyAssignmentId(request.body?.assignmentId)
+        if (!result.status) return apiResponse.notFoundResponse(response, "No Assigmnet  found for this assignmentId!")
+        request.body.userAssigmentDetails = result?.data?.[0] || {}
+        return next()
+
+    }
+    catch (error) {
+        request.logger.error("Error while getUserDetailsbyAssignmentId in assignment controller ", { stack: error.stack });
         return apiResponse.somethingResponse(response, error.toString())
     }
 }

@@ -4,7 +4,7 @@ import { useLocation } from "react-router-dom";
 import { Form, useFormikContext } from "formik";
 import moment from "moment";
 
-import FormikInput from "../../../components/Input/FormikInput";
+import FormikInput from "../../../components/input/FormikInput";
 import { SubOrgListAction } from "../../../redux/Action/SubOrgAction/SubOrgAction";
 import { BranchGetAction } from "../../../redux/Action/Branch/BranchAction";
 import { DepartmentGetAssignedAction } from "../../../redux/Action/Department/DepartmentAction";
@@ -107,7 +107,7 @@ const OfficialForm = ({ isEditAvailable }) => {
     <div className="w-full p-2">
       <Form>
         <div className="flex flex-col lg:flex-row justify-between py-2 gap-4">
-          <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 flex-1 flex-wrap gap-4">
+          <div className="text-start grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 flex-1 flex-wrap gap-4">
             
             {user?.modules?.["suborganization"]?.r && (
               <FormikInput

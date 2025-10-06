@@ -28,7 +28,10 @@ import dashoardPath from './dashboard.js';
 import bannerPath from './banner.js';
 import emergency from './emergency.js';
 import settingPath from './settings.js';
+import salaryPath from './salary.js'
+import otPath from './overtime.js';
 import biometricPath from './biometric.js'
+import quotationPath from './quotation.js'
 const app = express()
 
 /**
@@ -75,7 +78,10 @@ app.use('/dashboard',dashoardPath)
 app.use('/banner',bannerPath)
 app.use('/emergency',emergency)
 app.use('/settings',settingPath)
+app.use('/salary',salaryPath)
+app.use('/overtime',otPath)
 app.use('/biometric',biometricPath)
+app.use('/quotation',quotationPath)
 
 
 export default app

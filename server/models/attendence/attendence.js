@@ -450,6 +450,11 @@ export const addAttendenceData = async (body) => {
             // location: body.location,
         };
 
+        if(body.shift) {
+            query['startTime'] = body.shift.startTime,
+            query['endTime'] = body.shift.endTime
+        }
+
         if (body.shiftId) query.shiftId = new ObjectId(body.shiftId);
 
         if (body.branchId) query.branchId = new ObjectId(body.branchId);
@@ -2833,24 +2838,29 @@ export const getAllUserLogStatus = async (body) => {
                     approvalStatus: {
                         $switch: {
                             branches: [
-                                // 1. If ANY approvalStatus is null → "pending"
+                                // 1. If ANY approvalStatus is null OR array length is odd → "pending"
                                 {
                                     case: {
-                                        $gt: [
+                                        $or: [
                                             {
-                                                $size: {
-                                                    $filter: {
-                                                        input: "$transactions",
-                                                        cond: {
-                                                            $eq: [
-                                                                "$$this.approvalStatus",
-                                                                null
-                                                            ]
+                                                $gt: [
+                                                    {
+                                                        $size: {
+                                                            $filter: {
+                                                                input: "$transactions",
+                                                                cond: { $eq: ["$$this.approvalStatus", null] }
+                                                            }
                                                         }
-                                                    }
-                                                }
+                                                    },
+                                                    0
+                                                ]
                                             },
-                                            0
+                                            {
+                                                $eq: [
+                                                    { $mod: [{ $size: "$transactions" }, 2] },
+                                                    1
+                                                ]
+                                            }
                                         ]
                                     },
                                     then: "pending"
@@ -2863,21 +2873,14 @@ export const getAllUserLogStatus = async (body) => {
                                                 $size: {
                                                     $filter: {
                                                         input: "$transactions",
-                                                        cond: {
-                                                            $eq: [
-                                                                "$$this.approvalStatus",
-                                                                true
-                                                            ]
-                                                        }
+                                                        cond: { $eq: ["$$this.approvalStatus", true] }
                                                     }
                                                 }
                                             },
-                                            {
-                                                $size: "$transactions"
-                                            }
+                                            { $size: "$transactions" }
                                         ]
                                     },
-                                    then: "approval"
+                                    then: "approved"
                                 },
                                 // 3. If ALL approvalStatus are false → "rejected"
                                 {
@@ -2887,28 +2890,21 @@ export const getAllUserLogStatus = async (body) => {
                                                 $size: {
                                                     $filter: {
                                                         input: "$transactions",
-                                                        cond: {
-                                                            $eq: [
-                                                                "$$this.approvalStatus",
-                                                                false
-                                                            ]
-                                                        }
+                                                        cond: { $eq: ["$$this.approvalStatus", false] }
                                                     }
                                                 }
                                             },
-                                            {
-                                                $size: "$transactions"
-                                            }
+                                            { $size: "$transactions" }
                                         ]
                                     },
                                     then: "rejected"
                                 }
                             ],
-                            // Default if it doesn't match any above
                             default: "mixed"
                         }
                     }
                 }
+
             },
             {
                 $project: {

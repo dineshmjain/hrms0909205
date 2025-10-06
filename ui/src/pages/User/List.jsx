@@ -4,7 +4,7 @@ import Table from "../../components/Table/Table";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
-import { MdDelete, MdModeEditOutline } from "react-icons/md";
+import { MdDelete, MdModeEditOutline, MdShare } from "react-icons/md";
 import { EmployeeGetAction } from "../../redux/Action/Employee/EmployeeAction";
 import MultiSelectFilter from "../../components/Filter/MultiSelectFilter";
 import { removeEmptyStrings } from "../../constants/reusableFun";
@@ -59,17 +59,21 @@ const List = () => {
         editButton(data);
       },
     },
-
-    // {
-    //   title: "Delete",
-    //   text: <MdDelete className="w-5 h-5 text-pop" />,
-    //   onClick: (data, title) => {},
-    // },
+    {
+      title: "Share",
+      text: <MdShare className="w-5 h-5 text-pop" />,
+      onClick: (data, title) => {},
+    },
+    {
+      title: "Delete",
+      text: <MdDelete className="w-5 h-5 text-pop" />,
+      onClick: (data, title) => {},
+    },
   ];
 
   const labels = {
     // ...baseLabels,
-    
+
     firstName: {
       DisplayName: "First Name",
       type: "object",
@@ -82,7 +86,7 @@ const List = () => {
     },
     email: { DisplayName: "Email" },
     mobile: { DisplayName: "Mobile" },
-   ...conditionalLabels,
+    ...conditionalLabels,
     branchName: { DisplayName: "Branch", type: "object", objectName: "branch" },
     departmentName: {
       DisplayName: "Department",

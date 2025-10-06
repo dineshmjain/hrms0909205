@@ -164,31 +164,13 @@ export const getShiftByDate = async (request, response, next) => {
         shiftDateModel.getShiftByDate(request.body).then(res => {
             if (!res.status) throw {}
 
+            request.body.shiftByDate = res.data
             if(!request.body.dashboardStatus) {
-                request.body.shiftByDate = res.data
-                request.body.currentShift = res.data.map(shift => (shift.shiftDetails[0]));
+                // request.body.currentShift = res.data.map(shift => (request.body.shiftObjData[shift.currentShiftId] || {}));
                 return next()
             }
-            request.body.currentShift = [];
-            let currentShift = res.data;
-            for(let i = 0; i < currentShift.length; i++) {
-                let shiftDate = currentShift[i];
-                let currentDateTime = request.body.transactionDate ? new Date(request.body.transactionDate) : new Date();
 
-                const shiftStart = new Date();
-                const [startHour, startMin] = shiftDate.shiftDetails[0].startTime.split(":").map(Number);
-                shiftStart.setHours(startHour, startMin, 0, 0);
-
-                const shiftEnd = new Date();
-                const [endHour, endMin] = shiftDate.shiftDetails[0].endTime.split(":").map(Number);
-                shiftEnd.setHours(endHour, endMin, 0, 0);
-
-                if(currentDateTime >= shiftStart && currentDateTime <= shiftEnd) {
-                    request.body.currentShift.push(shiftDate.shiftDetails[0])
-                }
-            }
-
-            if (request.body.dashboardStatus && request.body.currentShift.length <= 0 && !request.body.existingCheckInOutData) return apiResponse.successResponseWithData(response, "No shift Available", { isCheckIn: false });
+            // if (request.body.dashboardStatus && request.body.currentShift.length <= 0 && !request.body.existingCheckInOutData) return apiResponse.successResponseWithData(response, "No shift Available", { isCheckIn: false });
 
             request.body.checkNearestShift=true
             // request.body.transactionDate=undefined

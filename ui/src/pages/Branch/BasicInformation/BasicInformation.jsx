@@ -1,7 +1,7 @@
 // import { useEffect } from 'react';
 // import { useDispatch, useSelector } from 'react-redux';
 // import * as Yup from 'yup';
-// import FormikInput from '../../../components/Input/FormikInput';
+// import FormikInput from '../../../components/input/FormikInput';
 // import SubCardHeader from '../../../components/header/SubCardHeader';
 // import { getTypeOfIndustyAction } from '../../../redux/Action/Global/GlobalAction';
 // import { useFormikContext } from 'formik';
@@ -78,7 +78,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { Form, useFormikContext } from "formik";
 import { useLocation } from "react-router-dom";
 import * as Yup from "yup";
-import FormikInput from "../../../components/Input/FormikInput";
+import FormikInput from "../../../components/input/FormikInput";
 import { SubOrgListAction } from "../../../redux/Action/SubOrgAction/SubOrgAction";
 import { useCheckEnabledModule } from "../../../hooks/useCheckEnabledModule";
 export const BasicConfig = () => {

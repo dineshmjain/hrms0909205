@@ -354,9 +354,9 @@ export const getShiftByDate = async (body) => {
   try {
     const orgId = body?.user?.orgId
     const userId = body?.user?._id
-    let start = new Date(body.date);
+    let start = body.date ? new Date(body.date) : new Date();
     start.setUTCHours(0, 0, 0, 0); // Start of the day
-    let end = new Date(body.date);
+    let end = body.date ? new Date(body.date) : new Date();
     end.setUTCHours(23, 59, 59, 999); // End of the day
     const query = {
       employeeId: new ObjectId(userId),
@@ -368,14 +368,6 @@ export const getShiftByDate = async (body) => {
     let aggregation = [
       {
         $match: query
-      },
-      {
-        $lookup: {
-          from: 'shift',
-          localField: 'currentShiftId',
-          foreignField: '_id',
-          as: 'shiftDetails'
-        }
       }
     ]
         console.log(JSON.stringify(aggregation), 'query')

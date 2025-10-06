@@ -233,3 +233,76 @@ export const approvalBits = [
     "isClientMatch",
     "isExtended"
 ]
+
+export const SoftwareID = 17
+
+export const onlyViewDaysAfterExpiry = 15
+
+export const planExpiryMessage = "Subscription Expired!...Please buy a new Plan"
+
+export const defaultSalaryComponents = [
+  // --- Earnings ---
+  { name: "basic pay", category: "earning", isStatutory: false },
+  { name: "dearness allowance (da)", category: "earning", isStatutory: false },
+  { name: "basic pay + dearness allowance (da)", category: "earning", isStatutory: false },
+  { name: "house rent allowance (hra)", category: "earning", isStatutory: false },
+  { name: "conveyance allowance", category: "earning", isStatutory: false },
+  { name: "special allowance", category: "earning", isStatutory: false },
+  { name: "bonus", category: "earning", isStatutory: false },
+
+  // --- Deductions ---
+  { name: "unpaid leave deduction", category: "deduction", isStatutory: false },
+  { name: "loan/advance recovery", category: "deduction", isStatutory: false },
+
+  // --- Statutory ---
+  {
+    name: "employee provident fund (epf)",
+    category: "deduction",
+    isStatutory: true,
+    statutoryDetails: {
+      contribution: { employee: 0.12, employer: 0.12 },
+      limit: 15000,
+      note: "Both employee and employer contribute 12% up to ₹15,000"
+    },
+  },
+  {
+    name: "employee state insurance (esi)",
+    category: "deduction",
+    isStatutory: true,
+    statutoryDetails: {
+      contribution: { employee: 0.0075, employer: 0.0325 },
+      limit: 21000,
+      note: "Applicable if gross salary ≤ ₹21,000"
+    },
+  },
+  {
+    name: "tax deducted at source (tds)",
+    category: "deduction",
+    isStatutory: true,
+    statutoryDetails: {
+      contribution: { employee: null, employer: 0 },
+      limit: null,
+      note: "As per income tax slab"
+    },
+  },
+  {
+    name: "professional tax",
+    category: "deduction",
+    isStatutory: true,
+    statutoryDetails: {
+      contribution: { employee: null, employer: 0 },
+      limit: null,
+      note: "As per state rules"
+    },
+  },
+  {
+    name: "labour welfare fund (lwf)",
+    category: "deduction",
+    isStatutory: true,
+    statutoryDetails: {
+      contribution: { employee: null, employer: null },
+      limit: null,
+      note: "As per state rules"
+    },
+  },
+];

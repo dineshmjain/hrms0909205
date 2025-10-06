@@ -1,4 +1,4 @@
-import FormikInput from "../../../../components/Input/FormikInput";
+import FormikInput from "../../../../components/input/FormikInput";
 
 const TemplateInfoForm = () => {
   return (

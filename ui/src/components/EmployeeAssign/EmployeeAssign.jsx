@@ -13,7 +13,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { Switch } from "@material-tailwind/react";
 import toast from "react-hot-toast";
-import { clientBranchListAction } from "../../redux/Action/ClientBranch/ClientBranchAction";
+import { clientBranchListAction, clientBranchRequirementAction } from "../../redux/Action/ClientBranch/ClientBranchAction";
 import { clientListAction } from "../../redux/Action/Client/ClientAction";
 import MultiSelectDropdown from "../MultiSelectDropdown/MultiSelectDropdown";
 import MultiSelectRadio from "../MultiSelectRadio/MultiSelectRadio";
@@ -128,6 +128,19 @@ const EmployeeAssign = ({ state }) => {
     },
   };
 
+  useEffect(()=>{
+getClientRequirements()
+  },[selectedClient])
+
+  const getClientRequirements =async()=>{
+    const params ={
+      clientMappedId:selectedClient?.clientMappedId,
+      branchId:selectedClient?.clientBranchIds
+    }
+    dispatch(clientBranchRequirementAction({...params}))
+
+  }
+
   const getEmployeeList = (paginationData = {}, silent = false) => {
     if (
       !selectedClient?.clientMappedId ||
@@ -234,14 +247,23 @@ useEffect(() => {
                   }}
                   hideLabel
                 />
-                <MultiSelectDropdown
-                  data={clientBranchList}
-                  selectedData={selectedClient?.clientBranchIds}
-                  Dependency={"_id"}
-                  FeildName="name"
+               <SingleSelectDropdown
+                  listData={clientBranchList}
+                  selectedOption={selectedClient?.clientBranchIds[0]}
+                  selectedOptionDependency={"_id"}
+                  feildName="name"
                   InputName={"Client Branch"}
-                  setFieldName={"clientBranchIds"}
-                  setSelectedData={setSelectedClient}
+                  handleClick={(data) => {
+                    setSelectedClient((prev) => {
+                      return {
+                       ...prev,
+                        clientBranchIds:[...prev.clientBranchIds,data?._id],
+                      };
+                    });
+                   
+                  }}
+                  // setFieldName={"clientBranchIds"}
+                  // setSelectedData={setSelectedClient}
                   hideLabel
                 />
                 <div className="flex items-center self-center justify-start ">

@@ -235,6 +235,11 @@ export const resetPassword = async (request, response, next) => {
 export const getUserList = async (request, response, next) => {
     try {
         const userList = await userModel.getUserList(request.body)
+
+        if (request.body.wizardGetAllData) {
+            if (userList.status && userList.data && userList.data.length > 0) request.body.allDataRes['users'] = userList.data
+            return next()
+        }
         if (!userList.status) return apiResponse.notFoundResponse(response, 'unable to fetch user list')
         
         request.body.userList = userList
@@ -1669,6 +1674,31 @@ export const getUserClients= (request, response, next) => {
     }
     catch (error) {
         request.logger.error("Error while getUserClients in user controller ", { stack: error.stack });
+        return apiResponse.somethingResponse(response, error.message)
+    }
+}
+
+export const getAdminUser = async(request, response, next) => {
+    try {
+        // since org does not exist before added, taking userId as adminId bc only admin create org
+        // if(request.originalUrl == '/api/v1/organization/add') {
+        //     request.body.adminUserId = request.body.userId
+        //     return next()
+        // }
+        // if(!request.body.authUser?.orgId && (request.originalUrl == '/api/v1/auth/login' || request.originalUrl == '/api/v1/auth/verify')) {
+        //     request.body.adminUserId = request.body.authUser?._id
+        //     return next()
+        // }
+        userModel.getAdminUser(request.body).then(res => {
+            if(!res.status) throw {}
+
+            request.body.adminUserId = res.data[0]._id
+            return next()
+        }).catch(error => {
+            return apiResponse.somethingResponse(response, "Unable to get Admin user details")
+        })
+    }
+    catch (error) {
         return apiResponse.somethingResponse(response, error.message)
     }
 }

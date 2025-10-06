@@ -20,4 +20,11 @@ router.use('/devices/get', auth.isAuth,user.isUserValid, biometricAuth.getDevice
         devices: request.body.deviceList
     });
 })
+
+router.use('/devices/add', auth.isAuth, user.isUserValid, biometricAuth.getDeviceToken, device.DeviceAdd, (request, response) => {
+    return apiResponse.successResponse(response, "Device added successfully", {
+        devices: request.body.deviceList
+    });
+})
+
 export default router;

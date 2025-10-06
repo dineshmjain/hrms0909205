@@ -49,6 +49,10 @@ function Add() {
   const typeOfIndustryList = useSelector(
     (state) => state.typeOfIndustury.typeList
   );
+  
+
+console.log("Redux state:", typeOfIndustryList);
+
 
   useEffect(() => {
     dispatch(GetTypeOfIndustry()).then(({ payload }) => {
@@ -57,6 +61,7 @@ function Add() {
       }
     });
   }, [dispatch]);
+  
 
   useEffect(() => {
     if (organizationCreate?.status === 200) {

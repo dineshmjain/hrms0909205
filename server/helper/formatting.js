@@ -2031,4 +2031,61 @@ export const mergeExistingAndNewContact=(existingContacts,newContacts)=>{
 
     return Object.values(contactMap);
 }
+
+export const validatePolygonBoundary=(polygon)=>{
+    if (polygon.type !== "Polygon") {
+      return { valid: false, reason: "Not a Polygon type" };
+    }
+   
+    const rings = polygon.coordinates;
+    if (!Array.isArray(rings) || rings.length === 0) {
+      return { valid: false, reason: "No coordinates found" };
+    }
+   
+    for (let i = 0; i < rings.length; i++) {
+      const ring = rings[i];
+   
+      // Check closed ring
+      const first = ring[0];
+      const last = ring[ring.length - 1];
+   
+      if (first[0] !== last[0] || first[1] !== last[1]) {
+        return { valid: false, reason: `Ring ${i} is not closed` };
+      }
+   
+      // Optional: Check minimum 4 points (triangle + closure)
+      if (ring.length < 4) {
+        return { valid: false, reason: `Ring ${i} has less than 4 points` };
+      }
+    }
+   
+    return { valid: true };
+}
+
+export const adjustMinutes = (timeStr, minutes) => {
+  // Split "HH:mm" into hours and minutes
+  let [hours, mins] = timeStr.split(":").map(Number);
+
+  // Create a Date with today’s date and that time
+  let date = new Date();
+  date.setHours(hours, mins, 0, 0);
+
+  // Add (positive) or subtract (negative) minutes
+  date.setMinutes(date.getMinutes() + minutes);
+
+  // Format back to HH:mm
+  let hh = String(date.getHours()).padStart(2, "0");
+  let mm = String(date.getMinutes()).padStart(2, "0");
+
+  return `${hh}:${mm}`;
+}
+
+export const getDaysBetweenDates = (expiryDate, selectedDate) => {
+  const firstDate = moment(expiryDate);
+  const secondDate = moment(selectedDate);
+
+  // Use the `diff` method in days
+  return Math.abs(firstDate.diff(secondDate, 'days'));
+}
+
   

@@ -1,6 +1,6 @@
 import React from "react";
 import { Form, useFormikContext } from "formik";
-import FormikInput from "../../../components/Input/FormikInput";
+import FormikInput from "../../../components/input/FormikInput";
 
 const PasswordForm = ({ isEditAvailable }) => {
   return (

@@ -40,3 +40,21 @@ export const patterns=[
          {id:5,value:'Custom'}
 
 ]
+
+
+export const componentTypes = [
+  { id: "earning", name: "Earning" },
+  { id: "deduction", name: "Deduction" },
+];
+
+
+export const valueTypes = [
+  { id: "fixed", name: "Fixed" },
+  { id: "percentage", name: "Percentage" },
+];
+
+export const specialBases = [
+  { _id: "ctc", name: "CTC", type: "special" },
+  { _id: "gross", name: "Gross Salary", type: "special" },
+  { _id: "net", name: "Net Salary", type: "special" },
+];

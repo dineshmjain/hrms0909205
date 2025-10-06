@@ -250,4 +250,32 @@ function camelCaseToText(str) {
   return withSpaces.charAt(0).toUpperCase() + withSpaces.slice(1);
 }
 
-export { getLocationWithLatLong, camelCaseToText, getCurrentLocation, getParamsFromObject, getLocationWithLatLongFull, getBestGeocoderResult, removeEmptyStrings, getFileType };
+// utils or constants/reusableFun.js
+
+const toTitleCase = (str = "") => {
+  if (!str || typeof str !== "string") return "";
+
+  return str
+    .toLowerCase()
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => {
+      // if word is wrapped in brackets
+      if (/^\(.*\)$/.test(word)) {
+        const inner = word.slice(1, -1);
+        // keep acronym uppercase (HRA, PF, etc.)
+        if (inner.length <= 4) {
+          return `(${inner.toUpperCase()})`;
+        }
+        // otherwise title-case the inside
+        return `(${inner.charAt(0).toUpperCase() + inner.slice(1)})`;
+      }
+
+      // normal word
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(" ");
+};
+
+
+export { getLocationWithLatLong, camelCaseToText, getCurrentLocation, getParamsFromObject, getLocationWithLatLongFull, getBestGeocoderResult, removeEmptyStrings, getFileType, toTitleCase };

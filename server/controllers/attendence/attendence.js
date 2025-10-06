@@ -545,6 +545,20 @@ export const generateTransactionLog = async (request, response, next) => {
                 approvalBits['isClientMatch'] = getShiftByDate.clientBranchId.toString() == request.body.branchId.toString() ? attendanceApprovalStatus.approved : attendanceApprovalStatus.rejected;
             }
         }
+        else if(request.body.shiftGroupDataListResponse) { // when check-in
+
+            let shiftGroup = request.body.shiftGroupDataListResponse
+            //Check Branch Match
+            if ((shiftGroup?.branchId?.toString() ?? shiftGroup?.clientBranchId?.toString()) == request.body.branchId.toString()) approvalBits['isBranchMatch'] = attendanceApprovalStatus.approved;
+
+            //Check Shift Match
+            if (shiftGroup.currentShiftId.toString() == request.body.shiftId.toString()) approvalBits['isShiftMatch'] = attendanceApprovalStatus.approved;
+
+            //check only if client shift assigned
+            if (shiftGroup.clientBranchId && shiftGroup.clientMappedId) {
+                approvalBits['isClientMatch'] = shiftGroup.clientBranchId.toString() == request.body.branchId.toString() ? attendanceApprovalStatus.approved : attendanceApprovalStatus.rejected;
+            }
+        }
 
         //overall approval status
         if(!Object.values(approvalBits).includes(false)) approvalBits['approvalStatus'] = attendanceApprovalStatus.approved;
@@ -1282,7 +1296,7 @@ export const getAllUserLogStatus = async (request,response,next) => {
             let prevCheckOut = null
             let shifts = []
 
-            if(us.approvalStatus && us.transactions.length % 2 != 0) us['approvalStatus'] = 'pending';
+            // if(us.approvalStatus && us.transactions.length % 2 != 0) us['approvalStatus'] = 'pending';
             
             for(const transaction of us.transactions) {
                 // console.log(transaction.shiftId.toString())

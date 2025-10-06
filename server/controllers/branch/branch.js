@@ -7,6 +7,8 @@ import { locationSchema, nameSchema, requiredSchema } from '../../helper/joiSche
 import {logger } from "../../helper/logger.js";
 import * as orgModel from '../../models/organization/organization.js';
 import { KafkaService } from '../../utils/kafka/kafka.js'
+import * as helper from '../../helper/formatting.js';
+import {adjustMinutes} from '../../helper/formatting.js'
 const kafka = new KafkaService();
 
 //Validation for Branch
@@ -296,18 +298,37 @@ export const addClientBranch=async (request, response, next) => {
 export const addDefaultBranch= async (request, response, next) => {
     try {
         if(request.body.orgExist) return next();
-        if(request.body.structure==='organization'||request.body.structure==='group') return next()
-        const branchData = {
-            orgId:new ObjectId(request.body.user.orgId),
-            name: request.body.name, 
-            ...(request.body.address&&{address:request.body.address}),
-            ...(request.body.geoLocation&&{geoLocation:request.body.geoLocation}),
-            ...(request.body.geoJson&&{geoJson:request.body.geoJson}),
+        // if(request.body.structure==='organization'||request.body.structure==='group') return next()
+
+        let branchData = {
+            orgId: new ObjectId(request.body.user.orgId),
+            name: request.body.name,
+            ...(request.body.address && { address: request.body.address }),
+            ...(request.body.geoLocation && { geoLocation: request.body.geoLocation }),
+            ...(request.body.geoJson && { geoJson: request.body.geoJson }),
             isActive: true,
             createdDate: new Date(),
-            createdBy: new ObjectId(request.body.user._id)
+            createdBy: new ObjectId(request.body.user._id),
+            radius: 500,
 
         }
+
+        if(request.body.timeSettingType) {
+            let timeSettingObj = {
+                reporting : {
+                    reportingTime : request.body?.reportingTime
+                },
+                startEnd : {
+                    startTime : request.body?.startTime,
+                    endTime : request.body?.endTime,
+                    maxIn : request.body?.maxIn || 0,
+                    minOut: request.body?.minOut || 0
+                }
+            }
+            branchData = {...branchData, ...timeSettingObj[request.body.timeSettingType]}
+        }
+
+        if(request.body.weekOff) branchData['weekoff'] = request.body.weekOff
         request.body.branchData = branchData
         // request.body.branchData = {name:body.name,KYC:body.address?'completed':'pending',status:'Active',employeesRequired:body?.employeesRequired || 0,buildings:body?.buildings || 0,checkPoints:body?.checkPoints || 0,dutyPoints:body?.dutyPoints || 0,...branchData}
         const brancDetails = await branchModel.addBranch(request.body)
@@ -411,4 +432,84 @@ export const branchCount = async(request, response, next) => {
             logger.error("Error while branchDetails in client controller ", { stack: error.stack });
             return apiResponse.somethingResponse(response, error.message)
         }
+}
+
+
+export const isBoundaryPointsValid=(request,response,next)=>{
+    try{
+        const isPointsValid=helper.validatePolygonBoundary(request.body.geoBoundary)
+        if(isPointsValid)return next()
+        return apiResponse.validationError(response,'check coordinate points  of start and end is not same')
+
+    }catch(error){
+        logger.error("Error while isBoundaryPointsValid in branch controller",{stack:error.stack})
+        return apiResponse.somethingResponse(responses,error.message)
+    }
+}
+
+export const updateBranchBoundary=(request, response, next) => {
+    try {
+        branchModel.updateBranchBoundaryPoints(request.body)
+        .then(async (result) => {
+            if (!result.status) {
+                return apiResponse.validationError(response, "Invalid Branch!")
+            }
+            
+            return next()
+        })
+        .catch((error) => {
+            logger.error("Error while updateBranchBoundary in branch controller ",{ stack: error.stack });
+            return apiResponse.somethingResponse(response, "Failed to update BranchBoundary")
+        })
+
+    } catch (error) {
+        logger.error("Error while updateBranchBoundary in branch controller ",{ stack: error.stack });
+        return apiResponse.somethingResponse(response, "Failed to update BranchBoundary")
+    }
+}
+
+export const getDefaultBranch = (request, response, next) => {
+    try {
+        branchModel.getDefaultBranch(request.body)
+        .then(async (result) => {
+            if(request.body.wizardGetAllData) {
+                request.body.allDataRes = request.body.allDataRes || {}
+                if(result.status && result.data) request.body.allDataRes['branch'] = result.data
+                return next()
+            }
+
+            if (!result.status) {
+                return apiResponse.notFoundResponse(response, "Branch Not Found!!")
+            }
+            
+            request.body.branchDetails = result.data
+            return next()
+        })
+        .catch((error) => {
+            logger.error("Error while updateBranchBoundary in branch controller ",{ stack: error.stack });
+            return apiResponse.somethingResponse(response, "Failed to update BranchBoundary")
+        })
+
+    } catch (error) {
+        logger.error("Error while updateBranchBoundary in branch controller ",{ stack: error.stack });
+        return apiResponse.somethingResponse(response, "Failed to update BranchBoundary")
+    }
+}
+
+export const getBranchClientReq = (request, response, next) => {
+    try {
+        branchModel.getBranchClientReq(request.body)
+        .then(async (result) => {
+            request.body.clientReqDetails = result.data
+            return next()
+        })
+        .catch((error) => {
+            logger.error("Error while updateBranchBoundary in branch controller ",{ stack: error.stack });
+            return apiResponse.somethingResponse(response, "Failed to update BranchBoundary")
+        })
+
+    } catch (error) {
+        logger.error("Error while updateBranchBoundary in branch controller ",{ stack: error.stack });
+        return apiResponse.somethingResponse(response, "Failed to update BranchBoundary")
+    }
 }
