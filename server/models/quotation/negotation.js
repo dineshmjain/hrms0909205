@@ -1,4 +1,4 @@
-import { aggregate, create } from '../../helper/mongo.js';
+import { aggregate, create, updateOne } from '../../helper/mongo.js';
 import { logger } from '../../helper/logger.js';
 import { ObjectId } from 'mongodb';
 import { getCurrentDateTime } from '../../helper/formatting.js';
@@ -20,12 +20,16 @@ export const createNegotiation = async (data) => {
       requirements: data?.requirements?.map(req => ({
         baseQuotePriceId:new ObjectId(req?.baseQuotePriceId),
         priceId:new ObjectId(req?.priceId),
+        baseQuotePriceId: new ObjectId(req?.baseQuotePriceId),
+        referenceId: req?.referenceId ? new ObjectId(req?.referenceId) : undefined,
+        priceId: req?.priceId ? new ObjectId(req?.priceId) : undefined,
         designationId: new ObjectId(req?.designationId),
         noOfPositions: req?.noOfPositions,
         gender: req?.gender,
         price: req?.price,
         limits: req?.limits,
-        shiftType: req?.shiftType
+        shiftType: req?.shiftType,
+        duration:req?.duration
       })),
       //   status: "Pending"
       comment: data?.comment || "",
@@ -86,5 +90,34 @@ export const getNegotationCount = async (data) => {
   catch (error) {
     logger.error(`Error negotiation getting : ${error.message}`, { stack: error.stack });
     throw new Error('Error negotiation getting');
+  }
+}
+
+export const updateNegotation = async (data) => {
+  try {
+    if (!data?.quotationId) {
+      throw new Error("quotationId is required for a negotiation");
+    }
+
+    const query = {
+      quotationId: new ObjectId(data?.quotationId), // reference to quotation
+      orgId: new ObjectId(data?.user?.orgId),
+      leadId: new ObjectId(data?.leadId),
+      isActive:true
+
+    };
+    const update = {
+
+      isActive: false,
+      updatedAt: getCurrentDateTime(),
+      modifiedBy: new ObjectId(data?.userId)
+    }
+
+    const result = await updateOne(query, { $set: { ...update } }, negotiation_collection);
+    return result;
+
+  } catch (error) {
+    logger.error(`Error creating negotiation: ${error.message}`, { stack: error.stack });
+    throw new Error('Error creating negotiation');
   }
 }

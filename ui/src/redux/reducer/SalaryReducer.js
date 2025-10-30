@@ -5,6 +5,7 @@ import {
   SalaryComponentToggleAction,
   SalaryComponentUpdateAction,
   SalaryTemplatesGetAction,
+  SalaryTemplateGetOneAction,
   SalaryTemplateCreateAction,
   SalaryTemplatePreviewAction,
 } from "../Action/Salary/SalaryAction";
@@ -42,6 +43,12 @@ const initialState = {
     status: "idle",
     error: "",
     result: null,
+  },
+  template: {          
+    loading: false,
+    status: "idle",
+    error: "",
+    data: null,
   },
 };
 
@@ -210,6 +217,28 @@ const SalaryReducer = createSlice({
         state.templates.error =
           action.error?.message || "Failed to fetch salary templates";
         toast.error(state.templates.error);
+      });
+    
+    // ------- TEMPLATE: GET ONE -------
+    builder
+      .addCase(SalaryTemplateGetOneAction.pending, (state) => {
+        state.template.loading = true;
+        state.template.status = "loading";
+        state.template.error = "";
+        state.template.data = null;
+      })
+      .addCase(SalaryTemplateGetOneAction.fulfilled, (state, action) => {
+        state.template.loading = false;
+        state.template.status = "success";
+        state.template.error = "";
+        state.template.data = action.payload?.data || null;
+      })
+      .addCase(SalaryTemplateGetOneAction.rejected, (state, action) => {
+        state.template.loading = false;
+        state.template.status = "failed";
+        state.template.error =
+          action.error?.message || "Failed to fetch salary template";
+        toast.error(state.template.error);
       });
 
     // ------- TEMPLATES: CREATE -------

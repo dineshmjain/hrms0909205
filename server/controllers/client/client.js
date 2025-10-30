@@ -4,12 +4,14 @@ import { logger } from '../../helper/logger.js'
 import { isValidMobileNumber } from '../../helper/validator.js';
 import * as orgModel from '../../models/organization/organization.js';
 import * as userModel from '../../models/user/user.js';
+import * as designationModel from "../../models/designation/designation.js"
 import * as helper from '../../helper/formatting.js';
 import * as branch from '../branch/branch.js';
 import * as branchModel from '../../models/branch/branch.js';
 import * as shiftModel from '../../models/shift/shift.js';
 import { ObjectId } from 'mongodb';
 import * as globalModel from '../../models/globle/globle.js';
+import { create } from '../../helper/mongo.js';
 
 export const isClientExist = async(request, response, next) => {
     try{
@@ -104,6 +106,30 @@ export const getClient = async (request,response,next) => {
     }
 };
 
+export const getOwner = async (request,response,next) => {
+    try{
+        if(!request.body.clientId) return apiResponse.validationError(response, 'clientId is required.') 
+       
+        userModel.getUserByClientOrg(request.body).then(res => {
+            if(!res.status)
+            {
+                // return apiResponse.unauthorizedResponse(response, "Unauthorized")
+                return apiResponse.notFoundResponse(response,'client data not found')
+                
+            }
+            logger.debug(JSON.stringify(res));
+            request.body.clientDetails = res.data;
+            return next();
+        }).catch(error => {
+            logger.error("Error while getOneClient in client controller ",{ stack: error.stack });
+            return apiResponse.somethingResponse(response, error.message)  
+        })
+    }catch(error){
+        request.logger.error("Error while getOneClient in client controller ",{ stack: error.stack });
+        return apiResponse.somethingResponse(response, error.message)    
+    }
+};
+
 //Update client details
 export const   updateClientDetails = async (request, response, next) => {
     try 
@@ -139,6 +165,21 @@ export const getClientList = async (request, response, next) => {
         return apiResponse.somethingResponse(response, "Failed to get client List")
     }
 }
+
+export const getClientWithBranchAndFieldOfficer  = async (request, response, next) => {
+    try {
+        request.body.query = request.body;
+        const client = await clientModel.getClientWithBranchAndFieldOfficer(request.body)
+        if (!client.status)  return apiResponse.ErrorResponse(response,"Something went worng",res.error);
+        request.body.clientData = client
+        return next()
+
+    } catch (error) {
+        console.log(error)
+        return apiResponse.somethingResponse(response, "Failed to get client List")
+    }
+}
+
 
 //Update client status 
 export const updateClientStatus = async (request, response, next) => {
@@ -593,7 +634,7 @@ export const decodeClientExcel = async (request, response, next) => {
 // get client excel format
 export const getclientExcelFormat=async(request,response,next)=>{
     try{
-        const clientExcelFormatData=await helper.clientExcelFormat(request,response,next)
+        const clientExcelFormatData=await helper.clientExcelFormat(request.body)
         if(clientExcelFormatData.status){
             request.body.filePath=clientExcelFormatData.data
             return next()
@@ -722,3 +763,183 @@ export const clientCount = (request, response, next) => {
         return apiResponse.somethingResponse(response, error.message)
     }
 }
+
+export const prepareImportData = (request, response, next) => {
+  try {
+    const importData = helper.prepareImportData(request)
+    request.body.importData = importData;
+    next();
+  } catch (error) {
+    logger.error("Error while importing client from excel", { stack: error.stack });
+    return apiResponse.somethingResponse(response, error.message);
+  }
+};
+
+export const addClientComplete = async (request, response, next) => {
+
+  const createOrganization = async (client) => {
+    request.body.name = client.clientName;
+    request.body.clientSince = client.contractStartDate;
+
+    const orgDetails = await orgModel.addOrganization(request.body);
+    if (!orgDetails.status) throw new Error(orgDetails.message);
+    return orgDetails;
+  };
+
+  const mapClient = async () => {
+    request.body.clientId = request.body.clientOrgDetails.data.insertedId;
+    const mapData = await clientModel.mapClient(request.body);
+    if (!mapData.status) throw new Error("Unable to map client!");
+    return mapData.data;
+  };
+
+  const createOwner = async (client) => {
+    request.body.mobile = client.incharge.mobile;
+    request.body.name = client.incharge.name;
+    request.body.relationshipToOrg = client.incharge.designation;
+
+    const insertedUser = await userModel.createUser(request.body);
+    if (!insertedUser.status) throw new Error(insertedUser.message);
+
+    return insertedUser.data.insertedId;
+  };
+
+  const createBranch = async (branch) => {
+    const branchData = {
+      orgId: new ObjectId(request.body.clientMappedId),
+      client: true,
+      name: branch.name,
+      isActive: true,
+      createdDate: new Date(),
+      createdBy: new ObjectId(request.body.userId),
+      gstNo: branch.gstNo,
+      panNo: branch.panNo,
+      address: {
+        address: branch.address,
+        state: branch.state,
+        city: branch.city,
+        pincode: branch.pincode,
+      },
+      radius: 500,
+    };
+
+    request.body.branchData = branchData;
+    const branchDetails = await branchModel.addBranch(request.body);
+    if (!branchDetails.status) throw new Error("Failed to create branch");
+    return branchDetails.data.insertedId;
+  };
+
+  const createRequirements = async (
+    shiftId,
+    requirements,
+    clientOrgId,
+    clientMappedId,
+    branchId
+  ) => {
+    if (!requirements) return;
+
+    const requirementPayload = [];
+
+    for (let designationName in requirements) {
+      const genders = requirements[designationName];
+      for (let gender in genders) {
+        const count = genders[gender];
+        if (count > 0) {
+          const { data: designation } = await designationModel.getDesignationByName(
+            designationName,
+            request.body.authUser.orgId
+          );
+
+          requirementPayload.push({
+            shiftId,
+            designationId: designation._id,
+            gender,
+            count,
+          });
+        }
+      }
+    }
+
+    if (requirementPayload.length > 0) {
+      const requirementData = {
+        clientId: clientOrgId,
+        clientMappedId,
+        branchId,
+        requirements: requirementPayload,
+      };
+
+      const requirementRes = await branchModel.addRequirements(requirementData);
+      if (!requirementRes.status) throw new Error("Failed to add requirements");
+    }
+  };
+
+  const createShifts = async (
+    branchId,
+    branch,
+    clientOrgId,
+    clientMappedId
+  ) => {
+    const shifts = branch.shifts || [];
+
+    for (let shift of shifts) {
+      request.body.branchIds = [branchId];
+      request.body.name = shift.name;
+      request.body.startTime = shift.startTime;
+      request.body.endTime = shift.endTime;
+      request.body.bgColor = null;
+      request.body.textColor = null;
+
+      const shiftData = await shiftModel.createShift(request.body);
+      if (!shiftData.status) throw new Error("Failed to create shift");
+
+      const shiftId = shiftData.data.insertedIds["0"];
+      await createRequirements(
+        shiftId,
+        shift.requirements,
+        clientOrgId,
+        clientMappedId,
+        branchId
+      );
+    }
+  };
+
+  try {
+    const clients = request.body.importData || [];
+    if (!clients.length)
+      return apiResponse.ErrorResponse(response, "No client data provided");
+
+    for (const client of clients) {
+      // create client org
+      const orgDetails = await createOrganization(client);
+      request.body.clientOrgDetails = orgDetails;
+
+      // map client
+      const clientData = await mapClient();
+      request.body.clientData = clientData;
+
+      // create owner
+      const userId = await createOwner(client);
+      request.body.userId = userId;
+
+      // create branches + shifts + requirements
+      const branches = client.branches || [];
+      for (let branch of branches) {
+        request.body.clientMappedId = clientData.insertedId;
+        const branchId = await createBranch(branch);
+        await createShifts(
+          branchId,
+          branch,
+          orgDetails.data.insertedId,
+          clientData.insertedId
+        );
+      }
+    }
+
+    next();
+  } catch (error) {
+    logger.error("Error while importing client from excel", {
+      stack: error.stack,
+    });
+    return apiResponse.somethingResponse(response, error.message);
+  }
+};

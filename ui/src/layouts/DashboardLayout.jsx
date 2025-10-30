@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { Outlet, useNavigate } from "react-router-dom";
 import Sidebar from "../components/sidebar/Sidebar";
-import Navbar from "../components/navbar/Navbar";
+import Navbar from "../components/Navbar/Navbar";
 import { useDispatch } from "react-redux";
 import OuterSidebar from "../components/Sidebar/OuterSidebar";
 

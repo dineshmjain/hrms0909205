@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Header from "../../../components/header/Header";
 import Table from "../../../components/Table/Table";
 import { Chip, Typography } from "@material-tailwind/react";
@@ -12,21 +12,62 @@ import toast from "react-hot-toast";
 import { usePrompt } from "../../../context/PromptProvider";
 import { ShiftGetAction } from "../../../redux/Action/Shift/ShiftAction";
 import { ShiftUpdateAction } from "../../../redux/Action/Shift/ShiftAction";
+import SingleSelectDropdown from "../../../components/SingleSelectDropdown/SingleSelectDropdown";
+import { BranchGetAction } from "../../../redux/Action/Branch/BranchAction";
 
 const ShiftTab = ({ state }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const checkMoudles = useCheckEnabledModule();
+  const [selectedClientBranch, setSelectedClientBranch] = useState({});
   const { showPrompt, hidePrompt } = usePrompt();
+  const { clientBranchList = [] } = useSelector((state) => state.clientBranch || {});
   const { shiftList, loading, totalRecord, pageNo, limit } = useSelector(
     (state) => state?.shift
   );
+ useEffect(() => {
+  if (state?._id) {
+    dispatch(clientBranchListAction({ clientMappedId: state?._id }));
+  }
+}, [dispatch, state?._id]);
+
+useEffect(() => {
+  setSelectedClientBranch(null);
+}, [state?._id]);
+
+useEffect(() => {
+  if (clientBranchList?.length > 0) {
+    const first = clientBranchList[0];
+    setSelectedClientBranch({ branchId: first._id, name: first.name });
+  }
+}, [clientBranchList]);
+
 
   const getShiftList = (params) => {
-    console.log("params:", state);
-    
-    dispatch(ShiftGetAction({ orgId: params?._id }));
+    const json = {
+      orgId: params?._id,
+    }
+    if (selectedClientBranch) {
+      json.branchId = selectedClientBranch.branchId;
+    }
+    dispatch(ShiftGetAction(json));
   };
+
+
+
+  useEffect(() => {
+    if (selectedClientBranch) {
+      getShiftList(state);
+    }
+  }, [selectedClientBranch]);
+
+  const handleBranchSelect = (data) => {
+    setSelectedClientBranch((prev) => ({
+      ...prev,
+      branchId: data?._id,
+    }));
+  };
+  ;
 
   const actions = [
     {
@@ -43,7 +84,6 @@ const ShiftTab = ({ state }) => {
   const addButton = () => {
     if (checkMoudles("client", "c") == false)
       return toast.error("You are Unauthorized to Create Client Shift!");
-
     navigate("/shift/add", {
       state: { clientId: state?.clientId, clientMappedId: state?._id },
     });
@@ -58,6 +98,7 @@ const ShiftTab = ({ state }) => {
       state: {
         clientId: state?.clientId,
         clientMappedId: state?.clientMappedId,
+        selectedFilterType: "clientOrg",
         ...rowData,
       },
     });
@@ -180,9 +221,9 @@ const ShiftTab = ({ state }) => {
     },
   };
 
-  useEffect(() => {
-    getShiftList(state);
-  }, []);
+  // useEffect(() => {
+  //   getShiftList(state);
+  // }, []);
   return (
     <>
       {" "}
@@ -190,6 +231,18 @@ const ShiftTab = ({ state }) => {
         headerLabel={"Shifts" + " of " + state?.name}
         handleClick={addButton}
       />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-3">
+        <SingleSelectDropdown
+          listData={clientBranchList ?? []}
+          inputName="Client Branch"
+          hideLabel={true}
+          showTip={false}
+          feildName="name"
+          selectedOption={selectedClientBranch?.branchId}
+          selectedOptionDependency={"_id"}
+          handleClick={handleBranchSelect}
+        />
+      </div>
       <Table
         tableJson={shiftList}
         labels={labels}

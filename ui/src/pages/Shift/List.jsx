@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useMemo, useRef, } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { json, useNavigate, useLocation } from "react-router-dom";
 import Table from "../../components/Table/Table";
 import { usePrompt } from "../../context/PromptProvider";
 import { MdModeEditOutline } from "react-icons/md";
@@ -16,29 +16,60 @@ import { removeEmptyStrings } from '../../constants/reusableFun';
 import CopyOnClick from "../../components/CopyonClick/CopyOnClick";
 import AssignShift from "./AssignShift";
 import { Formik, Form } from 'formik';
+import { BranchGetAction } from "../../redux/Action/Branch/BranchAction";
+import { clientBranchListAction } from "../../redux/Action/ClientBranch/ClientBranchAction";
+import { SubOrgListAction } from "../../redux/Action/SubOrgAction/SubOrgAction";
+import { clientListAction } from "../../redux/Action/Client/ClientAction";
+import SingleSelectDropdown from "../../components/SingleSelectDropdown/SingleSelectDropdown";
+import MultiSelectDropdown from "../../components/MultiSelectDropdown/MultiSelectDropdown";
 
 // TODO: Add or remove correct actions as needed
 // import { BranchEditAction } from "../../redux/Action/Branch/BranchAction"; // Uncomment if used
 // import { DepartmentGetAction } from "../../redux/Action/Department/DepartmentAction"; // Uncomment if needed
 
 const List = ({ state }) => {
+
+  const initialFilter = {
+    clientMappedId: "",
+    branchId: "",
+  };
+  
+  // Load persisted state from localStorage
+  const loadPersistedState = () => {
+    const saved = localStorage.getItem('shiftListFilterState');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+    return {
+      selectedFilterType: "myOrg",
+      selectedBranch: "",
+      selectedFilter: { ...initialFilter },
+      selectedClient: {
+        clientId: "",
+        clientName: "",
+        clientBranch: [],
+        clientMappedId: ""
+      }
+    };
+  };
+
+  const [selectedFilter, setSelectedFilter] = useState(loadPersistedState().selectedFilter);
+  const [selectedFilterType, setFilterType] = useState(loadPersistedState().selectedFilterType);
+  const [selectedBranch, setSelectedBranch] = useState(loadPersistedState().selectedBranch);
+  const [selectedClient, setSelectedClient] = useState(loadPersistedState().selectedClient);
+
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { showPrompt, hidePrompt } = usePrompt();
   const filterRef = useRef();
   const [openSidebar, setOpenSidebar] = useState(false);
+  const { clientList } = useSelector((state) => state?.client);
+  const { branchList } = useSelector((state) => state.branch || {});
+  const { clientBranchList = [] } = useSelector((state) => state.clientBranch || {});
+  const user = useSelector((state) => state?.user?.user);
 
-  const [hasLoadedClient, setHasLoadedClient] = useState(false);
-  const [selectedFilterType, setFilterType] = useState(() => {
-    return localStorage.getItem("shift_selectedFilterType") || "myOrg";
-  });
   const [selectedShift, setSelectedShift] = useState("");
-  const [selectedClient, setSelectedClient] = useState({
-    clientId: "",
-    clientName: "",
-    clientBranch: [],
-    clientMappedId: ""
-  });
 
   const { shiftList = [], loading, totalRecord,
     pageNo,
@@ -46,43 +77,85 @@ const List = ({ state }) => {
       (state) => state?.shift || {}
     );
 
-  // useEffect(() => {
-  //   if (state?.clientId && state?.clientMappedId) {
-  //     setSelectedClient({
-  //       clientId: state.clientId,
-  //       clientMappedId: state.clientMappedId
-  //     });
-  //     setFilterType("clientOrg");
-  //     getShiftList({ page: pageNo, limit: limit })
-  //   }
-  // }, [state?.clientId, state?.clientMappedId]);
-
+  // Persist state to localStorage whenever it changes
   useEffect(() => {
+    const stateToSave = {
+      selectedFilterType,
+      selectedBranch,
+      selectedFilter,
+      selectedClient
+    };
+    localStorage.setItem('shiftListFilterState', JSON.stringify(stateToSave));
     localStorage.setItem("shift_selectedFilterType", selectedFilterType);
+  }, [selectedFilterType, selectedBranch, selectedFilter, selectedClient]);
+
+  // Fetch initial lists on mount
+  useEffect(() => {
+    dispatch(BranchGetAction());
+    dispatch(clientListAction());
+  }, [dispatch]);
+
+  // Auto-select first branch for myOrg if none selected and branches are loaded
+  useEffect(() => {
+    if (selectedFilterType === "myOrg" && !selectedBranch && branchList && branchList.length > 0) {
+      const firstBranchId = branchList[0]._id;
+      setSelectedBranch(firstBranchId);
+    }
+  }, [selectedFilterType, selectedBranch, branchList]);
+
+  // Fetch client branches if needed (e.g., on load for clientOrg)
+  useEffect(() => {
+    if (selectedFilterType === "clientOrg" && selectedFilter.clientMappedId) {
+      dispatch(clientBranchListAction({ clientMappedId: selectedFilter.clientMappedId }));
+    }
+  }, [selectedFilterType, selectedFilter.clientMappedId]);
+
+  // Clear selections when filter type changes
+  useEffect(() => {
+    if (selectedFilterType === "myOrg") {
+      setSelectedFilter({ ...initialFilter });
+      setSelectedClient({
+        clientId: "",
+        clientName: "",
+        clientBranch: [],
+        clientMappedId: ""
+      });
+    } else if (selectedFilterType === "clientOrg") {
+      setSelectedBranch("");
+    }
   }, [selectedFilterType]);
+
+  // Fetch shifts when selections or pagination changes
+  useEffect(() => {
+    if (selectedFilterType === "myOrg" && selectedBranch) {
+      getShiftList({ page: pageNo, limit: limit });
+    } else if (selectedFilterType === "clientOrg" && selectedFilter?.clientMappedId && selectedFilter?.branchId) {
+      getShiftList({ page: pageNo, limit: limit });
+    }
+  }, [selectedFilterType, selectedBranch, selectedFilter.clientMappedId, selectedFilter.branchId, pageNo, limit]);
 
   const getShiftList = (params) => {
     let Params = {
       ...params,
     };
     const updatedParams = {};
-    if (selectedFilterType === "clientOrg" && selectedClient?.clientMappedId) {
-      updatedParams["orgId"] = selectedClient.clientMappedId;
+    if (selectedFilterType === "myOrg" && selectedBranch) {
+      updatedParams["orgId"] = user.orgId;
+      updatedParams["branchId"] = selectedBranch;
+    }
+    if (selectedFilterType === "clientOrg" && selectedFilter?.clientMappedId && selectedFilter?.branchId) {
+      updatedParams["orgId"] = selectedFilter.clientMappedId;
+      updatedParams["branchId"] = selectedFilter.branchId;
     }
     let finalParams = { ...Params, ...updatedParams };
     dispatch(ShiftGetAction(finalParams));
   };
 
   const addButton = () => {
-    setSelectedClient({
-      clientId: selectedClient.clientId,
-      clientName: selectedClient.name,
-      clientMappedId: selectedClient.clientMappedId
-    })
     navigate("/shift/add", {
       state: {
         clientId: selectedClient.clientId,
-        clientMappedId: selectedClient._id
+        clientMappedId: selectedClient.clientMappedId
       }
     })
   }
@@ -96,16 +169,11 @@ const List = ({ state }) => {
     if (shift?.isActive == false) {
       return toast.error("Cannot Edit Please Activate");
     } else {
-      setSelectedClient({
-        clientId: selectedClient.clientId,
-        clientName: selectedClient.name,
-        clientMappedId: selectedClient.clientMappedId
-      })
       navigate("/shift/edit", {
         state: {
           ...shift,
           ...selectedClient,
-           selectedFilterType, // Pass the selectedFilterType
+          selectedFilterType,
         }
       })
     }
@@ -138,33 +206,12 @@ const List = ({ state }) => {
     });
   };
 
-  //   const confirmUpdate = async(data) => {
-  //     if (!data) return;
-  //   try {
-  //     const payload = {
-  //       "isActive": !data.isActive,
-  //     };
-  //       if (selectedFilterType === "clientOrg" && selectedClient?.clientId) {
-  //       payload["orgId"] = selectedClient.clientId;
-  //     }  
-  //     await dispatch(ShiftUpdateAction(removeEmptyStrings(payload)))
-  //     .then(() => {
-  //         getPolicyList({ page: pageNo, limit: limit });
-  //       })
-  //       .catch((err) => toast.error("Assignment failed"));
-
-  //     hidePrompt();
-  //   }
-  // }
   const confirmUpdate = (data) => {
     if (!data) return;
     const payload = {
       "shiftId": data._id,
       "isActive": !data.isActive,
     };
-    // if (selectedFilterType === "clientOrg" && selectedClient?.clientId) {
-    //   payload["clientId"] = selectedClient.clientId;
-    // }
 
     dispatch(ShiftActivateAction(payload))
       .then((response) => {
@@ -188,14 +235,6 @@ const List = ({ state }) => {
     }
   ];
 
-  useEffect(() => {
-    if (selectedFilterType == "clientOrg" && selectedClient?.clientId !== "") {
-      getShiftList({ page: pageNo, limit: limit });
-    }
-    if (selectedFilterType == "myOrg") {
-      getShiftList({ page: pageNo, limit: limit });
-    }
-  }, [selectedFilterType, selectedClient]);
 
   const handleCloseSidebar = () => {
     setOpenSidebar(false);
@@ -203,6 +242,11 @@ const List = ({ state }) => {
   };
 
   const labels = {
+    branchName:{
+      DisplayName: "Branch Name",
+      type:"object",
+      objectName:"branchDetails"
+    },
     name: {
       DisplayName: "Name",
       type: "function",
@@ -258,13 +302,10 @@ const List = ({ state }) => {
         </div>
       )
     },
-    modifiedDate: {
-      DisplayName: "Last Modified",
-      type: "time",
-      format: "DD-MM-YYYY HH:mm A"
-    }
   };
-console.log(selectedClient,"selectedClient");
+
+  const showTable = (selectedFilterType === 'myOrg' && selectedBranch) ||
+    (selectedFilterType === 'clientOrg' && selectedFilter?.clientMappedId && selectedFilter?.branchId);
 
   return (
     <div className="flex flex-col gap-4 p-2 w-full h-full border-1 border-gray-50 rounded-md">
@@ -278,11 +319,11 @@ console.log(selectedClient,"selectedClient");
           {({ submitForm, values }) => (
             <>
               <Form>
-              <AssignShift
-                selectedClient={selectedClient}
-                selectedShift={selectedShift}
-                selectedfilter={selectedFilterType}
-                closeSidebar={handleCloseSidebar} />
+                <AssignShift
+                  selectedClient={selectedClient}
+                  selectedShift={selectedShift}
+                  selectedfilter={selectedFilterType}
+                  closeSidebar={handleCloseSidebar} />
               </Form>
             </>
           )}
@@ -302,33 +343,82 @@ console.log(selectedClient,"selectedClient");
         <OrganizationFilter
           selectedFilterType={selectedFilterType}
           setFilterType={setFilterType}
-          selectedClient={selectedClient}
-          setSelectedClient={setSelectedClient}
-          setHasLoadedClient={setHasLoadedClient}
-          hasLoadedClient={hasLoadedClient}
         />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-3">
+          {selectedFilterType === "myOrg" && (
+            <>
+              <SingleSelectDropdown
+                listData={branchList ?? []}
+                inputName="Branch"
+                hideLabel={true}
+                feildName="name"
+                selectedOptionDependency={"_id"}
+                selectedOption={selectedBranch}
+                handleClick={(data) => {
+                 setSelectedBranch(data?._id)
+                }}
+              />
+            </>
+          )}
+          {selectedFilterType === "clientOrg" && (
+            <>
+              <SingleSelectDropdown
+                listData={clientList ?? []}
+                inputName="Client"
+                hideLabel={true}
+                feildName="name"
+                selectedOptionDependency={"_id"}
+                selectedOption={selectedFilter?.clientMappedId}
+                handleClick={(data) => {
+                  setSelectedFilter({ ...initialFilter, clientMappedId: data?._id });
+                  setSelectedClient({
+                    clientId: data?._id,
+                    clientName: data?.name,
+                    clientBranch: [],
+                    clientMappedId: data?._id
+                  });
+                  dispatch(clientBranchListAction({ clientMappedId: data?._id }));
+                }}
+              />
+              <SingleSelectDropdown
+                listData={clientBranchList ?? []}
+                inputName="Client Branch"
+                hideLabel={true}
+                showTip={false}
+                feildName="name"
+                selectedOption={selectedFilter?.branchId}
+                selectedOptionDependency={"_id"}
+                handleClick={(data) => {
+                  setSelectedFilter((prev) => {
+                    return { ...prev, branchId: data?._id };
+                  });
+                }}
+              />
+
+            </>
+          )}
+        </div>
       </div>
 
-      {(selectedFilterType === 'myOrg' ||
-        (selectedFilterType === 'clientOrg' && !!selectedClient.clientId)) && (
-        <div>
-        <Table
-          tableName="Shift"
-          tableJson={shiftList}
-          labels={labels}
-          onRowClick={editButton}
-          actions={actions}
-          paginationProps={{
-            totalRecord: totalRecord,
-            pageNo: pageNo,
-            limit: limit,
-            onDataChange: (page, limit, name = "") => {
-              getShiftList({ page, limit, name });
-            },
-          }}
-        />
-      </div>
-       )}
+      {showTable && (
+          <div>
+            <Table
+              tableName="Shift"
+              tableJson={shiftList}
+              labels={labels}
+              onRowClick={editButton}
+              actions={actions}
+              paginationProps={{
+                totalRecord: totalRecord,
+                pageNo: pageNo,
+                limit: limit,
+                onDataChange: (page, limit, name = "") => {
+                  getShiftList({ page, limit, name });
+                },
+              }}
+            />
+          </div>
+        )}
     </div>
   );
 };

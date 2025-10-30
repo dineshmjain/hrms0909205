@@ -46,7 +46,7 @@ const safeMiddleware = (middlewareName) => {
 // ============= STANDARD QUOTE PRICE ROUTES =============
 
 router.post('/add/standard/price',
-  celebrate(validation.addStandardQuotePrice),
+  // celebrate(validation.addStandardQuotePrice),
   ...commonAuthMiddleware,
   quotePrice.isQuotePriceExists,
   quotePrice.createStandardQuotePrice,
@@ -71,13 +71,13 @@ router.post('/list/standard/price',
   quotePrice.listStandardQuotePrices
 );
 
-router.get('/standard/designation/:designationId/price',
+router.get('/standard/designation/price',
   celebrate(validation.getQuotePricesByDesignation || {}),
   ...commonAuthMiddleware,
-  (request, response, next) => {
-    request.body.designationId = request.params.designationId;
-    next();
-  },
+  // (request, response, next) => {
+  //   request.body.designationId = request.params.designationId;
+  //   next();
+  // },
   quotePrice.getStandardQuotePricesByDesignation
 );
 
@@ -115,8 +115,14 @@ router.post('/branch/quotation/price',
 
 // ============= QUOTATION GENERATION ROUTES =============
 
-router.post('/generate/quotation',
-  celebrate(validation.genrateQuotation || {}),
+router.post('/generate',
+  // Debug middleware (optional - remove in production)
+  (req, res, next) => {
+    console.log('Generate Quotation Request Body:', req.body);
+    next();
+  },
+  celebrate(validation.genrateQuotation),
+  // handleValidationError,
   ...commonAuthMiddleware,
   quotationController.generateQuotation,
   negotationController.createNegotiation,
@@ -127,9 +133,10 @@ router.post('/generate/quotation',
   }
 );
 
-router.post('/generate/quotation/negotiation',
+router.post('/generate/negotiation',
   // celebrate(validation.genrateQuotation || {}),
   ...commonAuthMiddleware,
+  negotationController.updateNegotation,
   negotationController.createNegotiation,
   negotationController.getNegotiationStatus,
   leadController.updateLeadStatus,
@@ -142,6 +149,11 @@ router.post('/negotation/track',
   ...commonAuthMiddleware,
   quotationController.trackQuotation
 );
+
+router.post("/quotation/reject",
+  ...commonAuthMiddleware,
+  quotationController.closeQuotation
+)
 
 // ============= UTILITY ROUTES =============
 

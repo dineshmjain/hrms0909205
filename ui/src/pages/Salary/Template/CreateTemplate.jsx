@@ -19,6 +19,8 @@ const initialValues = {
   componentName: "",
   valueType: "",
   componentValue: "",
+  includeInEPF: false,
+  includeInESI: false,
   percentageOf: [],
 };
 
@@ -45,13 +47,21 @@ const CreateTemplate = () => {
   }, [dispatch]);
 
   // format names
-  const formattedComponents = useMemo(() => {
-    if (!componentNames || !Array.isArray(componentNames)) return [];
-    return componentNames.map((c) => ({
-      ...c,
-      name: toTitleCase(c.name),
-    }));
-  }, [componentNames]);
+const formattedComponents = useMemo(() => {
+  if (!componentNames || !Array.isArray(componentNames)) return [];
+
+  // filter out EPF and ESI components
+  const filtered = componentNames.filter(
+    (c) => !["employee provident fund (epf)", "employee state insurance (esi)"]
+      .includes(c.name.toLowerCase().trim())
+  );
+
+  return filtered.map((c) => ({
+    ...c,
+    name: toTitleCase(c.name),
+  }));
+}, [componentNames]);
+
 
   // options for percentageOf (special + components)
   const percentageOptions = useMemo(() => {
@@ -135,7 +145,7 @@ const CreateTemplate = () => {
                 <ActiveComponentsList
                   addedComponents={addedComponents}
                   setAddedComponents={setAddedComponents}
-                  componentNames={formattedComponents}
+                  componentNames={componentNames}
                 />
               </Form>
             </div>

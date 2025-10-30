@@ -46,13 +46,14 @@ router.post('/add',
         request.body.isFirstBranch=request.body.orgExist===true
         return next()
     },
+    branch.getDefaultBranch, // to check default branch exist or not
     org.addOrganization,
     branch.isBranchAlreadyExists,
     client.isClient,
     branch.addBranch,
-    department.addDefaultDepartments,
-    designation.addDefaultDesignations,
-    shift.AddDefaultShifts,
+    // department.addDefaultDepartments,
+    // designation.addDefaultDesignations,
+    // shift.AddDefaultShifts,
     (request, response, next) => {
         return apiResponse.successResponseWithData(response, `Branch Created successfully`,request.body.branchResponse)
     },

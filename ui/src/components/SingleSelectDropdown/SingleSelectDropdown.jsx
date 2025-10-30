@@ -22,6 +22,7 @@ const SingleSelectDropdown = ({
   negativeValue = "",
   addRoute,
   disabled = false,
+  useFixedPosition = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -37,25 +38,24 @@ const SingleSelectDropdown = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-const findName = (selectedVal, name) => {
-  const match = listData.find(
-    (item) => item[selectedOptionDependency] === selectedVal
-  );
+  const findName = (selectedVal, name) => {
+    const match = listData.find(
+      (item) => item[selectedOptionDependency] === selectedVal
+    );
 
-  if (!match) return null;
+    if (!match) return null;
 
-  const value = match[name];
+    const value = match[name];
 
-  // If value is object like { firstName, lastName }
-  if (typeof value === "object" && value !== null) {
-    const { firstName = "", lastName = "" } = value;
-    return `${firstName} ${lastName}`.trim();
-  }
+    // If value is object like { firstName, lastName }
+    if (typeof value === "object" && value !== null) {
+      const { firstName = "", lastName = "" } = value;
+      return `${firstName} ${lastName}`.trim();
+    }
 
-  // Otherwise return primitive value
-  return value;
-};
-
+    // Otherwise return primitive value
+    return value;
+  };
 
   const handleToggle = () => {
     if (!handleError) {
@@ -69,26 +69,25 @@ const findName = (selectedVal, name) => {
     }
   };
 
-const renderSelectedValue = () => {
-  if (selectedOption !== negativeValue && selectedOption) {
-    if (selectedOptionDependency) {
-      const label = findName(selectedOption, feildName);
-      const extra = extras ? findName(selectedOption, extras) : null;
+  const renderSelectedValue = () => {
+    if (selectedOption !== negativeValue && selectedOption) {
+      if (selectedOptionDependency) {
+        const label = findName(selectedOption, feildName);
+        const extra = extras ? findName(selectedOption, extras) : null;
 
-      return (
-        <>
-          <span>{typeof label === "object" ? "" : label}</span>
-          {extra && typeof extra !== "object" && (
-            <span className="text-sm text-gray-700"> ({extra})</span>
-          )}
-        </>
-      );
+        return (
+          <>
+            <span>{typeof label === "object" ? "" : label}</span>
+            {extra && typeof extra !== "object" && (
+              <span className="text-sm text-gray-700"> ({extra})</span>
+            )}
+          </>
+        );
+      }
+      return selectedOption;
     }
-    return selectedOption;
-  }
-  return inputName;
-};
-
+    return inputName;
+  };
 
   return (
     <div
@@ -101,7 +100,7 @@ const renderSelectedValue = () => {
           className="font-medium text-sm text-gray-900 capitalize"
           style={customLabelCss}
         >
-          {inputName}:
+          {inputName}
         </label>
       )}
 
@@ -111,25 +110,22 @@ const renderSelectedValue = () => {
         onClick={handleToggle}
         disabled={disabled}
         className={` p-2.5 maxsm:w-full  flex items-center justify-between transition-all relative rounded-md
-         ${tailwindCss
-            ?.includes("bg-")
-            ? tailwindCss
-            : "bg-white"
-          }
-         ${disabled
-            ? "bg-white border-white cursor-not-allowed shadow-none border-none"
-            : tailwindCss?.includes("bg-")
-            ? tailwindCss
-            : "bg-white"}
-         ${!disabled
-            ? "cursor-pointer border shadow-sm"
-            : ""}
-         ${inputError?.error
-            ? "border-1 border-red-800"
-            : isOpen
-            ? "border-gray-800"
-            : "border-gray-400"
-          } ${tailwindCss}`}
+         ${tailwindCss?.includes("bg-") ? tailwindCss : "bg-white"}
+         ${
+           disabled
+             ? "bg-white border-white cursor-not-allowed shadow-none border-none"
+             : tailwindCss?.includes("bg-")
+             ? tailwindCss
+             : "bg-white"
+         }
+         ${!disabled ? "cursor-pointer border shadow-sm" : ""}
+         ${
+           inputError?.error
+             ? "border-1 border-red-800"
+             : isOpen
+             ? "border-gray-800"
+             : "border-gray-400"
+         } ${tailwindCss}`}
       >
         {showTip && !disabled && (isOpen || selectedOption) && (
           <span className="absolute -top-[10px] left-3 px-1 text-[11px] text-gray-600 capitalize bg-white">
@@ -138,19 +134,23 @@ const renderSelectedValue = () => {
         )}
 
         <span
-          className={`truncate text-start w-[200px] ${selectedOption ? "text-gray-800" : "text-gray-600 capitalize"
-            }`}
+          className={`truncate text-start w-[200px] ${
+            selectedOption ? "text-gray-800" : "text-gray-600 capitalize"
+          }`}
         >
           {renderSelectedValue()}
         </span>
 
-        {!disabled && (<IoIosArrowDown
-          className={`w-4 h-4 transform transition-transform ${isOpen ? "rotate-180" : ""
+        {!disabled && (
+          <IoIosArrowDown
+            className={`w-4 h-4 transform transition-transform ${
+              isOpen ? "rotate-180" : ""
             }`}
-        />)}
+          />
+        )}
       </button>
 
-      {!disabled && (
+      {/* {!disabled && (
         <OptionsWithSerch
           extras={extras}
           isOpen={isOpen}
@@ -164,7 +164,50 @@ const renderSelectedValue = () => {
             setIsOpen(false);
           }}
         />
-      )}
+      )} */}
+
+      {!disabled &&
+        isOpen &&
+        (useFixedPosition ? (
+          // Fixed positioning for table dropdowns
+          <div
+            className="fixed z-[9999]"
+            style={{
+              top: dropdownRef.current?.getBoundingClientRect().bottom,
+              left: dropdownRef.current?.getBoundingClientRect().left,
+              width: dropdownRef.current?.getBoundingClientRect().width,
+            }}
+          >
+            <OptionsWithSerch
+              extras={extras}
+              isOpen={isOpen}
+              showSerch={showSerch}
+              feildName={feildName}
+              initialData={listData}
+              addRoute={addRoute}
+              inputName={inputName}
+              handleClick={(data) => {
+                handleClick(data);
+                setIsOpen(false);
+              }}
+            />
+          </div>
+        ) : (
+          // Normal positioning for other dropdowns
+          <OptionsWithSerch
+            extras={extras}
+            isOpen={isOpen}
+            showSerch={showSerch}
+            feildName={feildName}
+            initialData={listData}
+            addRoute={addRoute}
+            inputName={inputName}
+            handleClick={(data) => {
+              handleClick(data);
+              setIsOpen(false);
+            }}
+          />
+        ))}
 
       {inputError?.error && (
         <span className="text-red-700 text-sm font-medium -mt-[5px]">

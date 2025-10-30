@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Typography } from "@material-tailwind/react";
 import { useDispatch, useSelector } from "react-redux";
-import CustomField from "../input/CustomFeild";
+import CustomField from "../Input/CustomFeild";
 import CitySearchWithTimezone from "../Input/CitySearchWithTimezone";
 import { getAddressTypesAction } from "../../redux/Action/Global/GlobalAction";
 import SubCardHeader from "../header/SubCardHeader";
@@ -20,12 +20,12 @@ const Address = ({
   );
   const dispatch = useDispatch();
   const { addressTypes } = useSelector((state) => state?.global);
-  console.log(state.geoJson?.coordinates[0]);
+  // console.log(state.geoJson?.coordinates[0]);
   const [location, setLocation] = useState({
     ...state.geoJson,
     ...state.geoLocation,
-    lng: state.geoJson?.coordinates[0],
-    lat: state.geoJson?.coordinates[1],
+    lng: state.geoJson?.coordinates?.[0] || 0,
+    lat: state.geoJson?.coordinates?.[1] || 0,
   });
   const [locationSearch, setLocationSearch] = useState();
   const [locationSearchText, setLocationSearchText] = useState(
@@ -49,10 +49,10 @@ const Address = ({
       input: "input",
       value: state?.address?.hno ?? "",
     },
-    { key: "street", label: "Street/Locality", input: "input" },
+    // { key: "street", label: "Street/Locality", input: "input" },
     { key: "landmark", label: "Landmark", input: "input" },
     { key: "city", label: "Village/City", input: "input", required: true },
-    { key: "taluk", label: "Taluk", input: "input" },
+    // { key: "taluk", label: "Taluk", input: "input" },
     { key: "district", label: "District", input: "input" },
     { key: "state", label: "State", input: "input", required: true },
     { key: "country", label: "Country", input: "input", required: true },
@@ -226,7 +226,7 @@ const Address = ({
   };
 
   return (
-    <div className="w-full  mt-3">
+    <div className="w-full">
       <SubCardHeader headerLabel={"Address"} />
 
       <div className="flex flex-col min-w-[180px] py-3">

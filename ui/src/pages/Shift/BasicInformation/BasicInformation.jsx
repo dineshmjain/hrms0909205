@@ -1,7 +1,11 @@
+// In edit mode, pre-select branch in dropdown if state.branchId is present
+
+// Ensure branch dropdown is pre-filled with correct objects when editing
 import { useEffect, useState } from "react";
+import moment from "moment";
 import { useDispatch, useSelector } from "react-redux";
 import * as Yup from "yup";
-import FormikInput from "../../../components/input/FormikInput";
+import FormikInput from "../../../components/Input/FormikInput";
 import SubCardHeader from "../../../components/header/SubCardHeader";
 import { useFormikContext } from "formik";
 import { useLocation } from "react-router-dom";
@@ -9,7 +13,11 @@ import OrganizationFilter from "../../../components/Filter/organizationFilter";
 import TooltipMaterial from "../../../components/TooltipMaterial/TooltipMaterial";
 import { PiInfoBold } from "react-icons/pi";
 import { Typography } from "@material-tailwind/react";
-import { ClientDefaultSettingsListAction } from "../../../redux/Action/Client/ClientAction";
+import { ClientDefaultSettingsListAction, clientListAction } from "../../../redux/Action/Client/ClientAction";
+import Branch from "../../ClientWizard/Branch/Branch";
+import { SubOrgListAction } from "../../../redux/Action/SubOrgAction/SubOrgAction";
+import { clientBranchListAction } from "../../../redux/Action/ClientBranch/ClientBranchAction";
+import { BranchGetAction } from "../../../redux/Action/Branch/BranchAction";
 
 // ✅ Exporting field config for Formik in parent
 export const BasicConfig = () => {
@@ -27,6 +35,7 @@ export const BasicConfig = () => {
       minOut: "",
       clientMappedId: "",
       clientId: "",
+      branchIds: [],
     },
     validationSchema: {
       name: Yup.string().required("Shift Name is required"),
@@ -38,24 +47,31 @@ export const BasicConfig = () => {
       endTime: Yup.string().required("Shift End Time is required"),
       bgColor: Yup.string().required("Shift BG Color is required "),
       textColor: Yup.string().required("Shift Text Color is required "),
+      branchIds: Yup.array()
+      .of(Yup.string())
+      .min(1, 'At least one branch must be selected')
+      .required('At least one branch must be selected'),
     },
   };
 };
 
 // ✅ Component
-const BasicInformation = ({ isEdit, type = "add" }) => {
+const BasicInformation = ({ isEdit, type, selectedBranch, setSelectedBranch }) => {
   const dispatch = useDispatch();
   const { state } = useLocation();
   const { values, setFieldValue } = useFormikContext();
   const [endTime, setEndTime] = useState("")
   const [startTime, setStartTime] = useState("")
   const [checkReporting, setCheckReporting] = useState(false)
+  const { clientList } = useSelector((state) => state?.client);
+  const { branchList } = useSelector((state) => state.branch || {});
+  const { clientBranchList = [] } = useSelector((state) => state.clientBranch || {});
+
 
   // ✅ Fetch dropdown data
   useEffect(() => {
     if (state) {
-      console.log(state, "recived");
-      //  setFieldValue('_id', state?._id)
+      console.log("states received", state)
       setFieldValue("name", state?.name || "");
       setFieldValue("startTime", state?.startTime || "");
       setFieldValue("endTime", state?.endTime || "");
@@ -69,7 +85,10 @@ const BasicInformation = ({ isEdit, type = "add" }) => {
       setFieldValue("clientId", state?.clientId);
       setFieldValue("reportTimeIn", state?.reportTimeIn);
       setFieldValue("reportTimeOut", state?.reportTimeOut);
-      setFieldValue("clientMappedId", state?.orgId); //
+      setFieldValue("branchIds", state?.branchId);
+      setFieldValue("branchName", state?.branchDetails?.branchName);
+      setFieldValue("clientName", state?.branchDetails?.clientName);
+      setFieldValue("clientMappedId", state?.orgId);
       setSelectedClient({
         clientId: state?.clientId,
         clientMappedId: state?.clientMappedId,
@@ -87,11 +106,44 @@ const BasicInformation = ({ isEdit, type = "add" }) => {
     clientMappedId: "",
     clientBranch: [],
   });
-  // const [checkReporting, setCheckReporting] = useState(false);
+
+  useEffect(() => {
+    console.debug("BasicInformation selectedClient changed:", selectedClient);
+  }, [selectedClient]);
+
 
   const { clientDefaultSettings } = useSelector((s) => s.client);
 
-  // ✅ Pre-fill values if editing
+  useEffect(() => {
+    if (selectedFilterType === "myOrg") dispatch(SubOrgListAction());
+    if (selectedFilterType === "clientOrg") dispatch(clientListAction());
+  }, [selectedFilterType]);
+
+
+  useEffect(() => {
+    if (selectedFilterType === "myOrg" && values?.subOrgId) {
+      dispatch(BranchGetAction({ mapedData: "branch", orgLevel: true, subOrgId: values.subOrgId }));
+      console.log('MY ORG DETAILS FETCHED')
+    }
+    if (selectedFilterType === "clientOrg" && values?.clientMappedId) {
+      dispatch(clientBranchListAction({ clientMappedId: values.clientMappedId }));
+      console.log('CLIENT ORG DETAILS FETCHED')
+    }
+  }, [selectedFilterType, values?.subOrgId, values?.clientMappedId]);
+
+
+  useEffect(() => {
+    if (selectedFilterType === "myOrg") {
+      setFieldValue("clientMappedId", "");
+      setFieldValue("branchIds", "");
+      setFieldValue("clientId", "");
+    }
+    if (selectedFilterType === "clientOrg") {
+      setFieldValue("subOrgId", "");
+      setFieldValue("branchIds", "");
+    }
+  }, [selectedFilterType, setFieldValue]);
+
   useEffect(() => {
     if (state && isEdit) {
       Object.entries(state).forEach(([key, value]) => {
@@ -108,31 +160,17 @@ const BasicInformation = ({ isEdit, type = "add" }) => {
       if (state.selectedFilterType) {
         setFilterType(state.selectedFilterType);
       } else {
-        setFilterType("myOrg"); // default
+        setFilterType("myOrg");
       }
     }
   }, [state, isEdit, setFieldValue]);
 
-  //  Load client defaults
-  useEffect(() => {
-    if (isEdit && state?.clientId) {
-      dispatch(ClientDefaultSettingsListAction({ clientId: state.clientId }));
-    } else if (!isEdit && selectedClient.clientId) {
-      dispatch(
-        ClientDefaultSettingsListAction({ clientId: selectedClient.clientId })
-      );
-    }
-  }, [isEdit, state?.clientId, selectedClient.clientId, dispatch]);
 
   // ✅ Update reporting from redux
   useEffect(() => {
     setCheckReporting(clientDefaultSettings?.isReportTime || false);
   }, [clientDefaultSettings]);
 
-  // ✅ Sync clientMappedId with form
-  useEffect(() => {
-    setFieldValue("clientMappedId", selectedClient.clientMappedId);
-  }, [selectedClient, setFieldValue]);
 
   const getInitials = (name) => {
     if (!name) return "";
@@ -141,22 +179,120 @@ const BasicInformation = ({ isEdit, type = "add" }) => {
       ? `${words[0][0]}${words[1][0]}`.toUpperCase()
       : words[0][0].toUpperCase();
   };
+  useEffect(() => {
+    try {
+      const s = values?.startTime;
+      const e = values?.endTime;
+
+      // compute minIn when startTime and numeric maxIn (minutes) are present
+      if (s && values?.maxIn !== undefined && values?.maxIn !== "") {
+        const graceInMinutes = parseInt(values.maxIn, 10);
+        if (!isNaN(graceInMinutes)) {
+          const minInTime = moment(s, "HH:mm").subtract(graceInMinutes, "minutes").format("HH:mm");
+          setFieldValue("minIn", minInTime);
+        }
+      }
+
+      // compute maxOut when endTime and numeric minOut (minutes) are present
+      if (e && values?.minOut !== undefined && values?.minOut !== "") {
+        const graceOutMinutes = parseInt(values.minOut, 10);
+        if (!isNaN(graceOutMinutes)) {
+          const maxOutTime = moment(e, "HH:mm").add(graceOutMinutes, "minutes").format("HH:mm");
+          setFieldValue("maxOut", maxOutTime);
+        }
+      }
+    } catch (err) {
+      // ignore parse errors
+    }
+  }, [values?.startTime, values?.endTime, values?.maxIn, values?.minOut, setFieldValue]);
 
   return (
     <div className="w-full p-2">
       <OrganizationFilter
         selectedFilterType={selectedFilterType}
         setFilterType={setFilterType}
-        selectedClient={{
-          clientId: values.clientId,
-          clientMappedId: values.clientMappedId,
-        }}
-        setSelectedClient={(client) => {
-          setFieldValue("clientId", client?.clientId || "");
-          setFieldValue("clientMappedId", client?.clientMappedId || "");
-        }}
         type={type}
       />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-3">
+        {selectedFilterType === "myOrg" && (
+          <>
+            {type == 'add' && (
+              <FormikInput
+                name="branchIds"
+                label={"Branches"}
+                selectedData={values?.branchIds}
+                inputType={"multiDropdown"}
+                data={branchList}
+                setSelectedData={(data) => setFieldValue("branchIds", data)}
+                feildName="name"
+                Dependency="_id"
+              />
+            )}
+            {type == 'edit' && (
+              <FormikInput
+                name="branchName"
+                size="sm"
+                label="Branch"
+                inputType={"input"}
+                editValue={values?.branchName}
+                disabled={true}
+              />
+            )}
+          </>
+        )}
+        {selectedFilterType === "clientOrg" && (
+          <>
+            {type == 'add' && (
+              <FormikInput
+                name="clientMappedId"
+                size="md"
+                label={"Client"}
+                inputType={isEdit ? "edit" : "dropdown"}
+                listData={clientList}
+                selectedOption={values?.clientMappedId}
+                handleClick={(sel) => { setFieldValue("clientMappedId", sel?._id), setFieldValue("clientId", sel.clientId) }}
+                selectedOptionDependency="_id"
+                feildName="name"
+              />
+            )}
+            {type == 'edit' && (
+              <FormikInput
+                name="clientName"
+                size="sm"
+                label="Client"
+                inputType={"input"}
+                editValue={values?.clientName}
+                disabled={true}
+              />
+            )}
+            {type == 'add' && (
+              <FormikInput
+                name="branchIds"
+                label={"Client Branches"}
+                selectedData={values?.branchIds}
+                inputType={isEdit ? "edit" : "multiDropdown"}
+                data={clientBranchList}
+                setSelectedData={(data) =>
+                  setFieldValue("branchIds", data)
+                }
+                selectedOptionDependency="_id"
+                feildName="name"
+                Dependency="_id"
+              />
+            )}
+            {type == 'edit' && (
+              <FormikInput
+                name="branchName"
+                size="sm"
+                label="Client Branch"
+                inputType={"input"}
+                editValue={values?.branchName}
+                disabled={true}
+              />
+            )}
+          </>
+        )}
+      </div>
 
       {/* Name + Colors */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-3">
@@ -222,13 +358,8 @@ const BasicInformation = ({ isEdit, type = "add" }) => {
           editValue={values?.startTime}
           onChange={(e) => {
             const selectedTime = e.target.value;
-            const [h, m] = selectedTime.split(":").map(Number);
-            const minGrace = new Date();
-            minGrace.setHours(h, m - 15);
-            setFieldValue("minIn", minGrace.toTimeString().slice(0, 5));
-            const maxGrace = new Date();
-            maxGrace.setHours(h, m + 15);
-            setFieldValue("maxIn", maxGrace.toTimeString().slice(0, 5));
+            // only set the startTime here; computation of minIn/maxIn is handled in the effect below
+            setFieldValue("startTime", selectedTime);
           }}
         />
         <FormikInput
@@ -240,13 +371,8 @@ const BasicInformation = ({ isEdit, type = "add" }) => {
           editValue={values?.endTime}
           onChange={(e) => {
             const selectedTime = e.target.value;
-            const [h, m] = selectedTime.split(":").map(Number);
-            const minGrace = new Date();
-            minGrace.setHours(h, m - 15);
-            setFieldValue("minOut", minGrace.toTimeString().slice(0, 5));
-            const maxGrace = new Date();
-            maxGrace.setHours(h, m + 15);
-            setFieldValue("maxOut", maxGrace.toTimeString().slice(0, 5));
+            // only set the endTime here; computation of minOut/maxOut is handled in the effect below
+            setFieldValue("endTime", selectedTime);
           }}
         />
       </div>
@@ -254,10 +380,10 @@ const BasicInformation = ({ isEdit, type = "add" }) => {
       {/* Grace & Reporting Times */}
       <div className="flex gap-10">
         {
-        !selectedClient?.clientId &&<div className="mt-4">
-          <SubCardHeader headerLabel="Grace Timings" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4 mb-3">
-            <FormikInput
+          !selectedClient?.clientId && <div className="mt-4">
+            <SubCardHeader headerLabel="Grace Timings" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4 mb-3">
+              {/* <FormikInput
               name="minIn"
               size="sm"
               label={
@@ -271,40 +397,41 @@ const BasicInformation = ({ isEdit, type = "add" }) => {
               inputType={!isEdit ? "input" : "edit"}
               type="time"
               editValue={values?.minIn}
-            />
-            <FormikInput
-              name="minOut"
-              size="sm"
-              label={
-                <span className="flex items-center gap-1">
-                  Grace Min Out
-                  <TooltipMaterial content="Minimum grace time allowed for Check-Out">
-                    <PiInfoBold className="w-5 h-5" />
-                  </TooltipMaterial>
-                </span>
-              }
-              inputType={!isEdit ? "input" : "edit"}
-              type="time"
-              editValue={values?.minOut}
-            />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4">
-            <FormikInput
-              name="maxIn"
-              size="sm"
-              label={
-                <span className="flex items-center gap-1">
-                  Grace Max In
-                  <TooltipMaterial content="Maximum grace time allowed for Check-In">
-                    <PiInfoBold className="w-5 h-5" />
-                  </TooltipMaterial>
-                </span>
-              }
-              inputType={!isEdit ? "input" : "edit"}
-              type="time"
-              editValue={values?.maxIn}
-            />
-            <FormikInput
+            /> */}
+
+              {/* </div> */}
+              {/* <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4"> */}
+              <FormikInput
+                name="maxIn"
+                size="sm"
+                label={
+                  <span className="flex items-center gap-1">
+                    Grace Max In
+                    <TooltipMaterial content="Maximum grace time allowed for Check-In">
+                      <PiInfoBold className="w-5 h-5" />
+                    </TooltipMaterial>
+                  </span>
+                }
+                inputType={!isEdit ? "input" : "edit"}
+                type="number"
+                editValue={values?.maxIn}
+              />
+              <FormikInput
+                name="minOut"
+                size="sm"
+                label={
+                  <span className="flex items-center gap-1">
+                    Grace Min Out
+                    <TooltipMaterial content="Minimum grace time allowed for Check-Out">
+                      <PiInfoBold className="w-5 h-5" />
+                    </TooltipMaterial>
+                  </span>
+                }
+                inputType={!isEdit ? "input" : "edit"}
+                type="number"
+                editValue={values?.minOut}
+              />
+              {/* <FormikInput
               name="maxOut"
               size="sm"
               label={
@@ -318,14 +445,14 @@ const BasicInformation = ({ isEdit, type = "add" }) => {
               inputType={!isEdit ? "input" : "edit"}
               type="time"
               editValue={values?.maxOut}
-            />
+            /> */}
+            </div>
           </div>
-        </div>
 
-            }
+        }
 
         {selectedClient?.clientId && (
-          checkReporting  ?(<div className="mt-4">
+          checkReporting ? (<div className="mt-4">
             <SubCardHeader headerLabel="Reporting Time" />
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4 mb-3">
               <FormikInput
@@ -345,78 +472,77 @@ const BasicInformation = ({ isEdit, type = "add" }) => {
                 editValue={values?.reportTimeOut}
               />
             </div>
-          </div>):(
+          </div>) : (
             <div className="mt-4">
-          <SubCardHeader headerLabel="Grace Timings" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4 mb-3">
-            <FormikInput
-              name="minIn"
-              size="sm"
-              label={
-                <span className="flex items-center gap-1">
-                  Grace Min In
-                  <TooltipMaterial content="Minimum grace time allowed for Check-In">
-                    <PiInfoBold className="w-5 h-5" />
-                  </TooltipMaterial>
-                </span>
-              }
-              inputType={!isEdit ? "input" : "edit"}
-              type="time"
-              editValue={values?.minIn}
-            />
-            <FormikInput
-              name="minOut"
-              size="sm"
-              label={
-                <span className="flex items-center gap-1">
-                  Grace Min Out
-                  <TooltipMaterial content="Minimum grace time allowed for Check-Out">
-                    <PiInfoBold className="w-5 h-5" />
-                  </TooltipMaterial>
-                </span>
-              }
-              inputType={!isEdit ? "input" : "edit"}
-              type="time"
-              editValue={values?.minOut}
-            />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4">
-            <FormikInput
-              name="maxIn"
-              size="sm"
-              label={
-                <span className="flex items-center gap-1">
-                  Grace Max In
-                  <TooltipMaterial content="Maximum grace time allowed for Check-In">
-                    <PiInfoBold className="w-5 h-5" />
-                  </TooltipMaterial>
-                </span>
-              }
-              inputType={!isEdit ? "input" : "edit"}
-              type="time"
-              editValue={values?.maxIn}
-            />
-            <FormikInput
-              name="maxOut"
-              size="sm"
-              label={
-                <span className="flex items-center gap-1">
-                  Grace Max Out
-                  <TooltipMaterial content="Maximum grace time allowed for Check-Out">
-                    <PiInfoBold className="w-5 h-5" />
-                  </TooltipMaterial>
-                </span>
-              }
-              inputType={!isEdit ? "input" : "edit"}
-              type="time"
-              editValue={values?.maxOut}
-            />
-          </div>
-        </div>
+              <SubCardHeader headerLabel="Grace Timings" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-4 mb-3">
+                {/* <FormikInput
+                  name="minIn"
+                  size="sm"
+                  label={
+                    <span className="flex items-center gap-1">
+                      Grace Min In
+                      <TooltipMaterial content="Minimum grace time allowed for Check-In">
+                        <PiInfoBold className="w-5 h-5" />
+                      </TooltipMaterial>
+                    </span>
+                  }
+                  inputType={!isEdit ? "input" : "edit"}
+                  type="time"
+                  editValue={values?.minIn}
+                /> */}
+                <FormikInput
+                  name="maxIn"
+                  size="sm"
+                  label={
+                    <span className="flex items-center gap-1">
+                      Grace Max In
+                      <TooltipMaterial content="Maximum grace time allowed for Check-In">
+                        <PiInfoBold className="w-5 h-5" />
+                      </TooltipMaterial>
+                    </span>
+                  }
+                  inputType={!isEdit ? "input" : "edit"}
+                  type="number"
+                  editValue={values?.maxIn}
+                />
+                <FormikInput
+                  name="minOut"
+                  size="sm"
+                  label={
+                    <span className="flex items-center gap-1">
+                      Grace Min Out
+                      <TooltipMaterial content="Minimum grace time allowed for Check-Out">
+                        <PiInfoBold className="w-5 h-5" />
+                      </TooltipMaterial>
+                    </span>
+                  }
+                  inputType={!isEdit ? "input" : "edit"}
+                  type="number"
+                  editValue={values?.minOut}
+                />
+
+                {/* <FormikInput
+                  name="maxOut"
+                  size="sm"
+                  label={
+                    <span className="flex items-center gap-1">
+                      Grace Max Out
+                      <TooltipMaterial content="Maximum grace time allowed for Check-Out">
+                        <PiInfoBold className="w-5 h-5" />
+                      </TooltipMaterial>
+                    </span>
+                  }
+                  inputType={!isEdit ? "input" : "edit"}
+                  type="time"
+                  editValue={values?.maxOut}
+                /> */}
+              </div>
+            </div>
           )
         )
-      
-      }
+
+        }
       </div>
     </div>
   );

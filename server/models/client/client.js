@@ -374,6 +374,184 @@ export const getClient = async (body) => {
   }
 };
 
+export const getClientWithBranchAndFieldOfficer = async (body) => {
+  try {
+    const query = new QueryBuilder(body.query)
+      .addId()
+      .addClientId()
+      .addIsActive();
+
+    const params = query.getQueryParams();
+    params["orgId"] = body.authUser?.orgId || body.user?.orgId;
+
+    let search = null;
+    if (body.search && body.search.trim() !== "") {
+      search = {
+        $match: {
+          $or: [
+            { "organisation.name": { $regex: body.search, $options: "i" } },
+            { "nickName": { $regex: body.search, $options: "i" } },
+            { "branches.name": { $regex: body.search, $options: "i" } },
+            { "branches.assignedUsers.name.firstName": { $regex: body.search, $options: "i" } }
+          ]
+        }
+      };
+    }
+
+    const aggregationPipeline = [
+      { $match: params },
+
+      // Join with organization (the client org data)
+      {
+        $lookup: {
+          from: "organization",
+          localField: "clientId",
+          foreignField: "_id",
+          as: "organisation"
+        }
+      },
+      { $unwind: { path: "$organisation", preserveNullAndEmptyArrays: true } },
+
+      // Join client branches
+      {
+        $lookup: {
+          from: "branches",
+          let: { clientOrgId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$orgId", "$$clientOrgId"] },
+                    { $eq: ["$client", true] },
+                    { $eq: ["$isActive", true] }
+                  ]
+                }
+              }
+            },
+            // Fetch users assigned to this branch
+            {
+              $lookup: {
+                from: "user",
+                let: { branchId: "$_id" },
+                pipeline: [
+                  {
+                    $match: {
+                      $expr: {
+                        $in: ["$$branchId", { $ifNull: ["$clientBranches", []] }]
+                      }
+                    }
+                  },
+                  // Join each user's assignment details
+                  {
+                    $lookup: {
+                      from: "assignment",
+                      let: { assignmentIds: "$assignmentId" },
+                      pipeline: [
+                        {
+                          $match: {
+                            $expr: {
+                              $and: [
+                                { $in: ["$_id", { $ifNull: ["$$assignmentIds", []] }] },
+                                { $eq: ["$isActive", true] }
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          $project: {
+                            _id: 1,
+                            designationId: 1,
+                            departmentId: 1,
+                            branchId: 1,
+                            createdDate: 1,
+                            subOrgId: 1
+                          }
+                        }
+                      ],
+                      as: "assignments"
+                    }
+                  },
+                  {
+                    $project: {
+                      _id: 1,
+                      name: 1,
+                      email: 1,
+                      mobile: 1,
+                      gender: 1,
+                      profileImage: 1,
+                      roleId: 1,
+                      isActive: 1,
+                      assignments: 1
+                    }
+                  }
+                ],
+                as: "fieldOfficer"
+              }
+            },
+            {
+              $project: {
+                _id: 1,
+                name: 1,
+                address: 1,
+                radius: 1,
+                gstNo: 1,
+                panNo: 1,
+                isActive: 1,
+                createdDate: 1,
+                fieldOfficer: 1
+              }
+            }
+          ],
+          as: "branches"
+        }
+      },
+
+      ...(search ? [search] : []),
+
+      {
+        $project: {
+          _id: 1,
+          orgId: 1,
+          clientId: 1,
+          nickName: 1,
+          createdBy: 1,
+          createdAt: 1,
+          isActive: 1,
+          "organisation.name": 1,
+          "organisation.orgTypeId": 1,
+          branches: 1,
+          branchCount: { $size: "$branches" },
+          modifiedDate: {
+            $cond: {
+              if: { $ifNull: ["$organisation.modifiedDate", false] },
+              then: "$organisation.modifiedDate",
+              else: "$organisation.createdDate"
+            }
+          }
+        }
+      }
+    ];
+
+    const paginationQuery = {
+      page: body.page ? parseInt(body.page) : 1,
+      limit: body.limit ? parseInt(body.limit) : 10,
+      sortOrder: body.sortOrder ? parseInt(body.sortOrder) : -1,
+      sortBy: body.sortBy || "createdAt"
+    };
+
+    return await aggregationWithPegination(
+      aggregationPipeline,
+      paginationQuery,
+      collection_name
+    );
+  } catch (error) {
+    logger.error("Error while getClientWithBranch in client module", { stack: error.stack });
+    throw error;
+  }
+};
+
+
 // update client organization
 export const updateClientOrganization = async (body) => {
   try {

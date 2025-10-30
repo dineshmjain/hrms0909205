@@ -5,6 +5,7 @@ import Loader from "../Loader/Loader";
 const Add = lazy(() => import("./Add"));
 const List = lazy(() => import("./List"));
 const Edit = lazy(() => import("./Edit"));
+const Service = lazy(()=>import("./DesignationAsService"))
 const Index = () => {
   return (
     <Suspense fallback={<Loader />}>
@@ -13,6 +14,7 @@ const Index = () => {
         <Route element={<Add />} path="add" />
         <Route element={<List />} path="list" />
         <Route element={<Edit />} path="edit" />
+           <Route element={<Service />} path="service" />
       </Routes>
     </Suspense>
   );

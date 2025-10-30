@@ -31,18 +31,10 @@ const List = ({ state }) => {
   // Local state
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all");
 
   // Redux state
   const { clientList, loading, error, totalRecord, pageNo, limit } =
     useSelector((state) => state.client);
-
-  // Get unique business types for filter
-  const businessTypes = useMemo(() => {
-    if (!clientList || !Array.isArray(clientList)) return [];
-    const types = [...new Set(clientList.map(client => client.type).filter(Boolean))];
-    return types;
-  }, [clientList]);
 
   // CLIENT-SIDE FILTERING - Apply filters to the data
   const filteredClientList = useMemo(() => {
@@ -59,18 +51,12 @@ const List = ({ state }) => {
       });
     }
 
-    // Apply type filter
-    if (typeFilter !== "all") {
-      filtered = filtered.filter(client => client.type === typeFilter);
-    }
-
     // Apply search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(client => {
         return (
           client.name?.toLowerCase().includes(searchLower) ||
-          client.type?.toLowerCase().includes(searchLower) ||
           client.email?.toLowerCase().includes(searchLower) ||
           client.phone?.toLowerCase().includes(searchLower) ||
           client.mobile?.toLowerCase().includes(searchLower) ||
@@ -80,7 +66,7 @@ const List = ({ state }) => {
     }
 
     return filtered;
-  }, [clientList, statusFilter, typeFilter, searchTerm]);
+  }, [clientList, statusFilter, searchTerm]);
 
   // Statistics based on FILTERED data
   const stats = useMemo(() => {
@@ -125,7 +111,6 @@ const List = ({ state }) => {
       'Client ID',
       'Client Name',
       'Nick Name',
-      'Business Type',
       'Status',
       'Created By',
       'Created Date',
@@ -136,7 +121,6 @@ const List = ({ state }) => {
       client.clientId || client._id || '',
       client.name || '',
       client.nickName || '',
-      client.type || '',
       client.isActive ? 'Active' : 'Inactive',
       `${client.createdBy?.firstName || ''} ${client.createdBy?.lastName || ''}`,
       new Date(client.createdDate).toLocaleDateString('en-IN'),
@@ -238,21 +222,6 @@ const List = ({ state }) => {
         );
       },
     },
-    type: {
-      DisplayName: "Business Type",
-      type: "function",
-      data: (data, idx) => {
-        return (
-          <Chip
-            key={idx}
-            variant="ghost"
-            color="blue"
-            value={data.type || "N/A"}
-            className="font-medium"
-          />
-        );
-      },
-    },
     firstName: {
       DisplayName: "Created By",
       type: "function",
@@ -303,7 +272,6 @@ const List = ({ state }) => {
   const clearAllFilters = () => {
     setSearchTerm("");
     setStatusFilter("all");
-    setTypeFilter("all");
   };
 
   return (
@@ -387,9 +355,9 @@ const List = ({ state }) => {
 
       {/* Filters Section */}
       <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Search */}
-          <div className="md:col-span-1">
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Search Clients
             </label>
@@ -420,29 +388,10 @@ const List = ({ state }) => {
               <option value="inactive">Inactive</option>
             </select>
           </div>
-
-          {/* Type Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Business Type
-            </label>
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">All Types</option>
-              {businessTypes.map((type, idx) => (
-                <option key={idx} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
 
         {/* Active Filters Display */}
-        {(statusFilter !== "all" || typeFilter !== "all" || searchTerm) && (
+        {(statusFilter !== "all" || searchTerm) && (
           <div className="mt-4 flex items-center gap-2 flex-wrap">
             <span className="text-sm text-gray-600 font-medium">Active Filters:</span>
             {searchTerm && (
@@ -460,15 +409,6 @@ const List = ({ state }) => {
                 color="blue"
                 value={`Status: ${statusFilter === 'active' ? 'Active' : 'Inactive'}`}
                 onClose={() => setStatusFilter("all")}
-                className="cursor-pointer"
-              />
-            )}
-            {typeFilter !== "all" && (
-              <Chip
-                variant="ghost"
-                color="blue"
-                value={`Type: ${typeFilter}`}
-                onClose={() => setTypeFilter("all")}
                 className="cursor-pointer"
               />
             )}

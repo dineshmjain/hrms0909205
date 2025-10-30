@@ -15,56 +15,64 @@ export let validation = {
         .messages({ m: "Mobile must be of 10 degit" }),
       password: Joi.string().min(8).required(),
       defaultLanguage: Joi.string().valid("en", "hi"),
-      email: Joi.string().email(),
+      email: Joi.string().email().allow("").optional(),
+      orgName : Joi.string().optional(),
+      orgTypeId : Joi.string().optional(),
       name: Joi.object()
         .required()
         .keys({
           firstName: Joi.string().min(3).required(),
           middleName: Joi.string(),
-          lastName: Joi.string(),
+          lastName: Joi.string().allow("").optional(),
         }),
     }),
   },
 
-  /**
-   * shift creation validation fom body.
-   * startTime and endTime validation time in range
-   * (01 to 24) : (00 to 59)
-   */
-  shiftCreation: {
-    body: Joi.object().required().keys({
-      name: Joi.string().min(3).required(),
-      startTime: Joi.string().pattern(/^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/).required().messages({
-        'string.pattern.base': 'Start time must be in the format HH:MM and between 00:00 and 23:59.'
-      }),
-      endTime: Joi.string().pattern(/^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/).required().messages({
-        'string.pattern.base': 'End time must be in the format HH:MM and between 00:00 and 23:59.'
-      }),
-      minIn: Joi.string().pattern(/^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/).required().messages({
-        'string.pattern.base': 'minIn time must be in the format HH:MM and between 00:00 and 23:59.'
-      }),
-      minOut: Joi.string().pattern(/^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/).required().messages({
-        'string.pattern.base': 'minOut time must be in the format HH:MM and between 00:00 and 23:59.'
-      }),
-      maxIn: Joi.string().pattern(/^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/).required().messages({
-        'string.pattern.base': 'maxIn time must be in the format HH:MM and between 00:00 and 23:59.'
-      }),
-      maxOut: Joi.string().pattern(/^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/).required().messages({
-        'string.pattern.base': 'maxOut time must be in the format HH:MM and between 00:00 and 23:59.'
-      }),
-      bgColor: Joi.string(),
-      textColor: Joi.string(),
-      clientMappedId: Joi.string().optional(),
-      clientId: Joi.string().optional(),
-      branchId: Joi.string().optional(),
-      reportTimeIn: Joi.string().pattern(/^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/).optional().messages({
-        'string.pattern.base': 'reportTimeIn time must be in the format HH:MM and between 00:00 and 23:59.'
-      }),
-      reportTimeOut: Joi.string().pattern(/^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/).optional().messages({
-        'string.pattern.base': 'reportTimeOut time must be in the format HH:MM and between 00:00 and 23:59.'
-      }),
-    })
-  },
+    /**
+     * shift creation validation fom body.
+     * startTime and endTime validation time in range
+     * (01 to 24) : (00 to 59)
+     */
+    shiftCreation: {
+        body: Joi.object().required().keys({
+            name: Joi.string().min(3).required(),
+            startTime: Joi.string().pattern(/^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/).required().messages({
+                'string.pattern.base': 'Start time must be in the format HH:MM and between 00:00 and 23:59.'
+            }),
+            endTime: Joi.string().pattern(/^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/).required().messages({
+                'string.pattern.base': 'End time must be in the format HH:MM and between 00:00 and 23:59.'
+            }),
+            minIn: Joi.string().pattern(/^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/).optional().messages({
+                'string.pattern.base': 'minIn time must be in the format HH:MM and between 00:00 and 23:59.'
+            }),
+            minOut: Joi.string().pattern(/^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/).optional().messages({
+                'string.pattern.base': 'minOut time must be in the format HH:MM and between 00:00 and 23:59.'
+            }),
+            maxIn: Joi.string().pattern(/^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/).optional().messages({
+                'string.pattern.base': 'maxIn time must be in the format HH:MM and between 00:00 and 23:59.'
+            }),
+            maxOut: Joi.string().pattern(/^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/).optional().messages({
+                'string.pattern.base': 'maxOut time must be in the format HH:MM and between 00:00 and 23:59.'
+            }),
+            bgColor: Joi.string(),
+            textColor: Joi.string(),
+            clientMappedId: Joi.string().optional(),
+            clientId: Joi.string().optional(),
+            branchIds: Joi.array()
+            .items(Joi.string().required())
+            .optional()
+            .messages({
+              'array.base': `"branchIds" must be an array of strings`,
+              'string.base': `Each branchId must be a string`,
+            }),
+            reportTimeIn: Joi.string().pattern(/^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/).optional().messages({
+                'string.pattern.base': 'reportTimeIn time must be in the format HH:MM and between 00:00 and 23:59.'
+            }),
+            reportTimeOut: Joi.string().pattern(/^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/).optional().messages({
+                'string.pattern.base': 'reportTimeOut time must be in the format HH:MM and between 00:00 and 23:59.'
+            }),
+        })
+    },
 
   shiftDateCreate: {
     body: Joi.object()
@@ -439,7 +447,7 @@ export let validation = {
           .keys({
             firstName: Joi.string().min(3).required(),
             // middleName: Joi.string(),
-            lastName: Joi.string().required(),
+            lastName: Joi.string().allow("").optional(),
           }),
         mobile: Joi.string()
           .min(10)
@@ -449,7 +457,25 @@ export let validation = {
           .messages({
             "string.pattern.base": "Mobile number must be in between 0 to 9",
           }),
-        email: Joi.string().email(),
+        guardianNumber: Joi.string()
+        .min(10)
+        .max(10)
+        .pattern(/^\d{10}$/)
+        .required()
+        .messages({
+          "string.pattern.base": "guardianNumber must be in between 0 to 9",
+        }),
+        emergencyNumber: Joi.string()
+          .min(10)
+          .max(10)
+          .pattern(/^\d{10}$/)
+          .required()
+          .messages({
+            "string.pattern.base": "emergencyNumber must be in between 0 to 9",
+          }),
+        guardianName:Joi.string().required(),
+
+        email: Joi.string().email().allow("").optional(),
         profileImage: Joi.string(),
         password: Joi.string().min(8).required(),
         gender: Joi.string().valid("female", "male"),
@@ -457,6 +483,18 @@ export let validation = {
         bloodGroup: Joi.string().valid("A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"),
         qualification: Joi.string().max(100),
         employeeId: Joi.string().max(100),
+        workTimingType:Joi.string().valid("branch", "shift").required(),
+        shiftIds: Joi.array()
+          .optional()
+          .items(
+            Joi.string().custom((value, helpers) => {
+              if (!ObjectId.isValid(value)) {
+                return helpers.message(`"${value}" is not a valid ObjectId`);
+              }
+              return value;
+            })
+          ),
+        salaryConfig: Joi.boolean().optional(),
         joinDate: Joi.string()
           .required()
           .pattern(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/)
@@ -560,6 +598,48 @@ export let validation = {
             ),
           })
         ),
+        bloodGroup: Joi.string()
+          .valid("A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-")
+          .optional(),
+        guardianName: Joi.string().optional(),
+        qualification: Joi.string().max(100).optional(),
+        employeeId: Joi.string().max(100).optional(),
+        workTimingType: Joi.string()
+          .valid("branch", "shift")
+          .optional(),
+        shiftIds: Joi.array()
+          .items(
+            Joi.string().custom((value, helpers) => {
+              if (!ObjectId.isValid(value)) {
+                return helpers.message(`"${value}" is not a valid ObjectId`);
+              }
+              return value;
+            })
+          )
+          .optional(),
+        salaryConfig: Joi.boolean().optional(),
+
+        guardianNumber: Joi.string()
+          .min(10)
+          .max(10)
+          .pattern(/^\d{10}$/)
+          .optional()
+          .messages({
+            "string.pattern.base": "guardianNumber must be in between 0 to 9",
+          }),
+
+        emergencyNumber: Joi.string()
+          .min(10)
+          .max(10)
+          .pattern(/^\d{10}$/)
+          .optional()
+          .messages({
+            "string.pattern.base": "emergencyNumber must be in between 0 to 9",
+          }),
+
+        isSubOrg: Joi.boolean().optional(),
+        martialStatus:Joi.string().optional()
+
       }),
   },
   updatingUserOfficial: {
@@ -588,6 +668,19 @@ export let validation = {
           .pattern(/^[a-f\d]{24}$/i)
           .message("sub Organization Id Id must be a valid ObjectId"),
         joinDate: Joi.string().optional(),
+        workTimingType: Joi.string()
+          .valid("branch", "shift")
+          .optional(),
+        shiftIds: Joi.array()
+          .items(
+            Joi.string().custom((value, helpers) => {
+              if (!ObjectId.isValid(value)) {
+                return helpers.message(`"${value}" is not a valid ObjectId`);
+              }
+              return value;
+            })
+          ).optional(),
+        employeeId: Joi.string().max(100).optional()
       }),
   },
   updatingUserAddress: {
@@ -905,6 +998,127 @@ export let validation = {
         employeesRequired: Joi.number().optional(),
         area: Joi.string().optional(),
         patrolling: Joi.bool().optional(),
+                timeSettingType: Joi.string()
+          .valid("startEnd", "reporting")
+          .optional()
+          .description("Determines whether time is based on start/end or a single reporting time"),
+
+        startTime: Joi.when("timeSettingType", {
+          is: "startEnd",
+          then: Joi.string()
+            .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
+            .optional()
+            .messages({
+              "string.pattern.base": "startTime must be in HH:mm format",
+            }),
+          otherwise: Joi.forbidden(),
+        }),
+
+        endTime: Joi.when("timeSettingType", {
+          is: "startEnd",
+          then: Joi.string()
+            .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
+            .optional()
+            .messages({
+              "string.pattern.base": "endTime must be in HH:mm format",
+            }),
+          otherwise: Joi.forbidden(),
+        }),
+
+        reportingTime: Joi.when("timeSettingType", {
+          is: "reporting",
+          then: Joi.string()
+            .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
+            .optional()
+            .messages({
+              "string.pattern.base": "reportingTime must be in HH:mm format",
+            }),
+          otherwise: Joi.forbidden(),
+        }),
+
+        maxIn: Joi.number()
+          .integer()
+          .min(0)
+          .optional()
+          .messages({
+            "number.base": "maxIn must be a number",
+          }),
+
+        minOut: Joi.number()
+          .integer()
+          .min(0)
+          .optional()
+          .messages({
+            "number.base": "minOut must be a number",
+          }),
+
+        weekOff: Joi.array()
+          .items(
+            Joi.string().valid(
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+              "Saturday",
+              "Sunday"
+            )
+          )
+          .optional()
+          .messages({
+            "any.only": "weekOff must contain valid weekday names",
+          }),
+
+        // salaryCycle: Joi.number()
+        //   .integer()
+        //   .min(1)
+        //   .max(31)
+        //   .optional()
+        //   .messages({
+        //     "number.base": "salaryCycle must be a number between 1 and 31",
+        //   }),
+        salaryCycle: Joi.object({
+          startDay: Joi.number()
+            .integer()
+            .min(1)
+            .max(31)
+            .required()
+            .messages({
+              "number.base": "salaryCycle.startDay must be a number between 1 and 31",
+              "any.required": "salaryCycle.startDay is required"
+            }),
+        
+          endDay: Joi.number()
+            .integer()
+            .min(1)
+            .max(31)
+            .required()
+            .messages({
+              "number.base": "salaryCycle.endDay must be a number between 1 and 31",
+              "any.required": "salaryCycle.endDay is required"
+            })
+        })
+        .optional()
+        .messages({
+          "object.base": "salaryCycle must be an object with startDay and endDay"
+        }),
+
+        financialYear: Joi.object({
+          startDate: Joi.string().required().messages({
+            "date.base": "financialYear.startDate must be a valid date",
+            "any.required": "financialYear.startDate is required"
+          }),
+          endDate: Joi.string().required().messages({
+            "date.base": "financialYear.endDate must be a valid date",
+            "date.greater": "financialYear.endDate must be after financialYear.startDate",
+            "any.required": "financialYear.endDate is required"
+          })
+        })
+        .optional()
+        .messages({
+          "object.base": "financialYear must be an object with startDate and endDate"
+        }),
+
         assignToUserId: Joi.array().items(
           Joi.string().custom((value, helpers) => {
             if (!ObjectId.isValid(value)) {
@@ -1300,6 +1514,7 @@ export let validation = {
           .message("_id must be a valid ObjectId")
           .required(),
         name: Joi.string(),
+        groupName: Joi.string(),
         // type: Joi.string(),
         orgTypeId: Joi.string()
           .pattern(/^[a-f\d]{24}$/i)
@@ -1373,7 +1588,7 @@ export let validation = {
         minIn: Joi.string()
           .allow("")
           .pattern(/^$|^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/)
-          .required()
+          .optional()
           .messages({
             "string.pattern.base":
               "minIn time must be in the format HH:MM and between 00:00 and 23:59.",
@@ -1381,7 +1596,7 @@ export let validation = {
         minOut: Joi.string()
           .allow("")
           .pattern(/^$|^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/)
-          .required()
+          .optional()
           .messages({
             "string.pattern.base":
               "minOut time must be in the format HH:MM and between 00:00 and 23:59.",
@@ -1389,7 +1604,7 @@ export let validation = {
         maxIn: Joi.string()
           .allow("")
           .pattern(/^$|^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/)
-          .required()
+          .optional()
           .messages({
             "string.pattern.base":
               "maxIn time must be in the format HH:MM and between 00:00 and 23:59.",
@@ -1397,7 +1612,7 @@ export let validation = {
         maxOut: Joi.string()
           .allow("")
           .pattern(/^$|^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/)
-          .required()
+          .optional()
           .messages({
             "string.pattern.base":
               "maxOut time must be in the format HH:MM and between 00:00 and 23:59.",
@@ -1972,6 +2187,8 @@ export let validation = {
         })
           .min(1)
           .required(),
+        email: Joi.string().email().optional(),
+        relationshipToOrg: Joi.string().optional(),
       }),
   },
 
@@ -2071,6 +2288,126 @@ export let validation = {
           .message("subOrgId must be a valid ObjectId"),
         isDefaultOrg: Joi.boolean().optional(),
         structure: Joi.string().valid("branch").optional(),
+        timeSettingType: Joi.string()
+          .valid("startEnd", "reporting")
+          .optional()
+          .description("Determines whether time is based on start/end or a single reporting time"),
+
+        startTime: Joi.when("timeSettingType", {
+          is: "startEnd",
+          then: Joi.string()
+            .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
+            .optional()
+            .messages({
+              "string.pattern.base": "startTime must be in HH:mm format",
+            }),
+          otherwise: Joi.forbidden(),
+        }),
+
+        endTime: Joi.when("timeSettingType", {
+          is: "startEnd",
+          then: Joi.string()
+            .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
+            .optional()
+            .messages({
+              "string.pattern.base": "endTime must be in HH:mm format",
+            }),
+          otherwise: Joi.forbidden(),
+        }),
+
+        reportingTime: Joi.when("timeSettingType", {
+          is: "reporting",
+          then: Joi.string()
+            .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
+            .optional()
+            .messages({
+              "string.pattern.base": "reportingTime must be in HH:mm format",
+            }),
+          otherwise: Joi.forbidden(),
+        }),
+
+        maxIn: Joi.string()
+          .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
+          .optional()
+          .messages({
+            "string.pattern.base": "maxIn must be in HH:mm format",
+          }),
+
+        minOut: Joi.string()
+          .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
+          .optional()
+          .messages({
+            "string.pattern.base": "minOut must be in HH:mm format",
+          }),
+
+        weekOff: Joi.array()
+          .items(
+            Joi.string().valid(
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+              "Saturday",
+              "Sunday"
+            )
+          )
+          .optional()
+          .messages({
+            "any.only": "weekOff must contain valid weekday names",
+          }),
+
+        // salaryCycle: Joi.number()
+        //   .integer()
+        //   .min(1)
+        //   .max(31)
+        //   .optional()
+        //   .messages({
+        //     "number.base": "salaryCycle must be a number between 1 and 31",
+        //   }),
+        
+        salaryCycle: Joi.object({
+          startDay: Joi.number()
+            .integer()
+            .min(1)
+            .max(31)
+            .required()
+            .messages({
+              "number.base": "salaryCycle.startDay must be a number between 1 and 31",
+              "any.required": "salaryCycle.startDay is required"
+            }),
+        
+          endDay: Joi.number()
+            .integer()
+            .min(1)
+            .max(31)
+            .required()
+            .messages({
+              "number.base": "salaryCycle.endDay must be a number between 1 and 31",
+              "any.required": "salaryCycle.endDay is required"
+            })
+        })
+        .required()
+        .messages({
+          "object.base": "salaryCycle must be an object with startDay and endDay"
+        }),
+        
+        financialYear: Joi.object({
+          startDate: Joi.string().required().messages({
+            "date.base": "financialYear.startDate must be a valid date",
+            "any.required": "financialYear.startDate is required"
+          }),
+          endDate: Joi.string().required().messages({
+            "date.base": "financialYear.endDate must be a valid date",
+            "date.greater": "financialYear.endDate must be after financialYear.startDate",
+            "any.required": "financialYear.endDate is required"
+          })
+        })
+        .required()
+        .messages({
+          "object.base": "financialYear must be an object with startDate and endDate"
+        }),
+
         // panNo: Joi.string().min(10).max(10).pattern(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/).messages({
         //     'string.pattern.base': 'PAN number must be in formet of ABCDE1234A', 'string.empty': 'PAN number is required',
         // }),
@@ -2080,9 +2417,9 @@ export let validation = {
         // // address:Joi.object(),
         address: Joi.object({
           addressTypeId: Joi.string().required(),
-          hno: Joi.string().optional(),
+          hno: Joi.string().allow('').optional(),
           street: Joi.string().optional(),
-          landmark: Joi.string().optional(),
+          landmark: Joi.string().allow('').optional(),
           city: Joi.string().required(),
           taluk: Joi.string().optional(),
           district: Joi.string().optional(),
@@ -2130,6 +2467,19 @@ export let validation = {
         mobile: Joi.string().required(),
         contactPersonDesignation: Joi.string().optional(),
         contactPersonEmail: Joi.string().required(),
+        subOrgId:Joi.string()
+          .optional()
+          .pattern(/^[a-f\d]{24}$/i)
+          .message("Sub Org Id must be a valid ObjectId"),
+        branchId:Joi.string()
+          .optional()
+          .pattern(/^[a-f\d]{24}$/i)
+          .message("Branch Id must be a valid ObjectId"),
+        assignedToId:Joi.string()
+          .optional()
+          .pattern(/^[a-f\d]{24}$/i)
+          .message("assignedToId must be a valid ObjectId"),
+      
         address: Joi.object({
           addressTypeId: Joi.string().required(),
           hno: Joi.string().optional(),
@@ -2389,7 +2739,7 @@ export let validation = {
     body: Joi.object({
       leavePolicyId: Joi.string().required(),
 
-      noOfDays: Joi.number().min(1).required(),
+      noOfDays: Joi.number().required(),
       // eligibleNoOfDays: Joi.number().min(0).required(),
 
       cycle: Joi.object({
@@ -2453,7 +2803,8 @@ export let validation = {
       isExpiredLeaveAtMonthEnd: Joi.boolean().optional(),
 
       branchId: Joi.string().required(),
-      departmentId: Joi.string().optional()
+      departmentId: Joi.string().optional(),
+      yearlyLeaveCount:Joi.number().min(1).optional(),
     })
   },
 
@@ -2520,7 +2871,7 @@ export let validation = {
         .message('_id must be a valid ObjectId'),
 
       name: Joi.string().min(3).optional(),
-      noOfDays: Joi.number().min(1).optional(),
+      noOfDays: Joi.number().optional(),
       // eligibleNoOfDays: Joi.number().min(0).optional(),
 
       cycle: Joi.object({
@@ -2583,7 +2934,8 @@ export let validation = {
       isExpiredLeaveAtMonthEnd: Joi.boolean().optional(),
 
       branchId: Joi.string().optional(),
-      departmentId: Joi.string().optional()
+      departmentId: Joi.string().optional(),
+      yearlyLeaveCount:Joi.number().min(1).optional(),
     })
   },
   //validations for activate and deactivate branch
@@ -2725,9 +3077,10 @@ export let validation = {
               .message("Each departmentId must be a valid ObjectId")
           )
           .optional(),
-
+        status:Joi.string().optional(),
         limit: Joi.number().optional(),
         page: Joi.number().optional(),
+        status:Joi.string().optional(),
       })
       .custom((value, helpers) => {
         if (value.fromDate && value.toDate) {
@@ -2799,7 +3152,8 @@ export let validation = {
                 .valid("approved", "rejected", "pending")
                 .required(),
               remarks: Joi.string().allow("", null).optional(),
-              approvedBy: Joi.string().optional(),
+              // approvedBy: Joi.string().optional(),
+              approvedBy: Joi.optional(),
               approvedAt: Joi.string().isoDate().optional(),
             })
           ),
@@ -2880,6 +3234,7 @@ export let validation = {
           .required()
           .pattern(/^[a-f\d]{24}$/i)
           .message("employeeUserId must be a valid ObjectId"),
+        module:Joi.string().optional()
       }),
   },
   activateDeactivateShift: {
@@ -3204,13 +3559,13 @@ export let validation = {
       departmentId: Joi.string().optional(),
       date: Joi.string().optional()
     }),
-    params: Joi.object({
-      designationId: Joi.string().when('body.designationId', {
-        is: Joi.exist(),
-        then: Joi.optional(),
-        otherwise: Joi.required()
-      })
-    }).optional()
+    // params: Joi.object({
+    //   designationId: Joi.string().when('body.designationId', {
+    //     is: Joi.exist(),
+    //     then: Joi.optional(),
+    //     otherwise: Joi.required()
+    //   })
+    // }).optional()
   },
 
   // Modify branch quote price
@@ -3359,62 +3714,66 @@ export let validation = {
   addStandardQuotePrice: {
     body: Joi.object({
       designationId: Joi.string().required(),
+      baseQuotePriceId: Joi.string().allow(null).optional(),
       daily: Joi.object({
         male: Joi.object({
-          cityLimit: Joi.number().min(0).required(),
-          outCityLimit: Joi.number().min(0).required(),
+          // cityLimit: Joi.number().min(0).required(),
+          // outCityLimit: Joi.number().min(0).required(),
           dayShift: Joi.number().min(0).required(),
           nightShift: Joi.number().min(0).required(),
           outCityDayShift: Joi.number().min(0).required(),
-          outCityNightShift: Joi.number().min(0).required(),
+          outCityNightShift: Joi.number().min(0).required()
         }),
         female: Joi.object({
-          cityLimit: Joi.number().min(0).required(),
-          outCityLimit: Joi.number().min(0).required(),
+          // cityLimit: Joi.number().min(0).required(),
+          // outCityLimit: Joi.number().min(0).required(),
           dayShift: Joi.number().min(0).required(),
           nightShift: Joi.number().min(0).required(),
           outCityDayShift: Joi.number().min(0).required(),
-          outCityNightShift: Joi.number().min(0).required(),
+          outCityNightShift: Joi.number().min(0).required()
         })
       }).optional(),
       monthly: Joi.object({
         male: Joi.object({
-          cityLimit: Joi.number().min(0).required(),
-          outCityLimit: Joi.number().min(0).required(),
+          // cityLimit: Joi.number().min(0).required(),
+          // outCityLimit: Joi.number().min(0).required(),
           dayShift: Joi.number().min(0).required(),
           nightShift: Joi.number().min(0).required(),
           outCityDayShift: Joi.number().min(0).required(),
-          outCityNightShift: Joi.number().min(0).required(),
+          outCityNightShift: Joi.number().min(0).required()
         }),
         female: Joi.object({
-          cityLimit: Joi.number().min(0).required(),
-          outCityLimit: Joi.number().min(0).required(),
+          // cityLimit: Joi.number().min(0).required(),
+          // outCityLimit: Joi.number().min(0).required(),
           dayShift: Joi.number().min(0).required(),
           nightShift: Joi.number().min(0).required(),
           outCityDayShift: Joi.number().min(0).required(),
-          outCityNightShift: Joi.number().min(0).required(),
+          outCityNightShift: Joi.number().min(0).required()
         })
       }).optional(),
       yearly: Joi.object({
         male: Joi.object({
-          cityLimit: Joi.number().min(0).required(),
-          outCityLimit: Joi.number().min(0).required(),
+          // cityLimit: Joi.number().min(0).required(),
+          // outCityLimit: Joi.number().min(0).required(),
           dayShift: Joi.number().min(0).required(),
           nightShift: Joi.number().min(0).required(),
           outCityDayShift: Joi.number().min(0).required(),
-          outCityNightShift: Joi.number().min(0).required(),
+          outCityNightShift: Joi.number().min(0).required()
         }),
         female: Joi.object({
-          cityLimit: Joi.number().min(0).required(),
-          outCityLimit: Joi.number().min(0).required(),
+          // cityLimit: Joi.number().min(0).required(),
+          // outCityLimit: Joi.number().min(0).required(),
           dayShift: Joi.number().min(0).required(),
           nightShift: Joi.number().min(0).required(),
           outCityDayShift: Joi.number().min(0).required(),
-          outCityNightShift: Joi.number().min(0).required(),
+          outCityNightShift: Joi.number().min(0).required()
         })
       }).optional(),
-      effectiveFrom: Joi.string().optional(),
-      adjustment: Joi.object().optional()
+      effectiveFrom: Joi.date().iso().optional(),
+      adjustment: Joi.object({
+        type: Joi.string().valid('fixed', 'percentage').required(),
+        value: Joi.number().required()
+      }).optional()
     })
   },
 
@@ -3443,17 +3802,6 @@ export let validation = {
           "string.pattern.base": "quotationDate must be in yyyy-mm-dd format",
         }),
 
-      // Required: Base quote price identifier
-
-      // Optional: Quote price identifier
-      // referenceId: Joi.string()
-      //   .pattern(/^[a-f\d]{24}$/i)
-      //   .optional()
-      //   .messages({
-      //     "string.pattern.base": "referenceId must be a valid ObjectId",
-      //   }),
-
-
       // Required: Subscription type
       subscriptionType: Joi.string()
         .valid('daily', 'monthly', 'yearly')
@@ -3467,6 +3815,7 @@ export let validation = {
       requirements: Joi.array()
         .items(
           Joi.object({
+            // Required: Base quote price identifier
             baseQuotePriceId: Joi.string()
               .pattern(/^[a-f\d]{24}$/i)
               .required()
@@ -3474,12 +3823,14 @@ export let validation = {
                 "string.pattern.base": "baseQuotePriceId must be a valid ObjectId",
                 "any.required": "baseQuotePriceId is required"
               }),
-            // Optional: Price identifier
+
+            // Required: Price identifier
             priceId: Joi.string()
               .pattern(/^[a-f\d]{24}$/i)
-              .optional()
+              .required()
               .messages({
                 "string.pattern.base": "priceId must be a valid ObjectId",
+                "any.required": "priceId is required"
               }),
 
             // Required: Designation identifier
@@ -3545,6 +3896,8 @@ export let validation = {
                 "any.only": "shiftType must be either 'dayShift' or 'nightShift'",
                 "any.required": "shiftType is required"
               }),
+             duration:Joi.number()
+             .required()
           })
         )
         .min(1)
@@ -3555,8 +3908,78 @@ export let validation = {
           "any.required": "requirements is required"
         })
     })
-  }
+  },
 
+  designationDisabledModules: {
+    body: Joi.object({
+      designationId: Joi.string()
+        .required()
+        .pattern(/^[a-f\d]{24}$/i)
+        .message("designationId must be a valid ObjectId"),
+
+      disabledModules: Joi.array()
+        .required()
+        .items(
+          Joi.object({
+            moduleId: Joi.string()
+              .required()
+              .pattern(/^[a-f\d]{24}$/i)
+              .message("moduleId must be a valid ObjectId"),
+
+            permissions: Joi.array()
+              .items(Joi.string().valid("c", "r", "u", "d"))
+              .default([]), // optional, defaults to empty array
+          })
+        ),
+    }),
+  },
+ 
+  designationModules: {
+    body: Joi.object({
+      designationId: Joi.string()
+        .required()
+        .pattern(/^[a-f\d]{24}$/i)
+        .message("designationId must be a valid ObjectId"),
+      module:Joi.string().optional()
+    }),
+  },
+  extendAdd: {
+    body: Joi.object({
+      branchId: Joi.string()
+        .required()
+        .pattern(/^[a-f\d]{24}$/i)
+        .message("branchId must be a valid ObjectId"),
+      shiftId: Joi.string()
+        .required()
+        .pattern(/^[a-f\d]{24}$/i)
+        .message("shiftId must be a valid ObjectId"),
+      clientMappedId: Joi.string()
+        .optional()
+        .pattern(/^[a-f\d]{24}$/i)
+        .message("clientMappedId must be a valid ObjectId"),
+      date: Joi.string().required(),
+      remarks : Joi.string().optional()
+    }),
+  },
+  updateExtendStatus: {
+    body: Joi.object({
+      extensionId: Joi.string()
+        .required()
+        .pattern(/^[a-f\d]{24}$/i)
+        .message("extensionId must be a valid ObjectId"),
+      status: Joi.string().optional().valid('pending', 'approve', 'reject'),
+      remarks: Joi.string().optional()
+    }),
+  },
+  extendList: {
+    body: Joi.object({
+      limit: Joi.number().optional(),
+      page: Joi.number().optional(),
+      status: Joi.string().optional().valid('pending', 'approve', 'reject','Pending', 'Approve', 'Reject'),
+      startDate: Joi.string().optional(),
+      endDate: Joi.string().optional(),
+    }),
+  },
 
 
 }

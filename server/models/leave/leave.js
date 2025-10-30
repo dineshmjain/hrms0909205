@@ -197,6 +197,11 @@ export const getUserLeaveTransaction=async(body)=>{
             isActive:true
             // $or:[]
         }
+
+       if(body?.status)
+        {
+            query.status={ $regex: new RegExp(`^${body.status}$`, 'i') };
+        }
         // if (body.subOrgIds && body.subOrgIds.length > 0) {
         //     query.subOrgId= { $in: body.subOrgIds.map(id => new ObjectId(id)) } ;
         // }
@@ -209,9 +214,9 @@ export const getUserLeaveTransaction=async(body)=>{
         // if(body.branchIds){
         //     query["branchId"]=new ObjectId(body.branchId)
         // }
-        // if(body.departmentIds){
-        //     query["departmentId"]=new ObjectId(body.departmentId)
-        // }
+        if(body.departmentIds){
+            query["departmentId"]=new ObjectId(body.departmentId)
+        }
 
         // if(userId){
         //     query['userId']=userId
@@ -353,6 +358,14 @@ export const getUserLeaveTransaction=async(body)=>{
             {
                 $unwind: {path:"$matchedAssignments", preserveNullAndEmptyArrays: true}
             },
+            {
+                $lookup: {
+                  from: "designation",
+                  localField: "matchedAssignments.designationId",
+                  foreignField: "_id",
+                  as: "designations"
+                }
+            },
 
             {
                 $lookup:{
@@ -404,6 +417,7 @@ export const getUserLeaveTransaction=async(body)=>{
                         lastName:'$userDetails.name.lastName',
                         email:'$userDetails.email'
                     },
+                    "designation": { $arrayElemAt: ["$designations.name", 0] },
                     orgName:'$orgDetails.name',
                 }
             }
@@ -420,7 +434,7 @@ export const getUserLeaveTransaction=async(body)=>{
             pipeline.splice(10, 0, { $match: matchQuery })
         }
 
-        console.log('pipeline',JSON.stringify(pipeline))
+        // console.log('pipeline',JSON.stringify(pipeline,null,2))
         
 
         return await  aggregationWithPegination(pipeline,{page:body?.page||1,limit:body?.limit||10},collection_name)
@@ -469,10 +483,30 @@ export const updateLeaveStatus=async(body)=>{
         let approvedDays = 0;
         let rejectedDays = 0;
         let pendingDays = 0;
+        let totalAppliedDays = 0;
+
+        let prevApprovedDays = 0;
+        let newApprovedDays = 0;
+
+        for (const [date, info] of Object.entries(existingDays)) {
+            const value = info.type === 'full' ? 1 : 0.5;
+            if (info.status === 'approved') prevApprovedDays += value;
+        }
+          
+        for (const [date, info] of Object.entries(mergedDays)) {
+        const value = info.type === 'full' ? 1 : 0.5;
+            if (info.status === 'approved') newApprovedDays += value;
+        }
+
+        // Step Calculate how much approval count changed (+ means approved, - means reverted)
+        const approvedChange = newApprovedDays - prevApprovedDays;
+
+        // Store it in the return data so next function can use it
+        // body.approvedChange = approvedChange;
 
         for (const day of Object.values(mergedDays)) {
             const value = day.type === 'full' ? 1 : 0.5;
-
+            totalAppliedDays += value;
             // Status counts
             switch (day.status) {
                 case 'approved': approvedDays += value; break;
@@ -485,16 +519,26 @@ export const updateLeaveStatus=async(body)=>{
             // else unpaidDays += value;
         }
 
-        const totalDays = Object.keys(mergedDays).length;
+        // const totalDays = Object.keys(mergedDays).length;
 
 
         let finalStatus = "Pending";
-        if (approvedDays > 0 && (rejectedDays > 0 || pendingDays > 0)) {
-            finalStatus = "Partially-Approved";
-        } else if (approvedDays === totalDays) {
+        // if (approvedDays > 0 && (rejectedDays > 0 || pendingDays > 0)) {
+        //     finalStatus = "Partially-Approved";
+        // } else if (approvedDays === totalDays) {
+        //     finalStatus = "Approved";
+        // } else if (rejectedDays === totalDays) {
+        //     finalStatus = "Rejected";
+        // }
+
+        if (approvedDays === totalAppliedDays) {
             finalStatus = "Approved";
-        } else if (rejectedDays === totalDays) {
+        } else if (rejectedDays === totalAppliedDays) {
             finalStatus = "Rejected";
+        } else if (approvedDays > 0 && (rejectedDays > 0 || pendingDays > 0)) {
+            finalStatus = "Partially-Approved";
+        } else if (pendingDays === totalAppliedDays) {
+            finalStatus = "Pending";
         }
 
         const update={
@@ -516,7 +560,7 @@ export const updateLeaveStatus=async(body)=>{
         }
         const result= await updateOne(query,update,collection_name)
         if(result.status){
-            return { status:true,message:'updated succesfully',approvedDays}
+            return { status:true,message:'updated succesfully',approvedDays,approvedChange}
         }
         return { status: false, message: "Failed to update document" };
 
@@ -555,19 +599,23 @@ export const createLeaveBalance = async (body) => {
                     createdDate: new Date(),
                 };
 
-                const creditedDay = policy.cycle?.creditedDay || 1;
+                let creditedDay = policy.cycle?.creditedDay || 1;
 
                 if (policy.cycle?.type === "monthly") {
+                    creditedDay = policy.cycle?.creditedDay || 1;
                     let firstCreditDate = moment(joinDate).date(creditedDay);
                     if (joinDate.date() > creditedDay) {
                         firstCreditDate.add(1, "month");
                     }
 
-                    const cyclesPassed = now.diff(firstCreditDate, "months") + 1; // Include current month if eligible
+                    let cyclesPassed = now.diff(firstCreditDate, "months") + 1; // Include current month if eligible
                     const totalToCredit = cyclesPassed * policy.noOfDays;
+                    // Limit to last 2 cycles only (previous + current month)
+                    if (cyclesPassed > 2) cyclesPassed = 2;
 
                     for (let i = 0; i < cyclesPassed; i++) {
-                        const creditDate = moment(firstCreditDate).add(i, "month").startOf("day");
+                        // const creditDate = moment(firstCreditDate).add(i, "month").startOf("day");
+                        const creditDate = moment(now).subtract(cyclesPassed - 1 - i, "months").startOf("day");
                         leaveBalance.transaction.push({
                             date: creditDate.toISOString(),
                             credited: policy.noOfDays,
@@ -576,17 +624,26 @@ export const createLeaveBalance = async (body) => {
                     }
 
                     if (cyclesPassed > 0) {
+                        const firstCredit = moment(now).subtract(cyclesPassed - 1, "months").date(creditedDay);
+                        const lastCredit = moment(now).date(creditedDay);
                         leaveBalance.totalAccrued = cyclesPassed * policy.noOfDays;
                         leaveBalance.currentBalance = leaveBalance.totalAccrued;
-                        leaveBalance.firstCreditedMonth = firstCreditDate.format("YYYY-MM");
-                        leaveBalance.lastCreditedMonth = moment(firstCreditDate)
-                            .add(cyclesPassed - 1, "month")
-                            .format("YYYY-MM");
+                        // leaveBalance.firstCreditedMonth = firstCreditDate.format("YYYY-MM");
+                        leaveBalance.firstCreditedMonth = firstCredit.format("YYYY-MM");
+                        leaveBalance.lastCreditedMonth = lastCredit.format("YYYY-MM");
+                        // leaveBalance.lastCreditedMonth = moment(firstCreditDate)
+                        //     .add(cyclesPassed - 1, "month")
+                        //     .format("YYYY-MM");
                         // leaveBalance.nextCreditingDate = moment(firstCreditDate)
                         //     .add(cyclesPassed, "month")
                         //     .date(creditedDay)
                         //     .toISOString();
-                        leaveBalance.nextCreditingDate = moment(firstCreditDate).add(cyclesPassed, "month").date(creditedDay).toDate()
+                        // leaveBalance.nextCreditingDate = moment(firstCreditDate).add(cyclesPassed, "month").date(creditedDay).toDate()
+                        leaveBalance.nextCreditingDate = moment(lastCredit)
+                        .add(1, "month")
+                        .date(creditedDay)
+                        .startOf("day")
+                        .toDate();
                     }
 
                 } else if (policy.cycle?.type === "yearly") {
@@ -723,7 +780,8 @@ export const getLeaveBalance=async(body)=>{
                     policyName: '$policyDetails.name',
                     totalAccrued: 1,
                     usedLeaves: 1,
-                    currentBalance: 1
+                    currentBalance: 1,
+                    lossOfPayUsed:1
                     // firstCreditedMonth: 1,
                     // lastCreditedMonth: 1,
                     // nextCreditedDate: 1,
@@ -749,7 +807,8 @@ export const updateUserBalance = async (body) => {
     try {
         // const { used, available, lossOfPayUsed } = body.userLeaveBalance;
         const {totalAccrued, usedLeaves, currentBalance, lossOfPayUsed=0} = body.userLeaveBalance;
-        const approvedDays = body.approvedDays || 0
+        // const approvedDays = body.approvedDays || 0
+        const approvedDays = body.approvedChange || 0;
         const query = {
             isActive: true,
             userId: new ObjectId(body.employeeId),
@@ -760,7 +819,7 @@ export const updateUserBalance = async (body) => {
         // let updatedAvailable = available;
         let updatedAvailable = currentBalance;
         let updatedLossOfPayUsed = lossOfPayUsed ;
-
+        if (approvedDays > 0) {
         if (currentBalance >= approvedDays) {
             updatedUsed += approvedDays;
             updatedAvailable -= approvedDays;
@@ -771,6 +830,13 @@ export const updateUserBalance = async (body) => {
         } else {
             updatedLossOfPayUsed += approvedDays;
         }
+    }else if (approvedDays < 0) {
+        // Revert (restore balance) if approval was cancelled
+        const absChange = Math.abs(approvedDays);
+        updatedUsed -= absChange;
+        updatedAvailable += absChange;
+        if (updatedUsed < 0) updatedUsed = 0;
+    }
 
        
 
@@ -854,35 +920,56 @@ export  const getUserAppliedLeavesTransaction=async (body) => {
 
 export const leaveBalanceUsers=async(body)=>{
     try{
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        
+        // const startOfDay = moment().utc().startOf("day").toDate(); // 00:00 UTC
+        // const endOfDay = moment().utc().endOf("day").toDate();     // 23:59:59 UTC
+
+        const nowIST = moment().utcOffset("+05:30");
+        const startOfDay = nowIST.clone().startOf("day").utc().toDate();
+        const endOfDay = nowIST.clone().endOf("day").utc().toDate();
+    
         const query={
+            // policyId:new ObjectId("68f0ec1616f0bbe4d7b07813"),
             isActive:true,
-            nextCreditingDate: { $lte:today }
+            nextCreditingDate: { $gte: startOfDay, $lte: endOfDay }
         }
 
         const pipeline=[
             {
                 $match:query
-            },
-            // {
-            //     $project:{
-            //         transaction:0,
-            //         usedTransaction:0
-            //     }
-            // }
+            }
         ]
 
-        const paginationQuery={
-            page:body.page,
-            limit:body.limit
-        }
+        // const paginationQuery={
+        //     page:body.page,
+        //     limit:body.limit
+        // }
 
         // return await aggregationWithPegination(pipeline,paginationQuery,'leaveBalance')
-        return await aggregate(query,'leaveBalance')
+        console.log("....query..",JSON.stringify(query))
+        return await aggregate(pipeline,'leaveBalance')
 
     }catch(error){
         logger.error('error in leave balance users',{ stack: error.stack })
+        throw error
+    }
+}
+
+export const leaveBalanceSalaryEnabledUsers=async(body)=>{
+    try{
+        
+        const query={
+            isActive:true,
+            policyId:{$in:body.salaryPolicies},
+            currentBalance: { $gt: 0 }
+        }
+
+        console.log(".....query...",query)
+
+        return await getMany(query,'leaveBalance')
+
+    }catch(error){
+        logger.error('error in leaveBalanceSalaryEnabledUsers',{ stack: error.stack })
         throw error
     }
 }

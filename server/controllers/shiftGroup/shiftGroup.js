@@ -117,16 +117,10 @@ export const getShiftGroupListByDate = async (request,response,next) => {
 
 export const getCurrentDateShift = async (request,response,next) => {
     try
-    {
-        request.body.shiftGroupDataListResponse = request.body.shiftGroupDataListResponse.find(sg => sg.employeeId.toString() == request.body.userId.toString())
-
-        let mergedData = [...request.body.shiftByDate]
-
-        if(request.body.shiftGroupDataListResponse && request.body.shiftGroupDataListResponse.length > 0) mergedData.push(request.body.shiftGroupDataListResponse)
+    {        
         
-
         request.body.currentShift = [];
-        let currentShift = mergedData;
+        let currentShift = request.body.mergedData || [];
         for (let i = 0; i < currentShift.length; i++) {
             let shiftDate = currentShift[i];
             let currentDateTime = request.body.transactionDate ? new Date(request.body.transactionDate) : new Date();
@@ -148,7 +142,7 @@ export const getCurrentDateShift = async (request,response,next) => {
             }
         }
 
-        if(request.body.dashboardStatus && request.body.currentShift.length <= 0 && !request.body.existingCheckInOutData) return apiResponse.successResponseWithData(response, "No shift Available", { isCheckIn: false });
+        if(request.body.dashboardStatus && request.body.currentShift.length <= 0 && !request.body.existingCheckInOutData && request.body.user?.workTimingType != 'branch') return apiResponse.successResponseWithData(response, "No shift Available", { isCheckIn: false });
         
     return next();
 

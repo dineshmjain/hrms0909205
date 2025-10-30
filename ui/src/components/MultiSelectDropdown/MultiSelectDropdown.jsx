@@ -170,7 +170,7 @@ const MultiSelectDropdown = ({
           htmlFor="route"
           className="font-medium capitalize text-gray-800"
         >
-          {InputName}:
+          {InputName}
         </label>
       )}
       <div

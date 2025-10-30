@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { Outlet, useNavigate } from "react-router-dom";
-import NavbarNew from "../components/navbar/NavbarNew";
+import NavbarNew from "../components/Navbar/NavbarNew";
 import { useDispatch } from "react-redux";
 import OuterSidebar from "../components/Sidebar/OuterSidebar";
 import toast from "react-hot-toast";
@@ -39,7 +39,7 @@ function Layout() {
         />
 
         <main
-          className={`ml-[60px] maxsm:ml-[0px] flex flex-col  h-full flex-1  sm:p-2 mt-12  overflow-x-hidden bg-background`}
+          className={`ml-[64px] maxsm:ml-[0px] flex flex-col  h-full flex-1  sm:p-2 mt-12  overflow-x-hidden bg-background`}
         >
           <Outlet />
         </main>

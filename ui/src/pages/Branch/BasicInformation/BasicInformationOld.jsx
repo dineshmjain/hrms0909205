@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Typography } from '@material-tailwind/react';
 import { useDispatch, useSelector } from 'react-redux';
-import CustomField from '../../../components/input/CustomFeild';
+import CustomField from '../../../components/Input/CustomFeild';
 import { getTypeOfIndustyAction } from '../../../redux/Action/Global/GlobalAction';
 import { SubOrgListAction } from '../../../redux/Action/SubOrgAction/SubOrgAction';
 import SubCardHeader from '../../../components/header/SubCardHeader';

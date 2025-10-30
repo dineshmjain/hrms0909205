@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import toast from "react-hot-toast";
 import currentlocation from "../../assets/Images/current-location.png";
 import GoogleMapSVG from "../../assets/Images/GoogleDirection.png";
@@ -19,13 +19,11 @@ const SearchBox = ({
   const inputRef = useRef(null);
   const autocompleteRef = useRef(null);
   const [open, setOpen] = useState(false);
-  // const { setFieldValue, setFieldTouched } = useFormikContext();
-  // const [field, meta] = useField(name); // `name` is the prop passed to SearchBox, like 'branchAddress.location'
 
   const handleOpen = () => setOpen(!open);
 
-  const handlePlaceSelect = () => {
-    const place = autocompleteRef.current.getPlace();
+  const handlePlaceSelect = useCallback(() => {
+    const place = autocompleteRef.current?.getPlace();
     if (!place || !place.geometry || !place.address_components) {
       toast.error("Invalid location selected.");
       return;
@@ -73,11 +71,9 @@ const SearchBox = ({
 
     setLocation(parsedLocation);
     setLocationSearchText(address);
-    // setFieldValue(name, parsedLocation);
-    // setFieldTouched(name, true, false);
-  };
+  }, [setLocation, setLocationSearchText]);
 
-  // ✅ Initialize Autocomplete when Maps API is available
+  // Initialize Autocomplete when Maps API is available
   useEffect(() => {
     if (
       window.google &&
@@ -96,7 +92,7 @@ const SearchBox = ({
       autocomplete.addListener("place_changed", handlePlaceSelect);
       autocompleteRef.current = autocomplete;
     }
-  }, []);
+  }, [handlePlaceSelect]);
 
   const handleClick = async () => {
     try {
@@ -126,9 +122,14 @@ const SearchBox = ({
             error={!!errors?.address}
             id="searchInput"
             type="text"
-            label="Search for a location"
+            placeholder="Search for a location"
             className="bg-white text-gray-900 ring-4 ring-transparent placeholder:text-gray-500 placeholder:opacity-100 focus:!border-gray-900 focus:!border-t-gray-900 focus:ring-gray-900/10"
-            labelProps={{ className: "hidden" }}
+            labelProps={{
+              className: "before:content-none after:content-none",
+            }}
+            containerProps={{
+              className: "min-w-0",
+            }}
             value={locationSearchText}
             onChange={(e) => {
               setLocationSearchText(e.target.value);
@@ -139,33 +140,23 @@ const SearchBox = ({
             onClick={handleClick}
             src={currentlocation}
             alt="Current Location"
-            className="w-6 h-6 cursor-pointer rounded-md"
+            className="w-6 h-6 cursor-pointer rounded-md hover:opacity-80 transition-opacity"
           />
           <img
             onClick={handleOpen}
             src={GoogleMapSVG}
             alt="Open Map"
-            className="w-9 h-9 cursor-pointer rounded-md"
+            className="w-9 h-9 cursor-pointer rounded-md hover:opacity-80 transition-opacity"
           />
         </div>
-        {/* {errors?.address && (
+        {errors?.address && (
           <Typography
             color="red"
-            className="text-red-700 text-sm font-medium mr-10 mt-1"
+            className="text-red-700 text-sm font-medium mt-1"
           >
             {errors.address}
           </Typography>
-        )} */}
-        {/* {meta.touched && meta.error && (
-          <Typography
-            color="red"
-            className="text-red-700 text-sm font-medium mr-10 mt-1"
-          >
-            {typeof meta.error === "string"
-              ? meta.error
-              : "GPS Location is required"}
-          </Typography>
-        )} */}
+        )}
       </div>
     </>
   );

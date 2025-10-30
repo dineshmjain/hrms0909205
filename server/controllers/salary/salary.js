@@ -39,6 +39,20 @@ export const listSalaryComponents = async (request, response, next) => {
     }
 }
 
+export const createDefaultSalaryComponents = async (request, response, next) => {
+  try {
+    const res = await salary.createDefaultSalaryComponents(request.body);
+    if (res.status) {
+      return next();
+    } else {
+      return apiResponse.validationError(response, res.message);
+    }
+  } catch (error) {
+    request.logger.error("Error while creating shift group in shiftGroup controller", { stack: error.stack });
+    return apiResponse.somethingResponse(response, error.message);
+  }
+};
+
 export const createSalaryComponent = async (request, response, next) => {
   try {
     const res = await salary.createSalaryComponent(request.body);
@@ -94,6 +108,23 @@ export const updateSalaryComponent = async (request, response, next) => {
     return apiResponse.somethingResponse(response, error.message);
   }
 };
+
+export const getSalaryTemplate = async (request, response, next) => {
+    try{
+        salary.getSalaryTemplate(request.body).then(res => {
+            if(!res.status) return apiResponse.ErrorResponse(response,"Something went worng",res.error);
+            request.body.template = res.data;
+            return next();
+        }).catch(error => {
+            request.logger.error("Error while addDefaultDesignations in designation controller ",{ stack: error.stack });
+            return apiResponse.somethingResponse(response, error.message)
+        })
+
+    }catch(error){
+        request.logger.error("Error while addDefaultDesignations in designation controller ",{ stack: error.stack });
+        return apiResponse.somethingResponse(response, error.message)
+    }
+}
 
 export const listSalaryTemplates = async (request, response, next) => {
     try{

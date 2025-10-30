@@ -1,5 +1,5 @@
 import taskAxiosInstance from "../../config/taskAxiosInstance";
-import { getParamsFromObject } from "../../constants/reUsableFun";
+import { getParamsFromObject } from "../../constants/reusableFun";
 
 export const createCheckPointApi = async (userCredentials) => {
   try {

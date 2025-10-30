@@ -212,7 +212,8 @@ export const isMultipleDepartmentValid = async (body) => {
 export const createDefaultDepartments = async (body) => {
     try{
         //TODO: If globle is false then respective id is required.
-        const orgId=body.user?.orgId
+        // const orgId=body.user?.orgId
+        const orgId= body.defaultBranchOrgId?new ObjectId(body.defaultBranchOrgId):new ObjectId(body.user.orgId)
         
         const departments = constants.defaultDepartments.map(name => ({
             name,

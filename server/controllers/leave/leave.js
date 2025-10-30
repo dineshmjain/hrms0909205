@@ -218,7 +218,7 @@ export const applyLeave=async(request,response,next)=>{
 export const getUserLeaves=async(request,response,next)=>{
     try{
         leave.getUserLeaveTransaction(request.body).then(result=>{
-            if(result.status && result.data.length>=1){
+            if(result.status){
                 request.body.transactions=result
                 return next()
                 // return apiResponse.successResponseWithData(response,'Data found successfully', result)
@@ -261,6 +261,7 @@ export const updateApplyLeaveStatus=async(request,response,next)=>{
             if(result?.status){
                 // return apiResponse.successResponse(response,'updated successfully')
                 request.body.approvedDays=result.approvedDays
+                request.body.approvedChange=result.approvedChange
                 return next()
             }
             return apiResponse.validationError(response,'failed to update')

@@ -503,7 +503,7 @@ const List = () => {
                             </div>
                             <div className="flex items-center gap-2 text-sm text-gray-700">
                               <Mail className="h-3 w-3 text-gray-400" />
-                              {lead.contactPersonEmail}
+                              {lead.email}
                             </div>
                           </div>
                         </td>

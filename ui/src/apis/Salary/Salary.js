@@ -39,6 +39,15 @@ export const SalaryComponentToggleApi = async (payload) => {
 };
 
 // ---------- Salary Templates ----------
+export const SalaryTemplateGetOneApi = async (payload) => {
+  try {
+    const response = await axiosInstance.post(`/salary/template/get`, payload);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
 export const SalaryTemplatesGetApi = async (payload) => {
   try {
     const response = await axiosInstance.post(`/salary/template/list`, payload);

@@ -1,11 +1,20 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import {
+  Drawer,
+  Button,
+  Typography,
+  IconButton,
+  Input,
+  Spinner,
+  Card,
+} from "@material-tailwind/react";
 import { FaXmark } from "react-icons/fa6";
-import { Typography } from "@material-tailwind/react";
 import { toTitleCase } from "../../../../constants/reusableFun";
-import { SalaryTemplatePreviewAction } from "../../../../redux/Action/Salary/SalaryAction";
+import {
+  SalaryTemplatePreviewAction,
+} from "../../../../redux/Action/Salary/SalaryAction";
 import { resetPreviewState } from "../../../../redux/reducer/SalaryReducer";
-
 
 const PreviewTemplateSidebar = ({ open, onClose, selectedTemplate }) => {
   const dispatch = useDispatch();
@@ -24,7 +33,6 @@ const PreviewTemplateSidebar = ({ open, onClose, selectedTemplate }) => {
     );
   };
 
-  // Reset preview when closing
   const handleClose = () => {
     setCtc("");
     dispatch(resetPreviewState());
@@ -38,101 +46,180 @@ const PreviewTemplateSidebar = ({ open, onClose, selectedTemplate }) => {
     }
   }, [open, dispatch]);
 
+  const renderTableSection = (title, items, totalLabel, totalObj) => {
+    if (!Array.isArray(items) || !items.length) return null;
+
+    const filtered = items.filter((i) => i.monthly > 0);
+    if (!filtered.length) return null;
+
+    return (
+      <div className="mb-6">
+        <Typography variant="h6" color="blue-gray" className="mb-2">
+          {title}
+        </Typography>
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b text-blue-gray-800">
+              <th className="text-left py-2">Particulars</th>
+              <th className="text-right py-2">Monthly (₹)</th>
+              <th className="text-right py-2">Yearly (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((item, i) => (
+              <tr key={i} className="border-b border-blue-gray-100">
+                <td className="py-2 text-blue-gray-900">
+                  {toTitleCase(item.name)}
+                </td>
+                <td className="py-2 text-right">
+                  {item.monthly.toLocaleString("en-IN", {
+                    maximumFractionDigits: 2,
+                  })}
+                </td>
+                <td className="py-2 text-right">
+                  {item.yearly.toLocaleString("en-IN", {
+                    maximumFractionDigits: 2,
+                  })}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="font-semibold border-t">
+              <td className="py-2">{totalLabel}</td>
+              <td className="py-2 text-right">
+                {totalObj?.monthly?.toLocaleString("en-IN", {
+                  maximumFractionDigits: 2,
+                })}
+              </td>
+              <td className="py-2 text-right">
+                {totalObj?.yearly?.toLocaleString("en-IN", {
+                  maximumFractionDigits: 2,
+                })}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    );
+  };
+
   return (
-    <div
-      className={`fixed sidebar z-30 rounded-lg w-[30vw] shadow-2xl transition-all ease-in-out duration-[.3s] top-[48px] 
-        ${open ? `right-[-10px] visible` : `right-[-3000px]`} bg-white overflow-y-scroll scrolls`}
+    <Drawer
+      open={open}
+      onClose={handleClose}
+      placement="right"
+      size={700}
+      className="p-4 overflow-y-auto"
     >
       {/* Header */}
-      <div className="flex justify-between items-center p-4 border-b">
-        <Typography className="text-lg font-semibold text-gray-800">
-          Preview Template
+      <div className="flex items-center justify-between border-b pb-3 mb-4">
+        <Typography variant="h5" color="blue-gray">
+          Salary Template Preview
         </Typography>
-        <button
-          onClick={handleClose}
-          className="p-2 rounded-full hover:bg-gray-200"
-        >
-          <FaXmark className="text-xl" />
-        </button>
+        <IconButton variant="text" color="blue-gray" onClick={handleClose}>
+          <FaXmark className="h-5 w-5" />
+        </IconButton>
       </div>
 
-      <div className="p-4 flex flex-col gap-4">
-        {/* CTC Input */}
+      {/* Input Section */}
+      <div className="flex flex-col gap-4">
         <div>
-          <label className="text-sm font-medium text-gray-700">Enter CTC</label>
-          <input
+          <Typography
+            variant="small"
+            color="blue-gray"
+            className="font-medium mb-1"
+          >
+            Enter CTC
+          </Typography>
+          <Input
             type="number"
+            label="CTC Amount"
             value={ctc}
             onChange={(e) => setCtc(e.target.value)}
-            placeholder="Enter CTC amount"
-            className="mt-1 w-full border rounded-md p-2 text-sm"
           />
         </div>
 
-        <button
-          className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primaryLight hover:text-primary disabled:opacity-50"
+        <Button
+          color="blue"
           onClick={handleCalculate}
           disabled={loading}
+          className="w-fit"
         >
-          {loading ? "Calculating..." : "Calculate"}
-        </button>
+          {loading ? (
+            <div className="flex items-center gap-2">
+              <Spinner className="h-4 w-4" /> Calculating...
+            </div>
+          ) : (
+            "Calculate"
+          )}
+        </Button>
 
         {/* Results */}
         {result && (
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-md font-semibold text-gray-800 mb-2">
-                Earnings
-              </h3>
-              <div className="space-y-1">
-                {result.earnings.map((e, i) => (
-                  <div key={i} className="flex justify-between text-sm">
-                    <span>{toTitleCase(e.name)}</span>
-                    <span>₹{e.value.toFixed(2)}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="flex justify-between text-sm font-semibold mt-2 border-t pt-2">
-                <span>Total Earnings</span>
-                <span>₹{result.totalEarnings.toFixed(2)}</span>
-              </div>
-            </div>
+          <Card className="p-4 mt-4">
+            {renderTableSection(
+              "Earnings",
+              result.earnings,
+              "Gross Salary",
+              result.totalEarnings
+            )}
 
-            <div>
-              <h3 className="text-md font-semibold text-gray-800 mb-2">
-                Deductions
-              </h3>
-              <div className="space-y-1">
-                {result.deductions.map((d, i) => (
-                  <div key={i} className="flex justify-between text-sm">
-                    <span>{toTitleCase(d.name)}</span>
-                    <span>₹{d.value.toFixed(2)}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="flex justify-between text-sm font-semibold mt-2 border-t pt-2">
-                <span>Total Deductions</span>
-                <span>₹{result.totalDeductions.toFixed(2)}</span>
-              </div>
-            </div>
-{/* 
-            <div className="flex justify-between text-md font-bold border-t pt-2">
-              <span>Gross</span>
-              <span>₹{result.gross.toFixed(2)}</span>
-            </div> */}
+            {renderTableSection(
+              "Deductions",
+              result.deductions,
+              "Total Deductions",
+              result.totalDeductions
+            )}
 
-            <div className="flex justify-between text-md font-bold border-t pt-2">
-              <span>Net Salary</span>
-              <span>₹{result.netSalary.toFixed(2)}</span>
-            </div>
-          </div>
+            {renderTableSection(
+              "Employer Contributions",
+              result.employerContribs,
+              "Total Employer Contribution",
+              result.totalEmployerContrib
+            )}
+
+            {/* Summary Section */}
+            <table className="w-full border-collapse text-sm mt-6">
+              <tbody>
+                <tr className="border-t font-semibold">
+                  <td className="py-2">Net Salary (Take-Home)</td>
+                  <td className="py-2 text-right">
+                    {result.netSalary?.monthly?.toLocaleString("en-IN", {
+                      maximumFractionDigits: 2,
+                    })}
+                  </td>
+                  <td className="py-2 text-right">
+                    {result.netSalary?.yearly?.toLocaleString("en-IN", {
+                      maximumFractionDigits: 2,
+                    })}
+                  </td>
+                </tr>
+                <tr className="border-t font-bold">
+                  <td className="py-2">Total Cost to Company (CTC)</td>
+                  <td className="py-2 text-right">
+                    {result.totalCTCValue?.monthly?.toLocaleString("en-IN", {
+                      maximumFractionDigits: 2,
+                    })}
+                  </td>
+                  <td className="py-2 text-right">
+                    {result.totalCTCValue?.yearly?.toLocaleString("en-IN", {
+                      maximumFractionDigits: 2,
+                    })}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </Card>
         )}
 
         {error && (
-          <p className="text-sm text-red-600 mt-2">Error: {error}</p>
+          <Typography variant="small" color="red" className="mt-2">
+            Error: {error}
+          </Typography>
         )}
       </div>
-    </div>
+    </Drawer>
   );
 };
 

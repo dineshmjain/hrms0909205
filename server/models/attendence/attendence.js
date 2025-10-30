@@ -170,12 +170,12 @@ function calculateDifferenceInHours(startTime, transactionDate) {
 export const findExistingCheckIn = async (body) => {
     try {
         const orgId = body?.user?.orgId
-        const userId = body?.user?._id
+        const userId = body.employeeId ? new ObjectId(body.employeeId) : body?.user?._id
 
         if (!userId || !orgId) return { status: false, message: "either userId or orgId Not found" }
 
         // Get the current date
-        const currentDate = body.transactionDate ? new Date(body.transactionDate) : new Date(); // This sets to the current date and time       
+        const currentDate = body.transactionDate ? new Date(body.transactionDate) : body.date ? new Date(body.date) : new Date(); // This sets to the current date and time       
         // const momentDate = moment(body.transactionDate)
 
         // Convert the finalStartDate to Date object and set it to the start of the day
@@ -442,20 +442,23 @@ export const addAttendenceData = async (body) => {
         const transactionDate = new Date(body.transactionDate);
         const startOfDay = moment(transactionDate).startOf('day').add(5, 'hours').add(30, 'minutes').toDate();
         const endOfDay = moment(transactionDate).endOf('day').add(5, 'hours').add(30, 'minutes').toDate();
-
+        
         let query = {
             userId: new ObjectId(userId),
             orgId: new ObjectId(orgId),
-            transactionDate: transactionDate
+            transactionDate: transactionDate,
+            workTimingType: body.nearestShift.workTimingType,
             // location: body.location,
         };
+        
+        if(body.extendAttendance) query['isExtended'] = true;
+        
+        // if(body.shift) {
+            query['startTime'] = body[body.nearestShift.workTimingType]?.startTime,
+            query['endTime'] = body[body.nearestShift.workTimingType]?.endTime
+        // }
 
-        if(body.shift) {
-            query['startTime'] = body.shift.startTime,
-            query['endTime'] = body.shift.endTime
-        }
-
-        if (body.shiftId) query.shiftId = new ObjectId(body.shiftId);
+        if (body.shiftId && body.nearestShift.workTimingType != 'branch') query.shiftId = new ObjectId(body.shiftId);
 
         if (body.branchId) query.branchId = new ObjectId(body.branchId);
         // if (body.assignmentData?.branchId) query.branchId = new ObjectId(body.assignmentData.branchId);
@@ -519,8 +522,8 @@ export const addAttendenceData = async (body) => {
             return updatedRecord;
         } else {
             // No existing record → Create new one
-            if (!body.shiftId)return {status:true} // without shiftId cant create
-            query.createdAt = new Date();
+            // if (!body.shiftId)return {status:true} // without shiftId cant create
+            query.createdDate = new Date();
             
             const newRecord = await create(query, collectionName);
 
@@ -2701,69 +2704,118 @@ export const getAttendanceLogs = async (body) => {
             params["transactionDate"] = {$gte: startDate,$lte: endDate}
         }
 
+        let timingQuery = {
+            shift: [
+                {
+                    $lookup: {
+                        from: "shift",
+                        localField: "shiftId",
+                        foreignField: "_id",
+                        as: "shift"
+                    }
+                },
+                {
+                    $group: {
+                        _id: "$shiftId",
+                        shiftName: {
+                            $first: {
+                                $arrayElemAt: ["$shift.name", 0]
+                            }
+                        },
+                        startTime: {
+                            $first: {
+                                $arrayElemAt: ["$shift.startTime", 0]
+                            }
+                        },
+                        endTime: {
+                            $first: {
+                                $arrayElemAt: ["$shift.endTime", 0]
+                            }
+                        },
+                        transactionDate: {
+                            $first: "$transactionDate"
+                        },
+                        transactions: {
+                            $push: {
+                                _id: "$_id",
+                                type: "$type",
+                                transactionDate: "$transactionDate",
+                                approvalStatus: "$approvalStatus",
+                                geoJson: "$geoJson",
+                                geoLocation: "$geoLocation",
+                                imagePath: "$imagePath",
+                                extendApproveStatus: "$extendApproveStatus",
+                                isTimeMatch: "$isTimeMatch",
+                                isLocationMatch: "$isLocationMatch",
+                                isBranchMatch: "$isBranchMatch",
+                                isShiftMatch: "$isShiftMatch",
+                                isClientMatch: "$isClientMatch",
+                            }
+                        }
+                    }
+                },
+            ],
+            branch: [
+                {
+                    $lookup: {
+                        from: "branches",
+                        localField: "branchId",
+                        foreignField: "_id",
+                        as: "branch"
+                    }
+                },
+                {
+                    $group: {
+                        _id: "$branchId",
+                        branchName: {
+                            $first: {
+                                $arrayElemAt: ["$branch.name", 0]
+                            }
+                        },
+                        startTime: {
+                            $first: {
+                                $arrayElemAt: ["$branch.startTime", 0]
+                            }
+                        },
+                        endTime: {
+                            $first: {
+                                $arrayElemAt: ["$branch.endTime", 0]
+                            }
+                        },
+                        transactionDate: {
+                            $first: "$transactionDate"
+                        },
+                        transactions: {
+                            $push: {
+                                _id: "$_id",
+                                type: "$type",
+                                transactionDate: "$transactionDate",
+                                approvalStatus: "$approvalStatus",
+                                geoJson: "$geoJson",
+                                geoLocation: "$geoLocation",
+                                imagePath: "$imagePath",
+                                extendApproveStatus: "$extendApproveStatus",
+                                isTimeMatch: "$isTimeMatch",
+                                isLocationMatch: "$isLocationMatch",
+                                isBranchMatch: "$isBranchMatch",
+                                isShiftMatch: "$isShiftMatch",
+                                isClientMatch: "$isClientMatch",
+                            }
+                        }
+                    }
+                },
+            ]
+        }
+
         let query = [
             {
                 $match: params
             },
-            {
-                $lookup: {
-                    from: "shift",
-                    localField: "shiftId",
-                    foreignField: "_id",
-                    as: "shift"
-                }
-            },
-            {
-                $group: {
-                    _id: "$shiftId",
-                    shiftName: {
-                        $first: {
-                            $arrayElemAt: ["$shift.name", 0]
-                        }
-                    },
-                    startTime: {
-                        $first: {
-                            $arrayElemAt: ["$shift.startTime", 0]
-                        }
-                    },
-                    endTime: {
-                        $first: {
-                            $arrayElemAt: ["$shift.endTime", 0]
-                        }
-                    },
-                    transactionDate: {
-                        $first: "$transactionDate"
-                    },
-                    transactions: {
-                        $push: {
-                            _id: "$_id",
-                            type: "$type",
-                            transactionDate: "$transactionDate",
-                            approvalStatus: "$approvalStatus",
-                            geoJson: "$geoJson",
-                            geoLocation: "$geoLocation",
-                            imagePath: "$imagePath",
-                            extendApproveStatus: "$extendApproveStatus",
-                            isTimeMatch: "$isTimeMatch",
-                            isLocationMatch: "$isLocationMatch",
-                            isBranchMatch: "$isBranchMatch",
-                            isShiftMatch: "$isShiftMatch",
-                            isClientMatch: "$isClientMatch",
-                        }
-                    }
-                }
-            },
-            // {
-            //   $addFields: {
-            //     noOfShifts: {
-            //       $size: "$shifts"
-            //     }
-            //   }
-            // }
+            ...timingQuery[body.existingCheckInOutData?.workTimingType],
             {
                 $project: {
-                    shiftId: "$_id",
                     shiftName: 1,
+                    branchName: 1,
                     startTime:1,
                     endTime:1,
                     noOfShifts: 1,
@@ -2773,6 +2825,8 @@ export const getAttendanceLogs = async (body) => {
                 }
             }
         ]
+        let projectQuery = query[query.length - 1]['$project']
+        body.existingCheckInOutData?.workTimingType ? query[query.length - 1]['$project'] = {[`${body.existingCheckInOutData?.workTimingType}Id`]: "$_id",...projectQuery}: null
         console.log(JSON.stringify(query))
         return await aggregationWithPegination(query,{limit: body.limit, page: body.page},'attendanceLogs');
     }catch(error){

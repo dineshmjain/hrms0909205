@@ -1,13 +1,17 @@
 import { ObjectId } from 'mongodb';
-import { getMany, getOne, updateOne, create, aggregate,aggregationWithPegination, findOneAndUpdate } from "../../helper/mongo.js"
+import { getMany, getOne, updateOne, create, createMany, aggregate,aggregationWithPegination, findOneAndUpdate, updateMany } from "../../helper/mongo.js"
 import { convertToYYYYMMDD, getCurrentDateTime } from '../../helper/formatting.js';
 import { QueryBuilder } from '../../helper/filter.js';
 import { logger } from '../../helper/logger.js';
 import { isOrgExist } from '../organization/organization.js';
 import { allowed_branch_params } from '../../helper/constants.js';
+import { check } from '../../controllers/leavePolicy/leavePolicy.js';
 
 const collection_name = "branches"
-
+const REQUIREMENTS_COLLECTION = "branchRequirements"
+const SHIFT_COLLECTION = "shift"
+const DESIGNATION_COLLECTION = "designation"
+const USERS_COLLECTION = "user"
 
 export const addBranch = async (body) => {
   try {
@@ -26,6 +30,267 @@ export const addBranch = async (body) => {
     return { status: false, message: "Unable to get Branch Data" };
   }
 }
+
+
+export const addRequirements = async (body) => {
+  try {
+    const requirementsDocs = body.requirements.map((req) => ({
+      orgId: new ObjectId(body.clientMappedId),
+      clientId: new ObjectId(body.clientId),
+      branchId: new ObjectId(body.branchId),
+      shiftId: new ObjectId(req.shiftId),
+      designationId: new ObjectId(req.designationId),
+      gender: req.gender,
+      requiredCount: req.count,
+      assignedCount: 0,
+      checkPoints: req?.checkPoints ? Number(req.checkPoints) : 0,
+      isActive: true,
+      createdBy: new ObjectId(body.user?._id || body.createdBy),
+      createdDate: new Date()
+    }));
+
+    return await createMany(requirementsDocs, REQUIREMENTS_COLLECTION);
+  } catch (error) {
+    console.error("Error in addRequirements:", error);
+    return { status: false, message: "Unable to add branch requirements" };
+  }
+};
+
+export const updateRequirements = async (body) => {
+  try {
+    const { requirementId, updates, user } = body;
+
+    if (!requirementId) {
+      return { status: false, message: "Requirement ID is missing" };
+    }
+
+    const query = { _id: new ObjectId(requirementId) };
+
+    // Fetch existing document to verify it exists
+    const existing = await getOne(query, REQUIREMENTS_COLLECTION);
+    if (!existing.status) {
+      return { status: false, message: "Requirement not found" };
+    }
+
+    const updateObj = {};
+    const allowedFields = [
+      "shiftId",
+      "designationId",
+      "gender",
+      "requiredCount",
+      "assignedCount",
+      "isActive",
+      "checkPoints"
+    ];
+
+    // Add only valid fields to updateObj
+    for (const key of allowedFields) {
+      if (updates[key] !== undefined) {
+        if (["shiftId", "designationId"].includes(key) && ObjectId.isValid(updates[key])) {
+          updateObj[key] = new ObjectId(updates[key]);
+        } else {
+          updateObj[key] = updates[key];
+        }
+      }
+    }
+
+    // Add metadata
+    updateObj.modifiedBy = new ObjectId(user?._id || body.modifiedBy);
+    updateObj.modifiedDate = new Date();
+
+    // Construct final MongoDB update object
+    const update = { $set: updateObj };
+
+    const result = await updateOne(query, update, REQUIREMENTS_COLLECTION);
+
+    if (!result.status) {
+      return { status: false, message: "Failed to update requirement" };
+    }
+
+    return { status: true, message: "Requirement updated successfully" };
+  } catch (error) {
+    console.error("Error in updateRequirements:", error);
+    return { status: false, message: "Unable to update branch requirement" };
+  }
+};
+
+
+export const listRequirements = async (body) => {
+  try {
+    const matchStage = {};
+
+    if (body.orgId) matchStage.orgId = new ObjectId(body.orgId);
+    if (body.clientId) matchStage.clientId = new ObjectId(body.clientId);
+    if (body.branchId) matchStage.branchId = new ObjectId(body.branchId);
+    if (body.shiftId) matchStage.shiftId = new ObjectId(body.shiftId);
+    if (body.designationId) matchStage.designationId = new ObjectId(body.designationId);
+    if (body.gender) matchStage.gender = body.gender;
+    matchStage.isActive = true;
+
+    let search = null;
+    if (body.search && body.search.trim() !== "") {
+      search = {
+        $match: {
+          $or: [
+            { "shiftDetails.name": { $regex: body.search, $options: "i" } },
+            { "designationDetails.name": { $regex: body.search, $options: "i" } },
+            { gender: { $regex: body.search, $options: "i" } }
+          ]
+        }
+      };
+    }
+
+    const aggregationPipeline = [
+      { $match: matchStage },
+      {
+        $lookup: {
+          from: SHIFT_COLLECTION,
+          localField: "shiftId",
+          foreignField: "_id",
+          as: "shiftDetails"
+        }
+      },
+      { $unwind: { path: "$shiftDetails", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: DESIGNATION_COLLECTION,
+          localField: "designationId",
+          foreignField: "_id",
+          as: "designationDetails"
+        }
+      },
+      { $unwind: { path: "$designationDetails", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: USERS_COLLECTION,
+          let: { requirementId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $in: [
+                    "$$requirementId",
+                    { $ifNull: ["$requirementIds", []] } 
+                  ]
+                }
+              }
+            },
+            {
+              $project: {
+                _id: 1,
+                name: 1,
+                gender: 1,
+                designation: 1,
+                branchId: 1,
+              }
+            }
+          ],
+          as: "assignedUsers"
+        }
+      },
+      ...(search ? [search] : []),
+      {
+        $project: {
+          _id: 1,
+          orgId: 1,
+          clientId: 1,
+          branchId: 1,
+          shiftId: 1,
+          designationId: 1,
+          gender: 1,
+          requiredCount: 1,
+          assignedCount: 1,
+          checkPoints: 1,
+          isActive: 1,
+          createdDate: 1,
+          "shiftDetails.name": 1,
+          "designationDetails.name": 1,
+          assignedUsers: 1, 
+        }
+      },
+    ];
+
+    const paginationQuery = {
+      page: body.page ? parseInt(body.page) : 1,
+      limit: body.limit ? parseInt(body.limit) : 10,
+      sortOrder: body.sortOrder ? parseInt(body.sortOrder) : -1,
+      sortBy: body.sortBy || "createdDate",
+    };
+console.log(JSON.stringify(aggregationPipeline,null,2),'hello')
+    const result = await aggregationWithPegination(
+      aggregationPipeline,
+      paginationQuery,
+      REQUIREMENTS_COLLECTION
+    );
+
+    return {
+      status: true,
+      message: "Requirements fetched successfully",
+      total: result.totalRecord,
+      next_page: result.next_page,
+      data: result.data,
+    };
+  } catch (error) {
+    logger.error("Error while listRequirements:", error);
+    return { status: false, message: "Unable to fetch branch requirements" };
+  }
+};
+
+export const assignEmployeesToRequirements = async (body) => {
+  try {
+    const { requirementId, employeeIds } = body;
+
+    const reqObjectId = new ObjectId(requirementId);
+    const empObjectIds = employeeIds.map((id) => new ObjectId(id));
+
+    const existingEmployees = await getMany(
+      { _id: { $in: empObjectIds }, requirementIds: reqObjectId },
+      USERS_COLLECTION,
+      { _id: 1 }
+    );
+
+    const alreadyAssignedIds = existingEmployees?.data?.map(e => e._id.toString()) || [];
+    const unassignedEmpIds = empObjectIds.filter(
+      id => !alreadyAssignedIds.includes(id.toString())
+    );
+
+    if (unassignedEmpIds.length === 0) {
+      return { status: true, data: { assignedEmployees: 0 } };
+    }
+
+    const employeeUpdate = await updateMany(
+      { _id: { $in: unassignedEmpIds } },
+      { $addToSet: { requirementIds: reqObjectId } },
+      USERS_COLLECTION
+    );
+
+    if (!employeeUpdate.status) {
+      return { status: false };
+    }
+
+    const requirementUpdate = await updateOne(
+      { _id: reqObjectId },
+      { $inc: { assignedCount: unassignedEmpIds.length } },
+      REQUIREMENTS_COLLECTION
+    );
+
+    if (!requirementUpdate.status) {
+      return { status: false };
+    }
+
+    return {
+      status: true,
+      data: {
+        newlyAssigned: unassignedEmpIds.length,
+        skippedExisting: alreadyAssignedIds.length,
+      },
+    };
+  } catch (error) {
+    console.error("Error in assignEmployeesToRequirements:", error);
+    return { status: false, message: "Unable to assign employees to requirement" };
+  }
+};
+
 
 export const getBranchData = async (body) => {
   try {
@@ -50,7 +315,14 @@ export const getBranchData = async (body) => {
         geoLocation:1,
         geoJson:1,
         address:1,
-        isActive: 1
+        isActive: 1,
+        timeSettingType: 1,
+        startTime: 1,
+        endTime: 1,
+        maxIn: 1,
+        minOut: 1,
+        weekOff: 1,
+        salaryCycle: 1
       },
     }];
 
@@ -160,7 +432,7 @@ export const editBranch = async (body, params) => {
       } 
     }
 
-    ['token', 'user', 'userId', 'query', 'clientBranchData', 'id','orgDetails' ].forEach(f => delete updateObj[f])
+    ['token', 'user', 'userId', 'query', 'clientBranchData', 'id','orgDetails' ,'authUser'].forEach(f => delete updateObj[f])
 
     // console.log("updateObj", updateObj)
     // console.log("query", query)
@@ -350,7 +622,7 @@ export const getBranch = async (body) => {
       }
       else
       {
-        console.log(JSON.stringify(aggrigationPipeline))
+        // console.log(JSON.stringify(aggrigationPipeline))
         return await aggregationWithPegination(aggrigationPipeline,body.query,collection_name,params);
       }
 
@@ -465,6 +737,10 @@ export const isBranchExist=async (body) => {
 
     if (body.branchId) {
       query['_id'] = new ObjectId(body.branchId);
+      
+    }
+    if(body.branchIds){
+      query['_id'] = new ObjectId(body.branchIds[0]);
       
     }
 
@@ -671,7 +947,14 @@ export const getNearestLocationBranch = async (body) => {
           client:1,
           radius: 1,
           isWithinRadius: 1,
-          outsideBy: 1
+          outsideBy: 1,
+          timeSettingType: 1,
+          startTime: 1,
+          endTime: 1,
+          maxIn: 1,
+          minOut: 1,
+          weekOff: 1,
+          salaryCycle: 1,
         }
       },
       // { $sort: { distance: 1 } }, // Sort by distance
@@ -810,6 +1093,37 @@ export const getBranchClientReq =async(body)=>{
     }
 
     return await getOne(query, collection_name,{address:0,isActive:0,createdDate:0,createdBy:0},{_id:1}); //sort {_id:1}
+  }catch(error){
+    logger.error("Error while get client req data",{stack:error.stack})
+    throw error
+  }
+}
+
+export const getAssignedBranchDetails =async(body)=>{
+  try{
+
+    const query = {
+      _id : body.assignmentDetails[0]?.branchId
+    }
+
+    return await getOne(query, collection_name); //sort {_id:1}
+  }catch(error){
+    logger.error("Error while get client req data",{stack:error.stack})
+    throw error
+  }
+}
+
+export const getAllBranches =async(body)=>{
+  try{
+
+    const query = {
+      $or : [
+        { orgId : new ObjectId(body.user.orgId) },
+        { orgId : {$in : body.clientIds.map(c => new ObjectId(c._id))} }
+      ]
+    }
+
+    return await getMany(query, collection_name); //sort {_id:1}
   }catch(error){
     logger.error("Error while get client req data",{stack:error.stack})
     throw error

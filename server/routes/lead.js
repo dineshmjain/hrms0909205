@@ -29,16 +29,19 @@ router.post('/create',
         }
         next();
     },
-
     org.isOrgValid,
+    
+    // Conditional middleware
     (req, res, next) => {
-    if (req.body.subOrgId || req.body.branchId) {
-      return next();
-    }
-    return assignment.getUserDetailsbyAssignmentId(req, res, next);
-  },
+        // Skip assignment.getUserDetailsbyAssignmentId if subOrgId or branchId exists
+        if (req.body?.subOrgId || req.body?.branchId) {
+            return next();
+        }
+        // Otherwise, execute the assignment middleware
+        assignment.getUserDetailsbyAssignmentId(req, res, next);
+    },
+    
     lead.isLeadExist,
-
     lead.addLead,
     (request, response, next) => {
         return apiResponse.successResponse(response, "Lead Added Successfully")
@@ -107,7 +110,7 @@ router.post('/kyc/update',
 router.post('/get/createBy',
     auth.isAuth,
     user.isUserValid,
-    lead.getlist,
+    lead.getlistByCreateBy,
     (request, response, next) => {
         return apiResponse.successResponseWithData(response, "Lead List Found Successfully", request.body.LeadData)
     }

@@ -18,6 +18,8 @@ export const isOrgExist = async(request, response, next) => {
         orgModel.isOrgExist(request.body).then(res => {
             if(!res.status) throw {}
             request.body.orgDetails = res.data;
+            request.body.orgId = res.data._id;
+            if(request.body.wizardAdd || request.body.updateOrg) request.body._id = res.data._id// in wizard flow if org exist then skip this middleware
             request.body.orgExist = true
             return next()
         }).catch(error => {
@@ -68,19 +70,19 @@ export const addOrganization = async(request, response, next) => {
     try {
         // if(!request.body.isDefaultOrg) return next() // if isDefaultOrg is false then skip this middleware
         if(request.body.isFirstBranch)return next()
-        if(!request.body.user.owner) return apiResponse.unauthorizedResponse(response,"Only owner can create organization");
+        if(!request.body.user?.owner && !request.body.register  ) return apiResponse.unauthorizedResponse(response,"Only owner can create organization");
         if(request.body.orgExist) {
             // request.body.orgId = request.body.orgDetails._id;
             // return next()
             request.body.parentOrg = request.body.orgDetails._id;
         }
-        if(request.body.orgExist &&  (request.body.orgDetails.structure==='branch' || request.body.orgDetails.structure==='organization')){
+        if(request.body.orgExist && ((request.body.orgDetails.structure==='branch' && request.body.branchDetails) || request.body.orgDetails.structure==='organization')){
             return apiResponse.validationError(response,'branch or oranization subscription cant create  suborganization,please upgrade group')
         }
         const orgDetails = await orgModel.addOrganization(request.body)
         if (!orgDetails.status) return apiResponse.notFoundResponse(response, orgDetails.message)
         request.body.orgId = orgDetails.data.insertedId
-        request.body.user['orgId']=orgDetails.data.insertedId // this paramter for default branch used in createby
+        if(!request.body.register) request.body.user['orgId']=orgDetails.data.insertedId // this paramter for default branch used in createby
         if(request.body.orgExist) return next();
         request.body.update = {
             orgId:orgDetails.data.insertedId,
@@ -148,7 +150,7 @@ export const updateOrgDetails = async (request,response,next) => {
     try{
         // request.body.orgIdToUpdate = request.body.orgId ? request.body.orgId : request.body.user.orgId
         // if(!request.body.orgExist)return apiResponse.notFoundResponse(response,'No Data Found')
-        if(!request.body.subOrgExist&&!request.body.orgExist )return apiResponse.notFoundResponse(response,'No Data Found')
+        if(!request.body.subOrgExist&& !request.body.orgExist )return apiResponse.notFoundResponse(response,'No Data Found')
         orgModel.updateOrg(request.body).then(res => {
             if(res.status){
                 request.body.result = res;
@@ -199,9 +201,8 @@ export const addClientOrganization=async(request,response,next)=>{
 // add suborganiation defaultely
 export const addSubOrganization=(request,response,next)=>{
     try{
-        if(request.body.wizardAdd && request.body.structure != 'group') return next() // in wizard flow if org exist then skip this middleware
-        if(request.body.orgExist) return next();
-        // if(!request.body.addSubOrg) return next()
+        if(request.body.structure != 'group' || request.body.orgDetails?.structure != 'group' ) return next() // in wizard flow if org exist then skip this middleware
+        // if(request.body.subOrgExist) return next();
         orgModel.addSubOrg(request.body).then(result=>{
             if(!result.status) return apiResponse.notFoundResponse(response, "Invalid organization")
             request.body.subOrgId=result.data.insertedId
@@ -286,7 +287,7 @@ export const checkSubOrgPending = async(request, response, next) => {
 // add org parameters
 export const addOrgStructureParameters=(request,response,next)=>{
     try{
-        if(request.body.orgExist) return next()
+        if(request.body.orgExist && !request.body.updateOrg) return next()
         if( !request.body.orgExist && !request.body.structure) return apiResponse.validationError(response,'structure parameter is required in body')
         const structure=request.body.structure
         if(structure==='branch'){

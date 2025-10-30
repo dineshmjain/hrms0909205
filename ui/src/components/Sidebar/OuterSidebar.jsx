@@ -5,7 +5,7 @@ import { MdFactory } from "react-icons/md";
 import { RxDotFilled, RxExternalLink } from "react-icons/rx";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { routes } from "../../routes/routes";
+import { routes } from "../../routes/routes.jsx";
 import { useCheckEnabledModule } from "../../hooks/useCheckEnabledModule";
 import logo from "../../assets/logo.png";
 

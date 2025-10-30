@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Button, IconButton, Typography } from '@material-tailwind/react';
 import { useDispatch, useSelector } from 'react-redux';
-import CustomField from '../../../components/input/CustomFeild';
+import CustomField from '../../../components/Input/CustomFeild';
 import Header from '../../../components/header/Header';
 import { MdAdd } from 'react-icons/md';
 

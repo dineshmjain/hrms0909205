@@ -69,8 +69,7 @@ router.post('/wizard/add',
     auth.isAuth,
     user.isUserValid,
     org.isOrgExist,
-    org.addOrgStructureParameters,
-    org.addOrganization,
+    org.updateOrgDetails,
     org.addSubOrganization,
     department.addDefaultDepartments,
     designation.addDefaultDesignations,
@@ -96,10 +95,33 @@ router.post(
 router.post(
     "/update",
     celebrate(validation.updateOrg),
+    (request,response,next) => {
+        request.body.updateOrg = true // to identify update org details
+        return next()
+    },
     auth.isAuth,
     user.isUserValid,
     org.isOrgExist,
     org.isSubOrgExist,
+    org.addSubOrganization,
+    org.updateOrgDetails,
+    (request,response) => {
+        return apiResponse.successResponse(response,"Updated successfully")
+    }
+)
+
+router.post(
+    "/update/structure",
+    // celebrate(validation.updateOrg),
+    (request,response,next) => {
+        request.body.updateOrg = true // to identify update org structure
+        return next()
+    },
+    auth.isAuth,
+    user.isUserValid,
+    org.isOrgExist,
+    org.isSubOrgExist,
+    org.addOrgStructureParameters,
     org.updateOrgDetails,
     (request,response) => {
         return apiResponse.successResponse(response,"Updated successfully")
@@ -115,6 +137,16 @@ router.post(
     org.getOrgStructure,
     (request,response) => {
         return apiResponse.successResponseWithData(response,"Structure Found successfully",request.body.structureOrg)
+    }
+)
+
+router.post(
+    "/get/details",
+    auth.isAuth,
+    user.isUserValid, 
+    org.isOrgExist,
+    (request,response) => {
+        return apiResponse.successResponseWithData(response,"Org Details Found successfully",request.body.orgDetails)
     }
 )
 export default router;

@@ -1,11 +1,12 @@
 import { logger } from "../../helper/logger.js";
 import { ObjectId } from "mongodb";
-import { create,getOne,findWithPegination,findOneAndUpdate, getMany, updateOne,createMany } from "../../helper/mongo.js";
+import { create,getOne,findWithPegination,findOneAndUpdate, getMany, updateOne,createMany, aggregationWithPegination } from "../../helper/mongo.js";
 // import { QueryBuilder } from "../../helper/filter.js";
 import MongoDBService from "../../helper/mongoDbService.js";
 import { QueryBuilder } from "../../helper/filter.js";
 import { getCurrentDateTime } from "../../helper/formatting.js";
 import * as constants from "../../helper/constants.js";
+import { report } from "process";
 
 
 const collection_name = "shift";
@@ -13,7 +14,7 @@ const collection_name = "shift";
 export const getShiftList = async (body) => {
     try
     {
-        body.orgId = body.orgDetails._id;
+        body.orgId = body.orgDetails?._id;
 
         const query = new QueryBuilder(body)
             .addId()
@@ -38,91 +39,166 @@ export const getShiftList = async (body) => {
     }
 }
 export const createShift = async (body) => {
-    try{
-        const shiftObj = {
-            name:body.name,
-            startTime : body.startTime,
+    try {
+        const baseShiftObj = {
+            name: body.name,
+            startTime: body.startTime,
             endTime: body.endTime,
-            orgId: body.clientMappedId ? new ObjectId(body.clientMappedId) : body.orgDetails._id,
-            isActive:true,
-            createDate:new Date(),
-            // updatedAt:new Date(),
-            createdBy:new ObjectId(body.userId),
-            ...(body.branchId && {branchId : body.branchId}),
+            orgId: body.clientMappedId 
+                ? new ObjectId(body.clientMappedId) 
+                : body.orgDetails._id,
+            isActive: true,
+            createDate: new Date(),
+            createdBy: new ObjectId(body.authUser._id),
             bgColor: body.bgColor,
             textColor: body.textColor,
-            ...(body.minIn && {minIn : body.minIn}),
-            ...(body.minOut && {minOut : body.minOut}),
-            ...(body.maxIn && {maxIn : body.maxIn}),
-            ...(body.maxOut && {maxOut : body.maxOut}),
-            ...(body.reportTimeIn && {reportTimeIn:body.reportTimeIn}),
-            ...(body.reportTimeOut && {reportTimeOut:body.reportTimeOut}),
+            ...(body.minIn && { minIn: body.minIn }),
+            ...(body.minOut && { minOut: body.minOut }),
+            ...(body.maxIn && { maxIn: body.maxIn }),
+            ...(body.maxOut && { maxOut: body.maxOut }),
+            ...(body.reportTimeIn && { reportTimeIn: body.reportTimeIn }),
+            ...(body.reportTimeOut && { reportTimeOut: body.reportTimeOut }),
+        };
+
+        // mark as day pass if endTime < startTime
+        if (+body.endTime.split(':')[0] < +body.startTime.split(':')[0]) {
+            baseShiftObj['isDayPass'] = true;
         }
 
-        if(+body.endTime.split(':')[0] < +body.startTime.split(':')[0]) shiftObj['isDayPass'] = true
-        let fields = ['subOrgId', 'branchId', 'designationId', 'otMin', 'otMax','clientId'] 
+        // Convert other optional ObjectId fields
+        const otherFields = ['subOrgId', 'designationId', 'otMin', 'otMax', 'clientId'];
+        otherFields.forEach(f => {
+            if (body[f]) baseShiftObj[f] = new ObjectId(body[f]);
+        });
 
-        fields.forEach(f => {
-            if(body[f]) shiftObj[f] = new ObjectId(body[f])
-        })
+        // handle optional branchIds
+        const branchIds = Array.isArray(body.branchIds)
+            ? body.branchIds
+            : [];
 
-        return await create(shiftObj,collection_name)
+        // if branchIds provided, create multiple docs; else create one doc
+        if (branchIds.length > 0) {
+            const shiftsToCreate = branchIds.map(bId => ({
+                ...baseShiftObj,
+                branchId: new ObjectId(bId),
+            }));
+            return await createMany(shiftsToCreate, collection_name);
+        } else {
+            // create single shift without branchId
+            return await create(baseShiftObj, collection_name);
+        }
 
-    }catch(error){
-        logger.error("Error while createShift in shift module");
+    } catch (error) {
+        logger.error("Error while createShift in shift module", { stack: error.stack });
         throw error;
     }
 };
 
 export const listShift = async (body) => {
-    try{
-        let {query} = body;
-        query.orgId = body.orgId ? new ObjectId(body.orgId) : body.orgDetails._id;
-        query.user={orgId:new ObjectId(body.user.orgId)}
-        query.isActive = true;
-        const queryBuilder = new QueryBuilder(query)
-        .addId()
-        // .addOrgId()
-        .addName()
-        .addStartTime()
-        .addEndTime()
-        // .addIsActive()
-        .addCreatedAt()
-        .addUpdatedAt()
-        .getQueryParams()
+  try {
+    const matchStage = {};
 
-        if(query.orgId && query.user.orgId.toString() === query.orgId.toString()) {
-            queryBuilder["orgId"] = query.user.orgId;
-        }
-        if(query.orgId) {
-            queryBuilder["orgId"] = query.orgId;
-        }
+    if (body.orgId) matchStage.orgId = new ObjectId(body.orgId);
+    else if (body.orgDetails?._id) matchStage.orgId = new ObjectId(body.orgDetails._id);
 
-        if(query.clientMappedId){
-            queryBuilder["orgId"] = new ObjectId(query.clientMappedId);
-        }
-        if(query.orgId && query?.user?.orgId.toString() !== query.orgId.toString()) {
-            queryBuilder["orgId"] = query.orgId;
-            // queryBuilder["subOrgId"] = query.orgId;
-        }
-        if(query.subOrgId){
-            queryBuilder["subOrgId"] = new ObjectId(query.subOrgId);
-        }
-        
-        let projection = {
-            
-        }
-        if(body.page && body.limit) {
-            query.page = body.page
-            query.limit = body.limit
-        }
-        
-        return await findWithPegination(queryBuilder,projection,query,collection_name);
-    }catch (error) {
-        logger.error("Error while listShift in shift module");
-        throw error;
+    if (body.branchId) matchStage.branchId = new ObjectId(body.branchId);
+    else if (body.branchIds && Array.isArray(body.branchIds) && body.branchIds.length > 0) {
+      matchStage.branchId = { $in: body.branchIds.map(id => new ObjectId(id)) };
     }
-}
+
+    if (body.clientMappedId) matchStage.orgId = new ObjectId(body.clientMappedId);
+    if (body.subOrgId) matchStage.subOrgId = new ObjectId(body.subOrgId);
+
+    matchStage.isActive = true;
+
+    const aggregationPipeline = [
+      { $match: matchStage },
+      {
+        $lookup: {
+          from: "branches",
+          localField: "branchId",
+          foreignField: "_id",
+          as: "branchDetails"
+        }
+      },
+      {
+        $unwind: {
+          path: "$branchDetails",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $lookup: {
+          from: "client",
+          localField: "branchDetails.orgId",
+          foreignField: "_id",
+          as: "clientDetails"
+        }
+      },
+      {
+        $unwind: {
+          path: "$clientDetails",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          startTime: 1,
+          endTime: 1,
+          orgId: 1,
+          clientId: 1,
+          branchId: 1,
+          subOrgId: 1,
+          isActive: 1,
+          createDate: 1,
+          createdBy: 1,
+          bgColor: 1,
+          textColor: 1,
+          minIn: 1,
+          minOut: 1,
+          maxIn: 1,
+          maxOut: 1,
+          reportTimeIn: 1,
+          reportTimeOut: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          reportTimeIn:1,
+          branchDetails: {
+            branchName: "$branchDetails.name",
+            clientName: "$clientDetails.nickName"
+        }
+        }
+      }
+    ];
+
+    const paginationQuery = {
+      page: body.page ? parseInt(body.page) : 1,
+      limit: body.limit ? parseInt(body.limit) : 10,
+      sortOrder: body.sortOrder ? parseInt(body.sortOrder) : -1,
+      sortBy: body.sortBy || "createDate"
+    };
+
+    const result = await aggregationWithPegination(
+      aggregationPipeline,
+      paginationQuery,
+      collection_name
+    );
+
+    return {
+      status: true,
+      message: "Shifts fetched successfully",
+      totalRecord: result.totalRecord,
+      next_page: result.next_page,
+      data: result.data
+    };
+  } catch (error) {
+    logger.error("Error while listShift:", error);
+    return { status: false, message: "Unable to fetch shifts" };
+  }
+};
+
 
 export const getOneShift = async (body) => {
     try{
@@ -450,6 +526,23 @@ export const getCurrentShift = async (body) => {
         return await getOne(query,collection_name);
     }catch(error){
         logger.error("Error while get current Shift in shift module");
+        throw error;
+    }
+}
+
+export const getShiftIdOnName = async (body) => {
+    try{
+        
+        body.orgId = body?.orgDetails?._id ? body.orgDetails._id : new ObjectId(body.user.orgId);
+        const query={
+            orgId:new ObjectId(body.orgId),
+            isActive:true,
+            name:body.name
+        }
+       
+        return await getOne(query,collection_name);
+    }catch(error){
+        logger.error("Error while getShiftIdOnName in shift module");
         throw error;
     }
 }

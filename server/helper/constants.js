@@ -21,7 +21,15 @@ export const userGetTypeProjection = {
         mobile:1,
         gender:1,
         dateOfBirth:1,
-        profileImage:1
+        profileImage:1,
+        bloodGroup:1,
+        qualification:1,
+        salaryConfig:1,
+        emergencyNumber:1,
+        guardianNumber:1,
+        guardianName:1,
+        martialStatus:1
+
     },
     "address" : {
         address:1,
@@ -35,7 +43,10 @@ export const userGetTypeProjection = {
     "official" : {
         role : 1,
         assignmentId : 1,
-        joinDate:1
+        joinDate:1,
+        workTimingType:1,
+        shiftIds:1,
+        employeeId:1,
     }
 }
 
@@ -62,6 +73,7 @@ export const KYC_Entities = [
 export const hierarchy = ['subOrg', 'branch', 'department', 'designation']
 
 export const adminRoleId = "664c35da666ff634cae895dd"
+export const userRoleId = "6747ea1ced5f3591438fc4b8"
 
 
 export const defaultShifts = [
@@ -113,6 +125,13 @@ export const allowed_user_params = [
     "email",
     "gender",
     "dateOfBirth",
+    "bloodGroup",
+    "qualification",
+    "employeeId",
+    "salaryConfig",
+    "emergencyNumber",
+    "guardianNumber",
+    "guardianName",
     "isActive",
     "createdByName",
     "assignmentId",
@@ -123,8 +142,10 @@ export const allowed_user_params = [
     "department",
     "designation",
     "clientBranch",
+    "workTiming",
     "createdDate",
-    "modifiedDate"
+    "modifiedDate",
+    "employeeId"
 ]
 
 export const allowed_org_params = [
@@ -150,7 +171,14 @@ export const allowed_branch_params = [
     "geoJson",
     "subOrgId",
     "radius",
-    "modifiedDate"
+    "modifiedDate",
+    "startTime",
+    "endTime",
+    "maxIn",
+    "minOut",
+    "weekOff",
+    "salaryCycle",
+    "financialYear"
 ]
 export const allowed_department_params=[
     "_id",
@@ -195,19 +223,74 @@ export const defaultDepartments = [
 ]
 
 
-export const defaultDesignations = [
-    "Supervisor",
-    "Field Officer",
-    "Security Guard",
-    "Cleaning Staff",
-    "Sales Executive",
-    "HR Executive",
-    "Shift Incharge",
-    "Billing Assistant",
-    "Operations Manager",
-    'echnical Security Executive',
-    "Admin"
-]
+export const defaultDesignations = {
+  "Supervisor": {
+    "68be930f815aaca574812742": ["c", "r", "u", "d"], // Field Officer
+    "6889bb586fa77c48302a3fdd": ["c", "r", "u", "d"], // Security
+    "6889bb316fa77c48302a3fdc": ["c", "r", "u", "d"], // Manager
+    "6889bb126fa77c48302a3fdb": ["c", "r", "u", "d"]  // HR
+  },
+  "Field Officer": {
+    "6889bb7a6fa77c48302a3fde": ["c", "r", "u", "d"], // Supervisor
+    "6889bb586fa77c48302a3fdd": ["c", "r", "u", "d"], // Security
+    "6889bb316fa77c48302a3fdc": ["c", "r", "u", "d"], // Manager
+    "6889bb126fa77c48302a3fdb": ["c", "r", "u", "d"]  // HR
+  },
+  "Security Guard": {
+    "6889bb7a6fa77c48302a3fde": ["c", "r", "u", "d"], // Supervisor
+    "68be930f815aaca574812742": ["c", "r", "u", "d"], // Field Officer
+    "6889bb316fa77c48302a3fdc": ["c", "r", "u", "d"], // Manager
+    "6889bb126fa77c48302a3fdb": ["c", "r", "u", "d"]  // HR
+  },
+  "Cleaning Staff": {
+    "6889bb7a6fa77c48302a3fde": ["c", "r", "u", "d"],
+    "68be930f815aaca574812742": ["c", "r", "u", "d"],
+    "6889bb586fa77c48302a3fdd": ["c", "r", "u", "d"],
+    "6889bb316fa77c48302a3fdc": ["c", "r", "u", "d"],
+    "6889bb126fa77c48302a3fdb": ["c", "r", "u", "d"]
+  },
+  "Sales Executive": {
+    "6889bb7a6fa77c48302a3fde": ["c", "r", "u", "d"],
+    "68be930f815aaca574812742": ["c", "r", "u", "d"],
+    "6889bb586fa77c48302a3fdd": ["c", "r", "u", "d"],
+    "6889bb316fa77c48302a3fdc": ["c", "r", "u", "d"],
+    "6889bb126fa77c48302a3fdb": ["c", "r", "u", "d"]
+  },
+  "HR Executive": {
+    "6889bb7a6fa77c48302a3fde": ["c", "r", "u", "d"],
+    "68be930f815aaca574812742": ["c", "r", "u", "d"],
+    "6889bb586fa77c48302a3fdd": ["c", "r", "u", "d"],
+    "6889bb316fa77c48302a3fdc": ["c", "r", "u", "d"]
+  },
+  "Shift Incharge": {
+    "6889bb7a6fa77c48302a3fde": ["c", "r", "u", "d"],
+    "68be930f815aaca574812742": ["c", "r", "u", "d"],
+    "6889bb586fa77c48302a3fdd": ["c", "r", "u", "d"],
+    "6889bb316fa77c48302a3fdc": ["c", "r", "u", "d"],
+    "6889bb126fa77c48302a3fdb": ["c", "r", "u", "d"]
+  },
+  "Billing Assistant": {
+    "6889bb7a6fa77c48302a3fde": ["c", "r", "u", "d"],
+    "68be930f815aaca574812742": ["c", "r", "u", "d"],
+    "6889bb586fa77c48302a3fdd": ["c", "r", "u", "d"],
+    "6889bb316fa77c48302a3fdc": ["c", "r", "u", "d"],
+    "6889bb126fa77c48302a3fdb": ["c", "r", "u", "d"]
+  },
+  "Operations Manager": {
+    "6889bb7a6fa77c48302a3fde": ["c", "r", "u", "d"],
+    "68be930f815aaca574812742": ["c", "r", "u", "d"],
+    "6889bb586fa77c48302a3fdd": ["c", "r", "u", "d"],
+    "6889bb126fa77c48302a3fdb": ["c", "r", "u", "d"]
+  },
+  "Technical Security Executive": {
+    "6889bb7a6fa77c48302a3fde": ["c", "r", "u", "d"],
+    "68be930f815aaca574812742": ["c", "r", "u", "d"],
+    "6889bb316fa77c48302a3fdc": ["c", "r", "u", "d"],
+    "6889bb126fa77c48302a3fdb": ["c", "r", "u", "d"]
+  },
+  "Admin": {}
+};
+
 
 export const defaultGraceTime = 60 // in minutes
 

@@ -402,7 +402,8 @@ export const getModules=(request, response, next) => {
     moduleModel.getModules(request.body).then((res) => {
       if (res?.data?.length > 0) {
         request.body.modules = res.data;
-        const finalData=helper.formatModulesWithNames(request.body.roleDetailsArray[0], request.body.modules,request.body.existingDisabledModules)
+        const designationDisabledModules=request.body.designationDisabledModules
+        const finalData=helper.formatModulesWithNames(request.body.roleDetailsArray[0], request.body.modules,request.body.existingDisabledModules,designationDisabledModules)
         request.body.result=finalData
         return next();
       }

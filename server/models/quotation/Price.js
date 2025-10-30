@@ -88,8 +88,8 @@ const mapLimitsToArray = (limits) => {
       outCityLimit: limits[gender]?.outCityLimit || 0,
       dayShift: limits[gender]?.dayShift || 0,
       nightShift: limits[gender]?.nightShift || 0,
-      outCityDayShift:limits[gender]?.outCityDayShift || 0,
-      outCityNightShift:limits[gender]?.outCityNightShift ||0,
+      outCityDayShift: limits[gender]?.outCityDayShift || 0,
+      outCityNightShift: limits[gender]?.outCityNightShift || 0,
 
     }));
 
@@ -357,11 +357,11 @@ export const standardQuotePriceCreate = async (data) => {
 };
 export const standardQuotePriceCreateHistory = async (data) => {
   try {
-        const { userId, orgId } = validateUserAndOrg(data);
+    const { userId, orgId } = validateUserAndOrg(data);
     const bodyData = createBodyData(data, userId);
     const params = {
-      basePriceId:new ObjectId(data?.baseQuotePriceId),
-      effectiveFrom:new Date(data?.effectiveFrom),
+      basePriceId: new ObjectId(data?.baseQuotePriceId),
+      effectiveFrom: data?.effectiveFrom,
       ...bodyData,
       isActive: true,
       createdBy: userId,
@@ -670,6 +670,7 @@ export const standardQuotePricesList = async (body) => {
     if (body?.subOrgId) branchFilters.subOrgId = validateObjectId(body.subOrgId, 'subOrgId');
     if (body?.branchId) branchFilters.branchId = validateObjectId(body.branchId, 'branchId');
     if (body?.departmentId) branchFilters.departmentId = validateObjectId(body.departmentId, 'departmentId');
+    if (body?.designationId) branchFilters.designationId = validateObjectId(body.designationId, 'designationId');
 
     logger.info('Getting standard quote prices list', {
       effectiveDate,
@@ -682,304 +683,403 @@ export const standardQuotePricesList = async (body) => {
       designationFilter.designationId = validateObjectId(body.designationId, 'designationId');
     }
 
-    const query =[
-  // Step 1: Match ALL base prices by orgId only (REMOVED subOrgId/branchId filter)
-  {
-    $match: {
-      orgId: new ObjectId(body?.user?.orgId),
-      isActive: true
-    }
-  },
+    const query = [
+      // Step 1: Match ALL base prices by orgId only
+      {
+        $match: {
+          orgId: new ObjectId(body?.user?.orgId),
+          isActive: true,
+          ...designationFilter
+        }
+      },
 
-  // Step 2: Lookup base price history
-  {
-    $lookup: {
-      from: "baseQuotationPriceHistory",
-      localField: "_id",
-      foreignField: "basePriceId",
-      as: "prices"
-    }
-  },
+      // Step 2: Lookup base price history
+      {
+        $lookup: {
+          from: "baseQuotationPriceHistory",
+          localField: "_id",
+          foreignField: "basePriceId",
+          as: "prices"
+        }
+      },
 
-  // Step 3: Filter valid base history
-  {
-    $addFields: {
-      validBaseHistory: {
-        $filter: {
-          input: "$prices",
-          as: "entry",
-          cond: {
-            $and: [
-              { $ne: ["$$entry.effectiveFrom", null] },
-              { $ne: ["$$entry.effectiveFrom", ""] },
-              {
-                $lte: [
+      // Step 3: Filter valid base history with normalized dates
+      {
+        $addFields: {
+          validBaseHistory: {
+            $filter: {
+              input: "$prices",
+              as: "entry",
+              cond: {
+                $and: [
+                  { $ne: ["$$entry.effectiveFrom", null] },
+                  { $ne: ["$$entry.effectiveFrom", ""] },
                   {
-                    $dateFromString: {
-                      dateString: "$$entry.effectiveFrom",
-                      onError: null,
-                      onNull: null
-                    }
-                  },
-                  {
-                    $dateFromString: {
-                      dateString:body?.date
-                    }
+                    $lte: [
+                      {
+                        $cond: [
+                          { $eq: [{ $type: "$$entry.effectiveFrom" }, "date"] },
+                          "$$entry.effectiveFrom",
+                          {
+                            $dateFromString: {
+                              dateString: "$$entry.effectiveFrom",
+                              onError: null,
+                              onNull: null
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        $cond: [
+                          { $eq: [{ $type: body?.date }, "date"] },
+                          body?.date,
+                          {
+                            $dateFromString: {
+                              dateString: body?.date,
+                              onError: new Date(),
+                              onNull: new Date()
+                            }
+                          }
+                        ]
+                      }
+                    ]
                   }
                 ]
               }
-            ]
+            }
           }
         }
-      }
-    }
-  },
-
-  // Step 4: Get latest base price
-  {
-    $addFields: {
-      latestBasePrice: {
-        $cond: [
-          { $gt: [{ $size: "$validBaseHistory" }, 0] },
-          {
-            $let: {
-              vars: {
-                sortedEntries: {
-                  $sortArray: {
-                    input: "$validBaseHistory",
-                    sortBy: {
-                      effectiveFrom: -1,
-                      createdAt: -1
-                    }
-                  }
-                }
-              },
-              in: {
-                priceId: { $arrayElemAt: ["$$sortedEntries._id", 0] },
-                data: { $arrayElemAt: ["$$sortedEntries", 0] },
-                effectiveFrom: { $arrayElemAt: ["$$sortedEntries.effectiveFrom", 0] },
-                createdAt: { $arrayElemAt: ["$$sortedEntries.createdAt", 0] }
-              }
-            }
-          },
-          null
-        ]
-      }
-    }
-  },
-
-  // Step 5: Lookup branch-specific modifications
-  {
-    $lookup: {
-      from: "designation",
-      let: {
-        baseId: "$_id",
-        designationId: "$designationId"
       },
-      pipeline: [
-        {
-          $match: {
-            $expr: {
-              $and: [
-                { $eq: ["$baseQuotePriceId", "$$baseId"] },
-                { $eq: ["$designationId",body?.designationId ?new ObjectId(body?.designationId): "$$designationId"] },
-                { $eq: ["$isActive", true] },
-                { $eq: ["$subOrgId",new ObjectId(body?.subOrgId)] },
-                { $eq: ["$branchId", new ObjectId(body?.branchId)] }
-              ]
-            }
-          }
-        },
-        {
-          $addFields: {
-            validRefHistory: {
-              $filter: {
-                input: "$history",
-                as: "entry",
-                cond: {
-                  $and: [
-                    { $ne: ["$$entry.effectiveFrom", null] },
-                    { $ne: ["$$entry.effectiveFrom", ""] },
-                    {
-                      $lte: [
-                        {
-                          $dateFromString: {
-                            dateString: "$$entry.effectiveFrom",
-                            onError: null,
-                            onNull: null
-                          }
-                        },
-                        {
-                          $dateFromString: {
-                            dateString: "2025-10-06"
-                          }
-                        }
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        },
-        {
-          $addFields: {
-            latestRefPrice: {
-              $cond: [
-                { $gt: [{ $size: "$validRefHistory" }, 0] },
-                {
-                  $let: {
-                    vars: {
-                      sortedEntries: {
-                        $sortArray: {
-                          input: "$validRefHistory",
-                          sortBy: {
-                            effectiveFrom: -1,
-                            createdAt: -1
-                          }
+
+      // Step 4: Get latest base price with proper sorting
+      {
+        $addFields: {
+          latestBasePrice: {
+            $cond: [
+              { $gt: [{ $size: "$validBaseHistory" }, 0] },
+              {
+                $let: {
+                  vars: {
+                    normalizedEntries: {
+                      $map: {
+                        input: "$validBaseHistory",
+                        as: "entry",
+                        in: {
+                          $mergeObjects: [
+                            "$$entry",
+                            {
+                              normalizedEffectiveFrom: {
+                                $cond: [
+                                  { $eq: [{ $type: "$$entry.effectiveFrom" }, "date"] },
+                                  "$$entry.effectiveFrom",
+                                  {
+                                    $dateFromString: {
+                                      dateString: "$$entry.effectiveFrom",
+                                      onError: null,
+                                      onNull: null
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
                         }
                       }
-                    },
-                    in: {
-                      priceId: { $arrayElemAt: ["$$sortedEntries._id", 0] },
-                      data: { $arrayElemAt: ["$$sortedEntries", 0] },
-                      effectiveFrom: { $arrayElemAt: ["$$sortedEntries.effectiveFrom", 0] },
-                      createdAt: { $arrayElemAt: ["$$sortedEntries.createdAt", 0] },
-                      referenceId: "$_id"
+                    }
+                  },
+                  in: {
+                    $let: {
+                      vars: {
+                        sortedEntries: {
+                          $sortArray: {
+                            input: "$$normalizedEntries",
+                            sortBy: {
+                              normalizedEffectiveFrom: -1,
+                              createdAt: -1
+                            }
+                          }
+                        }
+                      },
+                      in: {
+                        priceId: { $arrayElemAt: ["$$sortedEntries._id", 0] },
+                        data: { $arrayElemAt: ["$$sortedEntries", 0] },
+                        effectiveFrom: { $arrayElemAt: ["$$sortedEntries.effectiveFrom", 0] },
+                        createdAt: { $arrayElemAt: ["$$sortedEntries.createdAt", 0] }
+                      }
                     }
                   }
-                },
-                null
-              ]
-            }
-          }
-        },
-        {
-          $project: {
-            latestRefPrice: 1,
-            subOrgId: 1,
-            branchId: 1,
-            departmentId: 1
-          }
-        }
-      ],
-      as: "branchModifications"
-    }
-  },
-
-  // Step 6: Determine final price (branch priority, fallback to base)
-  {
-    $addFields: {
-      finalPrice: {
-        $cond: [
-          {
-            $and: [
-              { $gt: [{ $size: "$branchModifications" }, 0] },
-              {
-                $ne: [
-                  { $arrayElemAt: ["$branchModifications.latestRefPrice", 0] },
-                  null
-                ]
-              }
-            ]
-          },
-          {
-            $let: {
-              vars: {
-                branchMod: { $arrayElemAt: ["$branchModifications", 0] },
-                latestRef: { $arrayElemAt: ["$branchModifications.latestRefPrice", 0] }
-              },
-              in: {
-                priceId: "$$latestRef.priceId",
-                data: "$$latestRef.data",
-                effectiveFrom: "$$latestRef.effectiveFrom",
-                createdAt: "$$latestRef.createdAt",
-                source: "branch",
-                referenceId: "$$latestRef.referenceId",
-                branchInfo: {
-                  subOrgId: "$$branchMod.subOrgId",
-                  branchId: "$$branchMod.branchId",
-                  departmentId: "$$branchMod.departmentId"
                 }
-              }
-            }
-          },
-          {
-            $cond: [
-              { $ne: ["$latestBasePrice", null] },
-              {
-                $mergeObjects: [
-                  "$latestBasePrice",
-                  {
-                    source: "base",
-                    branchInfo: null
-                  }
-                ]
               },
               null
             ]
           }
-        ]
-      }
-    }
-  },
+        }
+      },
 
-  // Step 7: Filter out records without prices
-  {
-    $match: {
-      finalPrice: { $ne: null }
-    }
-  },
+      // Step 5: Lookup branch-specific modifications (CONDITIONAL)
+      {
+        $lookup: {
+          from: "designation",
+          let: {
+            baseId: "$_id",
+            designationId: "$designationId"
+          },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$baseQuotePriceId", "$$baseId"] },
+                    { $eq: ["$designationId", body?.designationId ? new ObjectId(body?.designationId) : "$$designationId"] },
+                    { $eq: ["$isActive", true] },
+                    // Conditional branch filtering
+                    ...(body?.subOrgId ? [
+                      { $eq: ["$subOrgId", new ObjectId(body.subOrgId)] }
+                    ] : []),
+                    // Conditionally add branchId filter if provided in body
+                    ...(body?.branchId ? [
+                      { $eq: ["$branchId", new ObjectId(body.branchId)] }
+                    ] : [])
+                  ]
+                }
+              }
+            },
+            {
+              $addFields: {
+                validRefHistory: {
+                  $filter: {
+                    input: "$history",
+                    as: "entry",
+                    cond: {
+                      $and: [
+                        { $ne: ["$$entry.effectiveFrom", null] },
+                        { $ne: ["$$entry.effectiveFrom", ""] },
+                        {
+                          $lte: [
+                            {
+                              $cond: [
+                                { $eq: [{ $type: "$$entry.effectiveFrom" }, "date"] },
+                                "$$entry.effectiveFrom",
+                                {
+                                  $dateFromString: {
+                                    dateString: "$$entry.effectiveFrom",
+                                    onError: null,
+                                    onNull: null
+                                  }
+                                }
+                              ]
+                            },
+                            {
+                              $cond: [
+                                { $eq: [{ $type: body?.date }, "date"] },
+                                body?.date,
+                                {
+                                  $dateFromString: {
+                                    dateString: body?.date,
+                                    onError: new Date(),
+                                    onNull: new Date()
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              $addFields: {
+                latestRefPrice: {
+                  $cond: [
+                    { $gt: [{ $size: "$validRefHistory" }, 0] },
+                    {
+                      $let: {
+                        vars: {
+                          normalizedEntries: {
+                            $map: {
+                              input: "$validRefHistory",
+                              as: "entry",
+                              in: {
+                                $mergeObjects: [
+                                  "$$entry",
+                                  {
+                                    normalizedEffectiveFrom: {
+                                      $cond: [
+                                        { $eq: [{ $type: "$$entry.effectiveFrom" }, "date"] },
+                                        "$$entry.effectiveFrom",
+                                        {
+                                          $dateFromString: {
+                                            dateString: "$$entry.effectiveFrom",
+                                            onError: null,
+                                            onNull: null
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          }
+                        },
+                        in: {
+                          $let: {
+                            vars: {
+                              sortedEntries: {
+                                $sortArray: {
+                                  input: "$$normalizedEntries",
+                                  sortBy: {
+                                    normalizedEffectiveFrom: -1,
+                                    createdAt: -1
+                                  }
+                                }
+                              }
+                            },
+                            in: {
+                              priceId: { $arrayElemAt: ["$$sortedEntries._id", 0] },
+                              data: { $arrayElemAt: ["$$sortedEntries", 0] },
+                              effectiveFrom: { $arrayElemAt: ["$$sortedEntries.effectiveFrom", 0] },
+                              createdAt: { $arrayElemAt: ["$$sortedEntries.createdAt", 0] },
+                              referenceId: "$_id"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    null
+                  ]
+                }
+              }
+            },
+            {
+              $project: {
+                latestRefPrice: 1,
+                subOrgId: 1,
+                branchId: 1,
+                departmentId: 1
+              }
+            }
+          ],
+          as: "branchModifications"
+        }
+      },
 
-  // Step 8: Lookup designation details
-  {
-    $lookup: {
-      from: "designation",
-      localField: "designationId",
-      foreignField: "_id",
-      as: "designation",
-      pipeline: [
-        {
-          $project: {
-            name: 1,
-            code: 1
+      // Step 6: Determine final price (branch priority, fallback to base)
+      {
+        $addFields: {
+          finalPrice: {
+            $cond: [
+              {
+                $and: [
+                  { $gt: [{ $size: "$branchModifications" }, 0] },
+                  {
+                    $ne: [
+                      { $arrayElemAt: ["$branchModifications.latestRefPrice", 0] },
+                      null
+                    ]
+                  }
+                ]
+              },
+              {
+                $let: {
+                  vars: {
+                    branchMod: { $arrayElemAt: ["$branchModifications", 0] },
+                    latestRef: { $arrayElemAt: ["$branchModifications.latestRefPrice", 0] }
+                  },
+                  in: {
+                    priceId: "$$latestRef.priceId",
+                    data: "$$latestRef.data",
+                    effectiveFrom: "$$latestRef.effectiveFrom",
+                    createdAt: "$$latestRef.createdAt",
+                    source: "branch",
+                    referenceId: "$$latestRef.referenceId",
+                    branchInfo: {
+                      subOrgId: "$$branchMod.subOrgId",
+                      branchId: "$$branchMod.branchId",
+                      departmentId: "$$branchMod.departmentId"
+                    }
+                  }
+                }
+              },
+              {
+                $cond: [
+                  { $ne: ["$latestBasePrice", null] },
+                  {
+                    $mergeObjects: [
+                      "$latestBasePrice",
+                      {
+                        source: "base",
+                        branchInfo: null
+                      }
+                    ]
+                  },
+                  null
+                ]
+              }
+            ]
           }
         }
-      ]
-    }
-  },
+      },
 
-  // Step 9: Project final structure
-  {
-    $project: {
-      baseQuotePriceId: "$_id",
-      designationId: 1,
-      designationName: { $arrayElemAt: ["$designation.name", 0] },
-      designationCode: { $arrayElemAt: ["$designation.code", 0] },
-      priceId: "$finalPrice.priceId",
-      priceData: "$finalPrice.data",
-      effectiveFrom: "$finalPrice.effectiveFrom",
-      createdAt: "$finalPrice.createdAt",
-      source: "$finalPrice.source",
-      branchInfo: "$finalPrice.branchInfo",
-      referenceId: "$finalPrice.referenceId",
-      history: "$validBaseHistory",
-      orgId: 1,
-      _id: 0
-    }
-  },
+      // Step 7: Filter out records without prices
+      {
+        $match: {
+          finalPrice: { $ne: null }
+        }
+      },
 
-  // Step 10: Sort results
-  {
-    $sort: {
-      source: -1,  // Branch prices first
-      designationName: 1,
-      effectiveFrom: -1,
-      createdAt: -1
-    }
-  }
-]
-console.log(JSON.stringify(query,null,2))
+      // Step 8: Lookup designation details
+      {
+        $lookup: {
+          from: "designation",
+          localField: "designationId",
+          foreignField: "_id",
+          as: "designation",
+          pipeline: [
+            {
+              $project: {
+                name: 1,
+                code: 1
+              }
+            }
+          ]
+        }
+      },
+
+      // Step 9: Project final structure
+      {
+        $project: {
+          baseQuotePriceId: "$_id",
+          designationId: 1,
+          designationName: { $arrayElemAt: ["$designation.name", 0] },
+          designationCode: { $arrayElemAt: ["$designation.code", 0] },
+          priceId: "$finalPrice.priceId",
+          priceData: "$finalPrice.data",
+          effectiveFrom: "$finalPrice.effectiveFrom",
+          createdAt: "$finalPrice.createdAt",
+          source: "$finalPrice.source",
+          branchInfo: "$finalPrice.branchInfo",
+          referenceId: "$finalPrice.referenceId",
+          history: "$validBaseHistory",
+          orgId: 1,
+          _id: 0
+        }
+      },
+
+      // Step 10: Sort results
+      {
+        $sort: {
+          source: -1,  // Branch prices first
+          designationName: 1,
+          effectiveFrom: -1,
+          createdAt: -1
+        }
+      }
+    ]
+    console.log(JSON.stringify(query, null, 2))
     const result = await aggregationWithPegination(query, {}, COLLECTION_NAME);
 
     if (result?.status && result?.data) {

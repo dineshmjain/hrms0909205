@@ -6,60 +6,96 @@ import { QueryBuilder } from "../../helper/filter.js";
 
 
 let collection_name = 'client'
+const REQUIREMENTS_COLLECTION = 'branchRequirements';
+
 export const getClientBranch = async (body) => {
-    try {
-      console.log(body.query,"body")
-      const query = new QueryBuilder(body)
-                 .addId()
-                 .addIsActive()
-                //  .addClientId()
-                 .addOrgId()
-      
-      const params = query.getQueryParams();
-      console.log(params,"params")
-      const aggrigationPipeline = [
-        { $match: { ...params } },
-          {
-            $lookup: {
-              from: "user",
-              localField: "createdBy",
-              foreignField: "_id",
-              as: "userDetails"
+  try {
+    console.log(body.query, "body");
+
+    const query = new QueryBuilder(body)
+      .addId()
+      .addIsActive()
+      .addOrgId();
+
+    const params = query.getQueryParams();
+    console.log(params, "params");
+
+    const aggregationPipeline = [
+      { $match: { ...params } },
+      {
+        $lookup: {
+          from: "user",
+          localField: "createdBy",
+          foreignField: "_id",
+          as: "userDetails"
+        }
+      },
+      {
+        $unwind: {
+          path: "$userDetails",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      // Lookup all users whose clientBranches contains this branch _id
+      {
+        $lookup: {
+          from: "user",
+          let: { branchId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $in: [
+                    "$$branchId",
+                    { $ifNull: ["$clientBranches", []] } // <= important line
+                  ]
+                }
+              }
+            },
+            {
+              $project: {
+                _id: 1,
+                name: 1,
+                email: 1,
+                mobile: 1,
+                profileImage: 1,
+                role: 1
+              }
             }
+          ],
+          as: "fieldOfficer"
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          isActive: 1,
+          clientId: 1,
+          clientMappedId: "$orgId",
+          address: 1,
+          geoLocation: 1,
+          geoJson: 1,
+          createdDate: 1,
+          createdBy: {
+            _id: "$userDetails._id",
+            name: "$userDetails.name"
           },
-          {
-            $unwind: {
-              path: "$userDetails",
-              preserveNullAndEmptyArrays: true
-            }
-          },
-          {
-            $project: {
-              _id: "$_id",
-              name: "$name",
-              isActive: "$isActive",
-              clientId: "$clientId",
-              clientMappedId:"$orgId",
-              createdDate: "$createdDate",
-              createdBy: {
-                _id: "$userDetails._id",
-                name: "$userDetails.name"
-              },
-              businessTypeId: "$businessTypeId",
-              subOrgId: "$subOrgId",
-              createdAt: "$createdDate"
-            }
-          }
-      ];
-      
-      console.log(JSON.stringify(aggrigationPipeline),"aggrigationPipeline")
-      return await aggregationWithPegination(aggrigationPipeline,body,"branches");
-    }
-    catch(error)
-    {
-        logger.error("Error while getDepartment in departmnet module");
-        throw error;
-    }
+          businessTypeId: 1,
+          subOrgId: 1,
+          createdAt: "$createdDate",
+          fieldOfficer: 1 // keep the array as-is
+        }
+      }
+    ];
+
+    console.log(JSON.stringify(aggregationPipeline), "aggregationPipeline");
+
+    return await aggregationWithPegination(aggregationPipeline, body, "branches");
+  } catch (error) {
+    logger.error("Error while getClientBranch in branch module", error);
+    throw error;
+  }
 };
 
 export const isMultipleBranchValid = async (body) => {
@@ -189,3 +225,30 @@ export const activateOrDeactivateBranch = async (body) => {
   }
 }
 
+export const getShiftIdsByClientRequirement = async (body) => {
+  try {
+    const requirementIds = body.user?.requirementIds || [];
+    const formattedIds = requirementIds.map(id => new ObjectId(id));
+
+    const { status, data } = await getMany(
+      { _id: { $in: formattedIds }, isActive: true },
+      REQUIREMENTS_COLLECTION,
+      { shiftId: 1, _id: 0 }
+    );
+
+    if (!status || !data?.length) {
+      return { status: true, data: [] };
+    }
+
+    const shiftIds = data.map(item => item.shiftId)
+
+    return {
+      status: true,
+      data: shiftIds
+    };
+
+  } catch (error) {
+    logger.error("Error while getShiftByClientRequirement:", error);
+    throw error;
+  }
+};

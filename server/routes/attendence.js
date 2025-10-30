@@ -13,6 +13,7 @@ import * as client from '../controllers/client/client.js';
 import * as clientbranch from '../controllers/client/clientBranch.js';
 import * as branch from '../controllers/branch/branch.js';
 import * as notification from '../controllers/messages/notification.js';
+import * as extension from '../controllers/attendence/extend.js';
 import { attendanceNotification } from '../helper/constants.js';
 
 const router=express.Router()
@@ -80,11 +81,13 @@ router.post('/add',
     },
 
     client.getClientIds,
+    assignment.getUserAssignment,
     employAttendenceController.getNearestClientBranchLocation,
     //   client.isClientExist,
     shift.getAllShifts,
     ShiftDateController.getShiftByDate,
     shiftGroup.getShiftGroupListByDate,
+    employAttendenceController.setAssignedShift,
     shiftGroup.getCurrentDateShift,
     employAttendenceController.getEmployeeNearestShift2,
     employAttendenceController.findExistingCheckIn,
@@ -146,11 +149,13 @@ router.post('/team/add',
     return next();
   },
   client.getClientIds,
+  assignment.getUserAssignment,
   employAttendenceController.getNearestClientBranchLocation,
   // client.isClientExist,
   shift.getAllShifts,
   ShiftDateController.getShiftByDate,
   shiftGroup.getShiftGroupListByDate,
+  employAttendenceController.setAssignedShift,
   shiftGroup.getCurrentDateShift,  
   employAttendenceController.getEmployeeNearestShift2,
   employAttendenceController.findExistingCheckIn,
@@ -171,7 +176,10 @@ router.post('/extend',
     celebrate(validation.extendAttendence),
     auth.isAuth,
     user.isUserValid,
+    client.getClientIds,
+    shift.getAllShifts,
     (request, response, next) => {
+        if(Object.keys(request.body.shiftObjData).length == 0) return apiResponse.validationError(response, "No shifts found to extend attendance.");
         request.body.extendAttendance = true
         request.body.checkNearestShift = true
         request.body.type = 'checkOut';
@@ -179,13 +187,13 @@ router.post('/extend',
     },
     employAttendenceController.getLatestAttendenceDoc,
     employAttendenceController.getLatestAttendanceLogs,
-    client.getClientIds,
+
     employAttendenceController.getNearestClientBranchLocation,
     // client.isClientExist,
     employAttendenceController.findExistingCheckIn,
     employAttendenceController.findExistingCheckInLog,
     shift.getOneShift, // to get shift details of latest attendence log
-    // employAttendenceController.generateTransactionLog,  // for default checkOut
+    employAttendenceController.generateTransactionLog,  // for default checkOut
     (request, response, next) => {
         request.body.type = 'checkIn' // Set type to checkIn for the next steps
         return next()
@@ -194,6 +202,8 @@ router.post('/extend',
     // employAttendenceController.findExistingCheckIn,
     employAttendenceController.addAttendenceData,
     employAttendenceController.generateTransactionLog,
+    extension.isDuplicateExtension,
+    extension.updateDateBased,
     (request, response) => {
         return apiResponse.successResponseWithData(response, "Attendance Extended Successfully", { isCheckIn: request.body.type === 'checkIn' });
     }
@@ -378,6 +388,7 @@ router.post('/list',
     user.swapUserIdWithEmpId,
     user.isUserValid,
     ShiftDateController.getShiftByDate,
+    employAttendenceController.findExistingCheckIn,
     employAttendenceController.getAttendanceLogs,
     (request,response) => {
         return apiResponse.successResponseWithData(response,"Date wise Data Found Successfully",request.body.data)
@@ -429,22 +440,31 @@ router.post('/dashboard/status',
     auth.isAuth,
     user.isUserValid,
     client.getClientIds,
-    employAttendenceController.findExistingCheckIn,
+    assignment.getUserAssignment,
+    branch.getAssignedBranchDetails,
+    //   client.isClientExist,
     shift.getAllShifts,
+    employAttendenceController.findExistingCheckIn,
     ShiftDateController.getShiftByDate,
     shiftGroup.getShiftGroupListByDate,
+    clientbranch.getShiftIdsByClientRequirement,
+    employAttendenceController.setAssignedShift,
     shiftGroup.getCurrentDateShift,
     employAttendenceController.getEmployeeNearestShift2,
     // employAttendenceController.getLatestAttendenceDoc,        
     employAttendenceController.dashboardStatus,
+    extension.isDuplicateExtension, // check if extension is applied for today
     // employAttendenceController.getEmployeeNearestShift,
     // shift.getOneShift,
     (request,response,next)=>{
         // return apiResponse.successResponseWithData(response,"Data found",{assignedShift:{_id:request.body.shift._id,name:request.body.shift.name,startTime:request.body.shift.startTime,endTime:request.body.shift.endTime},currentShift:request.body.currentShift|| null,isCheckIn:request.body.type??false})
+
+        let workingTypeObj = { shift: "assignedShift", branch: "branchTimings" }
         let result = {
-            assignedShift:request.body.nearestShift,
+            [workingTypeObj[request.body.nearestShift.workTimingType]]:request.body.nearestShift,
             isCheckIn:request.body.type??false
         }
+        result['isExtended'] = request.body.type && !request.body.existingCheckInOutData?.isExtended ? true : false
         if(request.body.currentShift?.lenght > 0) result.currentShift = request.body.currentShift
         return apiResponse.successResponseWithData(response,"Data found",result)
     }
@@ -462,7 +482,50 @@ router.post('/approve/reject',
     }
 );
 
+router.post('/extend/apply',
+    celebrate(validation.extendAdd),
+    auth.isAuth,
+    user.isUserValid,
+    extension.isDuplicateExtension,
+    extension.add,
+    (request, response) => {
+        return apiResponse.successResponse(response, "Extension Applied!");
+    }
+);
 
+router.post('/extend/update/status',
+    celebrate(validation.updateExtendStatus),
+    auth.isAuth,
+    user.isUserValid,
+    extension.isExtendedIdValid,
+    extension.updateStatus,
+    (request, response) => {
+        return apiResponse.successResponse(response, "Extension Status updated Sucessfully!");
+    }
+);
 
+router.post('/extend/request/list',
+    celebrate(validation.extendList),
+    auth.isAuth,
+    user.isUserValid,
+    assignment.getUserAssignment,
+    user.getAllUsers,
+    client.getClientIds,
+    shift.getAllShifts,
+    branch.getAllBranches,
+    extension.list,
+    (request, response) => {
+        return apiResponse.successResponseWithData(response, "Extension Requests Found Sucessfully!",request.body.extendList);
+    }
+);
+
+router.post('/summary/report',
+    // celebrate(validation.attendanceSummaryReport),
+    auth.isAuth,
+    user.isUserValid,
+    user.getAllUsers,
+    employAttendenceController.getAllUserAttendance
+    // attendance
+)
 export default router;
 

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import TooltipMaterial from "../TooltipMaterial/TooltipMaterial";
+import TooltipMaterial from "../TooltipMaterial/TooltipMaterial.jsx";
 
 const CopyOnClick = ({ text, children }) => {
   const [tooltipText, setTooltipText] = useState("Click to copy");

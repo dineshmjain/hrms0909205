@@ -1,5 +1,3 @@
-
-
 // import React, { useEffect, useRef, useState } from "react";
 // import { useDispatch } from "react-redux";
 // import { useCheckEnabledModule } from "../../hooks/useCheckEnabledModule";
@@ -443,12 +441,12 @@ const dropdownData = {
   subOrg: {
     getOnSelect: ["branch", "department"],
     reqbody: [],
-    action: () => { }, // Your real async action
+    action: () => {}, // Your real async action
   },
   branch: {
     getOnSelect: ["department", "designation"],
     reqbody: ["subOrgId"],
-    action: () => { }, // Your real async action
+    action: () => {}, // Your real async action
   },
 };
 
@@ -467,7 +465,7 @@ const Filter = ({
   setSelectedFilters,
   showFilters = true,
   onSet,
-  
+
   employeFilterType = "multiple",
 }) => {
   const checkModules = useCheckEnabledModule();
@@ -511,9 +509,12 @@ const Filter = ({
   useEffect(() => {
     const saved = localStorage.getItem(`${pageName}List`);
     if (saved) {
-
       const parsed = JSON.parse(saved);
-      console.log(parsed, selectedFilters, "========================saved filters");
+      console.log(
+        parsed,
+        selectedFilters,
+        "========================saved filters"
+      );
       Object.keys(parsed).forEach((key) => {
         const name = key.replace(/Id$/, "");
         if (dropdownData[name]) {
@@ -569,7 +570,15 @@ const Filter = ({
     }, {});
 
     setSelectedFilters((prev) => ({ ...prev, ...cleanFilt }));
-  }, [subOrgId, branchIds, departmentIds, designationIds, employeeIds, fromDate, toDate]);
+  }, [
+    subOrgId,
+    branchIds,
+    departmentIds,
+    designationIds,
+    employeeIds,
+    fromDate,
+    toDate,
+  ]);
 
   const triggerDropdownAPIs = (name, updatedFilters) => {
     const currentPageLevel = hierarchyLevels[pageName];
@@ -577,18 +586,25 @@ const Filter = ({
       const dropdownLevel = hierarchyLevels[dropdown];
       if (dropdownLevel < currentPageLevel) {
         const reqBody = getReqBody(dropdown, updatedFilters, name);
-        console.log(dropdownData?.[dropdown]?.action(reqBody), "=====================******************************Request body for dropdown API");
+        console.log(
+          dropdownData?.[dropdown]?.action(reqBody),
+          "=====================******************************Request body for dropdown API"
+        );
         // dispatch(dropdownData?.[dropdown]?.action(reqBody));
       }
     });
   };
 
   const getReqBody = (dropdown, updatedFilters, triggeringDropdown) => {
-    const reqBody = dropdown !== "branch" ? { category: "assigned", mapedData: dropdown } : {};
+    const reqBody =
+      dropdown !== "branch"
+        ? { category: "assigned", mapedData: dropdown }
+        : {};
     dropdownData?.[dropdown]?.reqbody?.forEach((key) => {
       if (updatedFilters[key]) reqBody[key] = updatedFilters[key];
     });
-    if (triggeringDropdown === "subOrg") reqBody.subOrgId = updatedFilters?.subOrgId;
+    if (triggeringDropdown === "subOrg")
+      reqBody.subOrgId = updatedFilters?.subOrgId;
     return reqBody;
   };
 
@@ -677,12 +693,11 @@ const Filter = ({
   }, [selectedFilters?.employeeIds]);
 
   useEffect(() => {
-
     let data = localStorage.getItem(`${pageName}List`);
     console.log(data, "data from local storage");
     data = JSON?.parse(data);
     console.log(data, "data from local storage after parsing");
-  }, [data])
+  }, [data]);
 
   if (!selectedPage) return null;
 
@@ -691,16 +706,17 @@ const Filter = ({
       {showFilters && (
         <div className="transition-all duration-300 ease-in-out flex flex-wrap items-end gap-4">
           {/* Sub Organization */}
-          {selectedPage.includes("subOrg") && user?.modules['suborganization']?.r && (
-            <SingleSelectDropdown
-              inputName="Organization"
-              hideLabel
-              listData={orgList}
-              selectedOption={subOrgId}
-              selectedOptionDependency="_id"
-              handleClick={(sel) => setSubOrgId(sel?._id || "")}
-            />
-          )}
+          {selectedPage.includes("subOrg") &&
+            user?.modules["suborganization"]?.r && (
+              <SingleSelectDropdown
+                inputName="Organization"
+                hideLabel
+                listData={orgList}
+                selectedOption={subOrgId}
+                selectedOptionDependency="_id"
+                handleClick={(sel) => setSubOrgId(sel?._id || "")}
+              />
+            )}
 
           {/* Branch */}
           {selectedPage.includes("branch") && (
@@ -709,7 +725,6 @@ const Filter = ({
               InputName="Branch"
               Dependency="_id"
               hideLabel
-
               data={branchList}
               selectedData={branchIds}
               setSelectedData={setBranchIds}
@@ -783,7 +798,9 @@ const Filter = ({
                   name="fromDate"
                   className="font-manrope"
                   value={fromDate}
-                  onChange={(e) => { setFromDate(e?.target?.value) }}
+                  onChange={(e) => {
+                    setFromDate(e?.target?.value);
+                  }}
                 />
               </div>
               <div className="min-w-[140px] maxsm:w-full">
@@ -793,7 +810,32 @@ const Filter = ({
                   name="toDate"
                   className="font-manrope"
                   value={toDate}
-                  onChange={(e) => { setToDate(e?.target?.value) }}
+                  onChange={(e) => {
+                    setToDate(e?.target?.value);
+                  }}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                {/* <label className="text-sm font-medium text-gray-700">
+                  Status
+                </label> */}
+                <SingleSelectDropdown
+                  inputName="Status"
+                  hideLabel
+                  listData={[
+                    { _id: "", name: "All" },
+                    { _id: "Pending", name: "Pending" },
+                    { _id: "Approved", name: "Approved" },
+                    { _id: "Rejected", name: "Rejected" },
+                  ]}
+                  selectedOption={selectedFilters.status || ""}
+                  selectedOptionDependency="_id"
+                  handleClick={(selected) => {
+                    setSelectedFilters((prev) => ({
+                      ...prev,
+                      status: selected?._id || "",
+                    }));
+                  }}
                 />
               </div>
             </div>

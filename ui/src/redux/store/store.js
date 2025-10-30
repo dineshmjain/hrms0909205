@@ -29,6 +29,7 @@ import WizardReducer from "../reducer/WizardReducer";
 import LeadReducer  from "../reducer/LeadReducer"
 import QuotationReducer from "../reducer/QuotationPriceReducer"
 import SalaryReducer from '../reducer/SalaryReducer'
+import SubscriptionReducer from '../reducer/SubscriptionReducer'
 
 const appReducer = combineReducers({
   branch: BranchReducer,
@@ -62,6 +63,7 @@ const appReducer = combineReducers({
   quotation:QuotationReducer,
   salary: SalaryReducer,
   wizard: WizardReducer,
+  plans:SubscriptionReducer,
   //  login:LoginReducer,
 });
 

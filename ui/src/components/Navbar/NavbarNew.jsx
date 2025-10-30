@@ -36,7 +36,6 @@ const Navbar = ({ setShowSidebar, logOut }) => {
           {user?.orgName}
         </span>
         <div className="flex items-center space-x-4">
-          {/* Notification Icon */}
           <button className="relative">
             <PiBell className="h-10 w-10 hover:bg-primaryLight hover:text-primary hover:rounded-full p-1" />
           </button>

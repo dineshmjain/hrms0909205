@@ -114,11 +114,11 @@ export const getShiftListWithPagination = async (request,response,next) => {
             request.body.shift = res;
             return next();
         }).catch(error => {
-            request.logger.error("Error while getOneShift in shift controller ",{ stack: error.stack });
+            request.logger.error("Error while listShift in shift controller ",{ stack: error.stack });
             return apiResponse.somethingResponse(response, error.message)
         })
     }catch(error){
-        request.logger.error("Error while getOneShift in shift controller ",{ stack: error.stack });
+        request.logger.error("Error while listShift in shift controller ",{ stack: error.stack });
         return apiResponse.somethingResponse(response, error.message)
     }
 };
@@ -238,3 +238,27 @@ export const activateDeactivateShift=(request,response,next)=>{
         return apiResponse.somethingResponse(response, error.message)
     }
 }
+
+export const getShiftByBranchId= async (request,response,next) => {
+    try{
+        if(!request.body.userDetails?.shiftIds)return next()
+        if(request.body.userDetails?.workTimingType==='branch')return next()
+        shiftModel.getShiftByIds({shiftIds:[request.body.userDetails.shiftIds[0]]}).then(res => {
+            if(!res?.data?.length>=1) return next()
+            request.body.shift = res?.data[0];
+            request.body.userDetails.workTiming=[request.body.userDetails.shiftIds[0]]
+            request.body.userDetails.workTiming={
+                name:res.data[0].name,
+                startTime:res.data[0].startTime,
+                endTime:res.data[0].endTime
+            }
+            return next();
+        }).catch(error => {
+            request.logger.error("Error while getOneShift in shift controller ",{ stack: error.stack });
+            return apiResponse.somethingResponse(response, error.message)
+        })
+    }catch(error){
+        request.logger.error("Error while getOneShift in shift controller ",{ stack: error.stack });
+        return apiResponse.somethingResponse(response, error.message)
+    }
+};

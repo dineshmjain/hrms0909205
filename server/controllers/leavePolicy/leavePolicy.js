@@ -105,7 +105,8 @@ export const getPolicy=async(request,response,next)=>{
                 if(res.status && res.data && res.data.length > 0) request.body.allDataRes['salaryComponents'] = res.data
                 return next()
             }
-            return apiResponse.notFoundResponse(response,'No leave policy found')
+            // return apiResponse.notFoundResponse(response,'No leave policy found')
+            return next()
         }).catch(error=>{
             request.logger.error("Error while getPolicy in leavePolicy controller ", { stack: error.stack });
             return apiResponse.somethingResponse(response, error.message)
@@ -204,6 +205,25 @@ export const getPolicies=(request,response,next)=>{
             return next()
         }).catch(error=>{
             request.logger.error("error while addPolcies in leavePolicy controller",{stack:error.stack})
+            return apiResponse.somethingResponse(response,error.message)
+        })
+
+    }catch(error){
+        request.logger.error("error while addPolcies in leavePolicy controller",{stack:error.stack})
+        return apiResponse.somethingResponse(response,error.message)
+    }
+}
+
+
+export const isPolicyLeaveMasterExists=(request,response,next)=>{
+    try{
+        leavePolicy.getleavePolicyMaster(request.body).then(res=>{
+            if(res.data.length>=1){
+                return apiResponse.validationError(response,'leave policy  alreday exists')
+            }
+            return next()
+        }).catch(error=>{
+            request.logger.error("error while isPolicyLeaveMasterExists in leavePolicy controller",{stack:error.stack})
             return apiResponse.somethingResponse(response,error.message)
         })
 

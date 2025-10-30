@@ -3,7 +3,10 @@ import Header from "../../../components/header/Header";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import Table from "../../../components/Table/Table";
-import { LeaveRequestApproveRejectAction, LeaveRequestGetAction } from "../../../redux/Action/Leave/LeaveAction";
+import {
+  LeaveRequestApproveRejectAction,
+  LeaveRequestGetAction,
+} from "../../../redux/Action/Leave/LeaveAction";
 import { MdModeEditOutline } from "react-icons/md";
 import { use } from "react";
 import { useCheckEnabledModule } from "../../../hooks/useCheckEnabledModule";
@@ -14,11 +17,15 @@ import { FaXmark, FaCheck } from "react-icons/fa6";
 import Filter from "../../../components/Filter/Filter";
 import { FaRegCircleXmark } from "react-icons/fa6";
 import { FaRegCheckCircle } from "react-icons/fa";
-import { Dialog, DialogBody, DialogHeader, IconButton } from '@material-tailwind/react';
+import {
+  Dialog,
+  DialogBody,
+  DialogHeader,
+  IconButton,
+} from "@material-tailwind/react";
 import { HiOutlineXMark } from "react-icons/hi2";
 import toast from "react-hot-toast";
 import { removeEmptyStrings } from "../../../constants/reusableFun";
-
 
 const List = () => {
   const navigate = useNavigate();
@@ -45,9 +52,9 @@ const List = () => {
     departmentIds: "",
     fromDate: "",
     toDate: "",
+    status: "",
   });
   console.log(selectedFilters, "selectedFilters");
-
 
   const getRequestList = (params) => {
     let updatedParams = {
@@ -59,7 +66,8 @@ const List = () => {
       departmentIds: selectedFilters.departmentIds,
       fromDate: selectedFilters.fromDate,
       toDate: selectedFilters.toDate,
-    }
+      status: selectedFilters.status,
+    };
 
     console.log("updatedParams", updatedParams);
 
@@ -101,7 +109,7 @@ const List = () => {
       type: "time",
       format: "DD-MM-YYYY HH:mm A",
     },
-  }
+  };
 
   const actions = [
     {
@@ -119,7 +127,7 @@ const List = () => {
       onClick: (request) => {
         if (checkMoudles("request", "u") == false)
           return toast.error("You are Unauthorized to Approve/Reject Request!");
-        SubmitApproval('approved', request);
+        SubmitApproval("approved", request);
       },
     },
     {
@@ -128,7 +136,7 @@ const List = () => {
       onClick: (request) => {
         if (checkMoudles("request", "u") == false)
           return toast.error("You are Unauthorized to Approve/Reject Request!");
-        SubmitApproval('rejected', request);
+        SubmitApproval("rejected", request);
       },
     },
   ];
@@ -143,14 +151,14 @@ const List = () => {
 
   const SubmitApproval = (request, data) => {
     setOpenDialog(true);
-    setStatus(request)
+    setStatus(request);
     setSelectedRow(data);
-  }
+  };
 
   const closeDialog = () => {
     setOpenDialog(false);
-    setComment("")
-  }
+    setComment("");
+  };
 
   const confirmUpdate = async () => {
     try {
@@ -160,24 +168,24 @@ const List = () => {
           // ...dayInfo,
           status: status,
           remarks: comment,
-          paid  : dayInfo.paid,
-          type : dayInfo.type
+          paid: dayInfo.paid,
+          type: dayInfo.type,
         };
       });
       const payload = {
-        "leavePolicyId": selectedRow.leavePolicyId,
-        "userLeaveId": selectedRow._id,
-        "employeeId": selectedRow.userId,
-        "from": selectedRow.from,
-        "to": selectedRow.to,
-        "days": updatedDays
-      }
+        leavePolicyId: selectedRow.leavePolicyId,
+        userLeaveId: selectedRow._id,
+        employeeId: selectedRow.userId,
+        from: selectedRow.from,
+        to: selectedRow.to,
+        days: updatedDays,
+      };
       console.log(payload, "what is the payload here");
       const result = await dispatch(LeaveRequestApproveRejectAction(payload));
       if (result?.meta?.requestStatus === "fulfilled") {
         setOpenDialog(false);
-        setComment("")
-        getRequestList({ page: pageNo, limit: limit })
+        setComment("");
+        getRequestList({ page: pageNo, limit: limit });
         // getRequestList()
       }
     } catch (error) {
@@ -185,25 +193,29 @@ const List = () => {
       setOpenDialog(false);
     }
     setOpenDialog(false);
-    setComment("")
-  }
-
+    setComment("");
+  };
+  useEffect(() => {
+    getRequestList({ page: 1, limit: 10 });
+  }, [selectedFilters]);
 
   return (
     <div className="flex flex-col gap-4 p-2 w-full h-full border-1 border-gray-50 rounded-md">
-      <Dialog open={openDialog} size='sm'>
+      <Dialog open={openDialog} size="sm">
         <DialogHeader className="flex justify-between">
           <h3 className="text-lg font-semibold">Please Enter Comment</h3>
           <HiOutlineXMark onClick={closeDialog} />
         </DialogHeader>
-        <DialogBody >
+        <DialogBody>
           <input
             id="searchInput"
             type="text"
             value={comment}
             className={`border-2 border-gray-400 mr-2 rounded-md w-full p-2`}
             placeholder="Enter Comment"
-            onChange={(e) => { setComment(e.target.value) }}
+            onChange={(e) => {
+              setComment(e.target.value);
+            }}
           />
           <div className="flex justify-end gap-2 mt-4">
             <button
@@ -232,7 +244,9 @@ const List = () => {
         </div>
       </div>
       <div className="bg-white p-4 rounded-md shadow-hrms">
-        <div className="text-gray-700 font-semibold mt-0 text-[14px] mb-1">Filters</div>
+        <div className="text-gray-700 font-semibold mt-0 text-[14px] mb-1">
+          Filters
+        </div>
         <Filter
           showFilters={showFilters}
           selectedFilters={selectedFilters}
@@ -240,8 +254,8 @@ const List = () => {
             let { ...rest } = data;
             getRequestList({
               page: 1,
-              limit: 10
-          });
+              limit: 10,
+            });
           }}
           setSelectedFilters={setSelectedFilters}
           pageName={"leave"}
@@ -260,14 +274,13 @@ const List = () => {
             pageNo,
             limit,
             onDataChange: (page, limit, name = "") => {
-              getRequestList({page, limit ,name});
+              getRequestList({ page, limit, name });
             },
           }}
         />
       </div>
     </div>
-  )
+  );
 };
-
 
 export default List;

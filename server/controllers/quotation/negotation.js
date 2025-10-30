@@ -53,3 +53,18 @@ export const getNegotiationStatus = async (request, response,next) => {
     return logAndRespond(error, response, 'getNegotiationStatus');
   }
 };
+export const updateNegotation = async (request, response,next) => {
+  try {
+    const { body } = request;
+    const result = await negotationModel.updateNegotation(body);
+
+    if (result?.status) {
+      return next()
+    } else {
+      return apiResponse.somethingResponse(response, result?.message);
+    }
+  } catch (error) {
+    return logAndRespond(error, response, 'getNegotiationStatus');
+  }
+};
+

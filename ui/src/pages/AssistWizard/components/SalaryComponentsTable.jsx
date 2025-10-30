@@ -8,59 +8,71 @@ const SalaryComponentsTable = ({ loading, components, setLocalComponents, setOpe
   const dispatch = useDispatch();
   const normalComponents = components.filter((c) => !c.isStatutory);
 
-  const handleToggle = (i) => {
-    const component = normalComponents[i];
+  const earnings = normalComponents.filter(
+    (c) => c.category?.toLowerCase() === "earning"
+  );
+  const deductions = normalComponents.filter(
+    (c) => c.category?.toLowerCase() === "deduction"
+  );
+
+  const handleToggle = (id) => {
     setLocalComponents([
       ...components.map((c) =>
-        c._id === component._id ? { ...c, isActive: !c.isActive } : c
+        c._id === id ? { ...c, isActive: !c.isActive } : c
       ),
     ]);
+    const toggled = components.find((c) => c._id === id);
     dispatch(
       SalaryComponentToggleAction({
-        componentIds: [component._id],
-        isActive: !component.isActive,
+        componentIds: [id],
+        isActive: !toggled.isActive,
       })
     );
   };
 
-  return (
-    <Card className="p-4 shadow-md">
+  const renderTable = (title, list) => (
+    <Card className="p-4 shadow-md mb-6">
       <div className="flex justify-between items-center mb-4">
         <div>
           <Typography variant="h6" className="font-semibold text-gray-800">
-            Salary Components
+            {title}
           </Typography>
           <Typography variant="small" className="text-gray-600">
-            Manage earnings & deductions
+            Manage {title.toLowerCase()} components
           </Typography>
         </div>
-        <Button size="sm" color="blue" onClick={() => setOpen(true)}>
-          + Add
-        </Button>
+        {title === "Earnings" && (
+          <Button size="sm" color="blue" onClick={() => setOpen(true)}>
+            + Add
+          </Button>
+        )}
       </div>
       <table className="w-full text-left border-collapse">
         <thead>
           <tr className="border-b">
             <th className="p-2 text-gray-600">Component</th>
-            <th className="p-2 text-gray-600">Type</th>
             <th className="p-2 text-gray-600 w-24">Enabled</th>
           </tr>
         </thead>
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={3}>Loading...</td>
+              <td colSpan={2} className="p-2 text-center">
+                Loading...
+              </td>
+            </tr>
+          ) : list.length === 0 ? (
+            <tr>
+              <td colSpan={2} className="p-2 text-center text-gray-500">
+                No components found
+              </td>
             </tr>
           ) : (
-            normalComponents.map((c, i) => (
-              <tr key={c._id || i} className="border-b">
+            list.map((c) => (
+              <tr key={c._id} className="border-b">
                 <td className="p-2">{toTitleCase(c.name)}</td>
-                <td className="p-2">{toTitleCase(c.category)}</td>
                 <td className="p-2">
-                  <Switch
-                    checked={c.isActive}
-                    onChange={() => handleToggle(i)}
-                  />
+                  <Switch checked={c.isActive} onChange={() => handleToggle(c._id)} />
                 </td>
               </tr>
             ))
@@ -68,6 +80,13 @@ const SalaryComponentsTable = ({ loading, components, setLocalComponents, setOpe
         </tbody>
       </table>
     </Card>
+  );
+
+  return (
+    <div>
+      {renderTable("Earnings", earnings)}
+      {renderTable("Deductions", deductions)}
+    </div>
   );
 };
 

@@ -1,5 +1,5 @@
 import React from "react";
-import TooltipMaterial from "../TooltipMaterial/TooltipMaterial";
+import TooltipMaterial from "../TooltipMaterial/TooltipMaterial.jsx";
 
 // Utility function to check luminance
 const adjustColorBrightness = (hex, amount) => {

@@ -7,7 +7,7 @@ import { QueryBuilder } from "../../helper/filter.js";
 import { logger } from '../../helper/logger.js';
 import { startOfMonth, subMonths, endOfMonth } from 'date-fns';
 import { assignment } from '../assignment/assignment.js';
-import { userGetTypeProjection, adminRoleId, allowed_user_params, role } from '../../helper/constants.js';
+import { userGetTypeProjection, adminRoleId, allowed_user_params, role, userRoleId } from '../../helper/constants.js';
 import { createDefaultDepartments } from '../department/department.js';
 import { all } from 'axios';
 
@@ -64,6 +64,17 @@ export const getUserByEmail = async (body) => {
   }
 }
 
+export const getUserByClientOrg = async (body) => {
+  try {
+    let query = {
+      orgId: new ObjectId(body.clientId)
+    }
+    return await getOne(query, collection_name)
+  } catch (error) {
+    return { status: false, message: "failed to get user", error }
+  }
+}
+
 export const getUser = async (body) => {
   try {
     let query = {
@@ -110,6 +121,7 @@ export const createUser = async (body) => {
       defaultLanguage: body.defaultLanguage ? body.defaultLanguage : "en",
       // name: body.name,
       ...(body.name && { name: body.name}),
+      ...(body.relationshipToOrg && { relationshipToOrg: body.relationshipToOrg}),
       ...(body.orgId && {orgId : body.orgId}),
       ...(body.clientId && {orgId : new ObjectId(body.clientId)}),
       ...(body.roleId && {role : [new ObjectId(body.roleId)]}),
@@ -133,20 +145,24 @@ export const createUser = async (body) => {
       query['gender'] = body.gender|| null,
       query['dateOfBirth'] = new Date(body.dateOfBirth),
       query['assignmentId'] = body.assignmentIds,
-      query['role'] = body.roleId != null ? [new ObjectId(body.roleId)] : []
+      query['role'] = [new ObjectId(userRoleId)]
       if (Array.isArray(body.branchId)) {
         query['assignedBranchId'] = body.branchId.map(id => new ObjectId(id))
       }   
-      let fields = ['martialStatus','bloodGroup','qualification','employeeId']
+      let fields = ['martialStatus','bloodGroup','qualification','employeeId',"workTimingType","shiftIds","salaryConfig","emergencyNumber","guardianNumber","guardianName"]
 
       fields.forEach(f => {
         if (body[f]) {
+          if(f === "shiftIds" && Array.isArray(body[f])) body[f] = body[f].map(id => new ObjectId(id))
           query[f] = body[f]
         }
       })
     }
     if(body.profileImage) {
         query['profileImage'] = body.profileImage
+    }
+    if(body.financialDetails){
+        query['financialDetails']=body.financialDetails
     }
     if(body.address){
       // query['address']=body.address
@@ -383,6 +399,41 @@ export const getUserDetails = async (body) => {
           preserveNullAndEmptyArrays: true
         }
       },
+
+      {
+        $lookup: {
+          from: "shift",
+          localField: "shiftIds",
+          foreignField: "_id",
+          as: "shiftDetails"
+        }
+      },
+      {
+        $unwind: {
+          path: "$shiftDetails",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $addFields: {
+          workTiming: {
+            $cond: {
+              if: { $eq: ["$workTimingType", "shift"] },
+              then: {
+                name: "$shiftDetails.name",
+                startTime: "$shiftDetails.startTime",
+                endTime:"$shiftDetails.endTime"
+              },
+              else: {
+                name: "Regular Shift",
+                startTime: "$branch.startTime",
+                endTime: "$branch.endTime"
+              }
+            }
+          }
+        }
+      },
+
       // {
       //   $project: {
       //     "user": 0,
@@ -421,6 +472,15 @@ export const getUserDetails = async (body) => {
             designationId: "$designation._id",
             designationName: "$designation.name"
           },
+          bloodGroup:1,
+          qualification:1,
+          employeeId:1,
+          salaryConfig:1,
+          emergencyNumber:1,
+          guardianNumber:1,
+          guardianName:1,
+          
+          workTiming:1,
           clientBranch: {
             $map: {
               input: "$clientBranch",
@@ -1177,16 +1237,80 @@ export const addFinalSubmit = async (body) => {
 
 export const updateDisabledModules = async (body) => {
   try {
-    let query = { _id: new ObjectId(body.employeeId) }
+    // let query = { _id: new ObjectId(body.employeeId) }
 
-    let update = {
-      $set: {}
-    }
-    if (body.disabledModules) {
-      update['$set']['disabledModules'] = body.disabledModules
+
+    // let update = {
+    //   $set: {}
+    // }
+    // if (body.disabledModules) {
+    //   update['$set']['disabledModules'] = body.disabledModules
+    // }
+
+    // return await updateOne(query, update, collection_name)
+
+
+    const {  employeeId,existingDisabledModules,disabledModules } = body;
+  
+    if (!employeeId) throw new Error('EmplyeeId is required')
+
+    const existingModules = existingDisabledModules || {};
+
+    //  Merge logic — avoid duplicates & merge permissions
+    const mergedMap = new Map();
+
+    // Add existing first
+    // for (const mod of existingModules) {
+    //   mergedMap.set(mod.moduleId.toString(), new Set(mod.permissions));
+    // }
+    for (const [moduleId,permissions] of Object.entries(existingModules)) {
+      mergedMap.set(moduleId.toString(), new Set(permissions));
     }
 
-    return await updateOne(query, update, collection_name)
+    // Merge incoming body modules
+    for (const mod of disabledModules) {
+      const id = mod.moduleId.toString();
+      if (!mergedMap.has(id)) mergedMap.set(id, new Set());
+      for (const p of mod.permissions) mergedMap.get(id).add(p);
+    }
+
+    //  Convert back to array format
+    // const mergedDisabledModules = Array.from(mergedMap.entries()).map(
+    //   ([moduleId, perms]) => ({
+    //     moduleId: new ObjectId(moduleId),
+    //     permissions: Array.from(perms),
+    //   })
+    // );
+
+    const objectFormatDisabledModules = {};
+    for (const [moduleId, perms] of mergedMap.entries()) {
+      objectFormatDisabledModules[moduleId] = Array.from(perms);
+    }
+
+
+   
+
+    //  Update in DB
+    const updateBody = {
+      $set: {
+        // disabledModules: mergedDisabledModules,
+        disabledModules: objectFormatDisabledModules,
+        modifiedDate: new Date(),
+        modifiedBy: body.authUser?._id || body.user?._id,
+      },
+    };
+
+    const query = {
+      _id: new ObjectId(employeeId),
+      orgId: new ObjectId(body.user.orgId),
+      isActive: true,
+    };
+
+     return  await findOneAndUpdate(
+      query,
+      updateBody,
+      "user"
+    );
 
   }
   catch (error) {
@@ -1212,7 +1336,7 @@ export const updateUserDetails = async (body, params) => {
     let query = { _id: userIdTosearch }
     // let { id,orgDetails,panNo, userId, endpoint, roleID, featureKey, token, user,type,assignmentDetails,assignment,assignmentData, updatingUserDetails, updatedUserId,updateUser, branchId, designationId, departmentId,assignmentIds,orgTypeId,groupName,orgName, ...userData } = body
 
-    let userData = ['name', 'email', 'mobile', 'password', 'profileImage','joinDate','gender','dateOfBirth', 'assignmentId','roleId','presentAddress', 'permanentAddress', 'isPermanentSame','orgId', 'update']
+    let userData = ['name', 'email', 'mobile', 'password', 'profileImage','joinDate','gender','dateOfBirth', 'assignmentId','roleId','presentAddress', 'permanentAddress', 'isPermanentSame','orgId', 'update','guardianName','guardianNumber','emergencyNumber','bloodGroup','qualification','employeeId','martialStatus','workTimingType','salaryConfig','isSubOrg']
     // delete userData['query']
     body.update = {modifiedDate: getCurrentDateTime(), modifiedBy: new ObjectId(body.userId)}
 
@@ -1244,6 +1368,9 @@ export const updateUserDetails = async (body, params) => {
           }
         }
       }
+    }
+    if(body.shiftIds){
+      updateObj['shiftIds']=body.shiftIds.map(shift=>new ObjectId(shift))
     }
     let update = {
       $set: updateObj
@@ -1582,6 +1709,7 @@ export const getEmployeeNearestShift2 = async (body) => {
     const loginDate =  body.transactionDate? new Date(body.transactionDate) : new Date()
     let query = { $or : [{orgId : orgId}], isActive: true }
     if((body.teamAttendance || body.existingCheckInOutData) && !body.extendAttendance) query['_id'] = new ObjectId(body.shiftId)
+    if(body.extendAttendance && body.shiftId) query['_id'] = {$ne : new ObjectId(body.shiftId)}
     if(body.clientIds) query['$or'].push({orgId : {$in : body.clientIds.map(c => c._id)}})
     const shiftResult = await getMany(query, "shift");
     const shifts = shiftResult.data;
@@ -1605,8 +1733,15 @@ export const getEmployeeNearestShift2 = async (body) => {
       if (match) return match;
     }
 
+    // branch based timings
+    if(!body.currentShift?.length && (body.user?.workTimingType == 'branch' || !Object.keys(body.shiftObjData).length)) {
+      match = findMatchingShift(shifts, loginDate, [], [{...body.nearestBranchDetails,workTimingType : "branch"} ]);
+      if (match) return match;
+    }
+
     // Combine org & client shifts (they can overlap)
-    const allShifts = body.nearestBranchDetails ? [...orgShifts, ...clientShifts].filter(s => s.orgId.toString() == body.nearestBranchDetails.orgId.toString()) : [...orgShifts, ...clientShifts];
+    // const allShifts = body.nearestBranchDetails && !body.dashboardStatus ? [...orgShifts, ...clientShifts].filter(s => s.orgId.toString() == body.nearestBranchDetails.orgId.toString()) : [...orgShifts, ...clientShifts];
+    const allShifts = [...orgShifts, ...clientShifts];
     
     match = findMatchingShift(allShifts, loginDate);
     if (match) {
@@ -1616,7 +1751,7 @@ export const getEmployeeNearestShift2 = async (body) => {
 
     // return null;
   } catch (error) {
-    console.error("Error in getEmployeeNearestShift in User model:", error.message);
+    console.error("Error in getEmployeeNearestShift2 in User model:", error.message);
     throw error;
   }
 };

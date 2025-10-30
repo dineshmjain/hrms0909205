@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { IoMdAdd } from "react-icons/io";
+import { IoSparkles } from "react-icons/io5";
 import { Typography } from "@material-tailwind/react";
 import MultiSelectFilter from "../../../components/Filter/MultiSelectFilter";
 import Table from "../../../components/Table/Table";
@@ -79,7 +80,7 @@ const TemplateList = () => {
     {
       title: "Edit",
       text: <MdModeEditOutline className="w-5 h-5" />,
-      onClick: (row) => navigate("/salary/template/edit", { state: row }),
+      onClick: (row) => navigate(`/salaryTemplate/edit/${row._id}`),
     },
     {
       title: "Assign",
@@ -94,7 +95,7 @@ const TemplateList = () => {
   ];
 
   const editButton = (row) => {
-    navigate("/salary/template/edit", { state: row });
+    navigate("/salaryTemplate/edit", { state: row });
   };
 
   return (
@@ -122,7 +123,15 @@ const TemplateList = () => {
             Overview Of Your Salary Templates
           </Typography>
         </div>
-        <div>
+        <div className="flex items-center gap-3">
+          <button
+            size="sm"
+            className="bg-primary p-2 px-2 h-10 flex items-center gap-2 rounded-md text-white font-medium tracking-tight text-sm hover:bg-primaryLight hover:text-primary"
+            onClick={() => navigate("/salaryTemplate/wizard")}
+          >
+            <IoSparkles className="w-4 h-4 cursor-pointer" />
+            Assist Wizard
+          </button> 
           <button
             size="sm"
             className="bg-primary p-2 px-2 h-10 flex items-center gap-2 rounded-md text-white font-medium tracking-tight text-sm hover:bg-primaryLight hover:text-primary"

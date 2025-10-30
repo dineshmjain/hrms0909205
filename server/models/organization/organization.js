@@ -10,11 +10,13 @@ const collection_name = "organization"
 export const addOrganization = async (body) => {
     try {
         const {orgDetails, orgExist , token,user,userId,owner,address,FY,geoJson,geoLocation,...newOrgDetails} = body
+        if(body.orgName && body.register) body.name=body.orgName
         let query = {
             // ...newOrgDetails,
             ...(body.name && {name:body.name}),
             ...(body.groupName && {name:body.groupName}),
-            orgTypeId: new ObjectId(body.orgTypeId),
+            ...(!body.clientSince && {orgTypeId: new ObjectId(body.orgTypeId)}), // no org type for clients
+            ...(body.clientSince && {clientSince: new Date(body.clientSince)}),
             ...(body.parentOrg && {parentOrg:new ObjectId(body.parentOrg)}),
             ...(body.structure && {structure:body.structure}),
             ...(body.addSubOrg !== undefined && {addSubOrg:body.addSubOrg}),
@@ -264,8 +266,9 @@ export const updateOrg = async (body) => {
         // const {user,token,orgIdToUpdate,userId,_id,...updateData} = body;
         // updateData.updatedAt = new Date(Date.now())
         const query={_id:new ObjectId(body._id)}
+        if(body.updateOrg && body.groupName) body.name = body.groupName
         // const keys=["orgTypeId","addSubOrg","addBranch","panNo","gstNo","geoLocation","geoJson","FY","isActive","name"]
-        const keys=["orgTypeId","panNo","gstNo","isActive","name"]
+        const keys=["orgTypeId","panNo","gstNo","isActive","name","parentOrg","structure","addSubOrg","addBranch","panNo","gstNo",]
         const updateData=keys.reduce((acc,key)=>{
             if(body[key]!==undefined && body[key]!==null){
                 if (key === "orgTypeId") {
@@ -276,7 +279,7 @@ export const updateOrg = async (body) => {
             }
             return acc
         },{})
-        
+
         const update = {$set: {...updateData,modifiedBy:body.user._id,modifiedDate:new Date()}};
         return await updateOne(query,update,collection_name)
     }catch(error){
@@ -296,7 +299,7 @@ export const addSubOrg = async (body) => {
             createdDate: new Date(),
             createdBy: new ObjectId(body.userId)
         };
-        if(body.structure == 'group') query['parentOrg'] = new ObjectId(body.orgId)
+        if(body.structure == 'group' || body.orgDetails?.structure == 'group') query['parentOrg'] = new ObjectId(body.orgId)
         return await create(query, "organization");
     } catch (error) {
         logger.error("Error while addSubOrg in org module")

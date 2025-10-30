@@ -5,7 +5,6 @@ import { toTitleCase } from "../../../../constants/reusableFun";
 const lookup = (list, id, key = "id", label = "name") =>
   list.find((item) => item[key] === id)?.[label] || id;
 
-// friendly labels for special bases
 const SPECIAL_LABELS = {
   ctc: "CTC",
   gross: "Gross Salary",
@@ -75,6 +74,21 @@ const ActiveComponentsList = ({
                     .filter(Boolean)
                 : [];
 
+            // Get chips based on statutory components
+            const statChips = componentNames
+              .filter(
+                (s) =>
+                  s.isStatutory &&
+                  Array.isArray(s.statutoryDetails?.appliesTo) &&
+                  s.statutoryDetails.appliesTo.includes(comp.componentName)
+              )
+              .map((s) => {
+                if (s.name.toLowerCase().includes("provident fund")) return "EPF";
+                if (s.name.toLowerCase().includes("state insurance")) return "ESI";
+                return null;
+              })
+              .filter(Boolean);
+
             return (
               <div
                 key={index}
@@ -86,28 +100,43 @@ const ActiveComponentsList = ({
                     {toTitleCase(compName)}
                   </span>
 
-                  {/* Value Type */}
-                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
+                  {/* Value Type chip */}
+                  <span className="inline-block px-3 py-1 text-xs font-semibold rounded-full text-white shadow-md bg-gradient-to-r from-purple-500 to-purple-600 transition-transform transform hover:scale-105">
                     {valType}
                   </span>
 
-                  {/* Value */}
+                  {/* Value chip */}
                   <span
-                    className={`px-2 py-1 text-xs font-medium rounded ${
+                    className={`inline-block px-3 py-1 text-xs font-semibold rounded-full shadow-md transition-transform transform hover:scale-105 ${
                       isNumeric(comp.componentValue)
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-gray-100 text-gray-700"
+                        ? "bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900"
+                        : "bg-gradient-to-r from-gray-400 to-gray-500 text-white"
                     }`}
                   >
                     {comp.componentValue}
                   </span>
 
-                  {/* Percentage Of */}
+                  {/* Percentage Of chip */}
                   {percentageLabels.length > 0 && (
-                    <span className="px-2 py-1 text-xs font-medium rounded bg-purple-100 text-purple-700">
+                    <span className="inline-block px-3 py-1 text-xs font-semibold rounded-full shadow-md bg-gradient-to-r from-pink-500 to-pink-600 text-white transition-transform transform hover:scale-105">
                       % of {percentageLabels.join(", ")}
                     </span>
                   )}
+
+                                    {/* Chips for EPF / ESI */}
+                  {statChips.length > 0 &&
+                    statChips.map((chip, i) => (
+                      <span
+                        key={i}
+                        className={`inline-block px-3 py-1 text-xs font-semibold rounded-full text-white shadow-md transition-transform transform hover:scale-105 ${
+                          chip === "EPF"
+                            ? "bg-gradient-to-r from-blue-500 to-blue-600"
+                            : "bg-gradient-to-r from-green-500 to-green-600"
+                        }`}
+                      >
+                        {chip}
+                      </span>
+                    ))}
                 </div>
 
                 <div className="mt-3 sm:mt-0 flex gap-3">

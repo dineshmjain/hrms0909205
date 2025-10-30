@@ -5,26 +5,18 @@ import { useNavigate } from "react-router-dom";
 import FileUploadButton from "../../components/Button/FileUploadButton";
 import { Button, Typography, Card, CardBody } from "@material-tailwind/react";
 import axios from "axios";
-import React, { useEffect, useState } from "react";
-import { MdArrowBack } from "react-icons/md";
-import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
-import FileUploadButton from "../../components/Button/FileUploadButton";
-import { Button, Typography, Card, CardBody } from "@material-tailwind/react";
-import axios from "axios";
 import toast from "react-hot-toast";
 import {
   EmployeeBulkUploadAction,
   EmployeeSampleFormatAction,
 } from "../../redux/Action/Employee/EmployeeAction";
 const baseURL = import.meta.env.VITE_IMPORT_URL;
-import {
-  EmployeeBulkUploadAction,
-  EmployeeSampleFormatAction,
-} from "../../redux/Action/Employee/EmployeeAction";
-const baseURL = import.meta.env.VITE_IMPORT_URL;
 
-const ImportUser = ({ noRedirect = false, isWizard = false }) => {
+const ImportUser = ({
+  noRedirect = false,
+  isWizard = false,
+  onUploadSuccess,
+}) => {
   const [clients, setClients] = useState([]);
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -34,21 +26,7 @@ const ImportUser = ({ noRedirect = false, isWizard = false }) => {
   useEffect(() => {
     setClients(employeeBulkCreate?.data || []);
   }, [employeeBulkCreate?.data]);
-  useEffect(() => {
-    setClients(employeeBulkCreate?.data || []);
-  }, [employeeBulkCreate?.data]);
 
-  const handleFileUpload = async (e) => {
-    try {
-      const file = e.target.files[0];
-      const fileExtension = file.name.split(".").pop();
-      if (fileExtension !== "xlsx") {
-        toast.error("Only Excel Files Are Allowed");
-      } else {
-        const formData = new FormData();
-        formData.append("file", file);
-        const response = await dispatch(EmployeeBulkUploadAction(formData));
-        const { meta, payload } = response;
   const handleFileUpload = async (e) => {
     try {
       const file = e.target.files[0];
@@ -62,20 +40,10 @@ const ImportUser = ({ noRedirect = false, isWizard = false }) => {
         const { meta, payload } = response;
 
         if (meta?.requestStatus === "fulfilled") {
-          if (!noRedirect) {
-            navigate("/user"); // normal portal flow
+          // Call the success callback to refresh the list
+          if (onUploadSuccess) {
+            onUploadSuccess();
           }
-        } else {
-          console.log(payload?.data?.data, "e");
-          e.target.value = null;
-          downloadFileNow(payload?.data?.data, e);
-        }
-      }
-    } catch (error) {
-      console.error("Upload error:", error);
-    }
-  };
-        if (meta?.requestStatus === "fulfilled") {
           if (!noRedirect) {
             navigate("/user"); // normal portal flow
           }
@@ -95,26 +63,7 @@ const ImportUser = ({ noRedirect = false, isWizard = false }) => {
       console.log(sampleFilePath?.data, "found");
       if (!sampleFilePath?.data) {
         const response = await dispatch(EmployeeSampleFormatAction());
-  const downloadFile = async (e) => {
-    try {
-      console.log(sampleFilePath?.data, "found");
-      if (!sampleFilePath?.data) {
-        const response = await dispatch(EmployeeSampleFormatAction());
 
-        const { meta, payload } = response;
-        console.log(payload, "fresh load");
-        downloadFileNow(payload?.data, e);
-      } else {
-        downloadFileNow(sampleFilePath?.data, e);
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  };
-  const downloadFileNow = async (fileData, e) => {
-    console.log(fileData, "ddddddddddddddddddddddddddd");
-    // let url = `${baseURL}${sampleFilePath?.data}`
-    // console.log(url)
         const { meta, payload } = response;
         console.log(payload, "fresh load");
         downloadFileNow(payload?.data, e);
@@ -144,36 +93,14 @@ const ImportUser = ({ noRedirect = false, isWizard = false }) => {
       const fileName = burl.substring(burl.lastIndexOf("/") + 1);
       // Create a URL for the file
       const url = window.URL.createObjectURL(new Blob([response.data]));
-    // const link = document.createElement("a");
-    // link.href = pdfUrl;
-    // link.download = url;
-    // document.body.appendChild(link);
-    // link.click();
-    // document.body.removeChild(link);
-    if (fileData) {
-      let burl = `${baseURL}${fileData}`;
-      const response = await axios.get(burl, {
-        responseType: "blob", // Important
-      });
-      const fileName = burl.substring(burl.lastIndexOf("/") + 1);
-      // Create a URL for the file
-      const url = window.URL.createObjectURL(new Blob([response.data]));
 
-      // Create a temporary link element
-      const link = document.createElement("a");
-      link.href = url;
       // Create a temporary link element
       const link = document.createElement("a");
       link.href = url;
 
       // Set filename
       link.setAttribute("download", fileName); // Change file name as needed
-      // Set filename
-      link.setAttribute("download", fileName); // Change file name as needed
 
-      // Append to body and trigger click
-      document.body.appendChild(link);
-      link.click();
       // Append to body and trigger click
       document.body.appendChild(link);
       link.click();
@@ -233,24 +160,6 @@ const ImportUser = ({ noRedirect = false, isWizard = false }) => {
           />
         </div>
       </div>
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2"
-            onClick={(e) => {
-              downloadFile(e);
-            }}
-          >
-            Download Sample
-          </Button>
-          <FileUploadButton
-            type="file"
-            accept=".xlsx, .xls, .csv"
-            label="Import Excel"
-            handleClick={handleFileUpload}
-          />
-        </div>
-      </div>
 
       {/* Instructions */}
       <Card className={`${isWizard ? "w-full" : "ml-12"} bg-gray-50`}>
@@ -279,4 +188,3 @@ const ImportUser = ({ noRedirect = false, isWizard = false }) => {
 };
 
 export default ImportUser;
-

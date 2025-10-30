@@ -188,9 +188,9 @@ export const getEmployeeNearestShift2 = async (request, response, next) => {
         const result = await userModel.getEmployeeNearestShift2(request.body)
         // console.log("...result...",JSON.stringify(result))
         if(!result) return apiResponse.notFoundResponse(response, "Shift Not Found!")
-            
-        request.body.nearestShift = result
-        request.body.shiftId = result._id
+        let {address, geoJson, geoLocation,salaryCycle,weekOff,authUser, ...rest} = result    
+        request.body.nearestShift = rest
+        request.body.shiftId = rest._id
         return next()
  
     } catch (error) {
@@ -506,57 +506,83 @@ export const generateTransactionLog = async (request, response, next) => {
             }
             if (current <= maxInStart) approvalBits['isTimeMatch'] = attendanceApprovalStatus.approved;
         }
-        else if (request.body.type == 'checkOut' && request.body.existingCheckInOutData && request.body.shift) {
+        else if (request.body.type == 'checkOut' && request.body.existingCheckInOutData && (request.body.shift || request.body.branch)) {
             const endDate = new Date();
-            const [hour, min] = request.body.shift.endTime.split(':').map(Number)
+            const [hour, min] = request.body[request.body.existingCheckInOutData.workTimingType].endTime.split(':').map(Number)
             endDate.setHours(hour, min, 0, 0) 
-            if (request.body.shift.minOut) {
-                const [minOutHours, minOutMinutes] = request.body.shift.minOut.split(':').map(Number);
+            if (request.body[request.body.existingCheckInOutData.workTimingType].minOut) {
+                const [minOutHours, minOutMinutes] = request.body[request.body.existingCheckInOutData.workTimingType].minOut.split(':').map(Number);
                 endDate.setHours(minOutHours, minOutMinutes, 0, 0);
             }
-            if (current >= endDate) approvalBits['isTimeMatch'] = attendanceApprovalStatus.approved;
+            let difMls = current - new Date(request.body.existingCheckInOutData.transactionDate);
+            let difHours = difMls /  (1000 * 60 * 60).toFixed(2);
+            if (current >= endDate || difHours >= request.body.existingCheckInOutData.duration) approvalBits['isTimeMatch'] = attendanceApprovalStatus.approved;
         }
 
         //Check Location Match
         request.body.branchRadius = await branch.getBranchOne(request.body)
         request.body.branchDetails = await branch.isCheckinWithinBranch(request.body)
 
+        //location match cases
         if((request.body.branchDetails.status && !request.body.existingCheckInOutData) || (request.body.branchDetails.status && request.body.existingCheckInOutData && request.body.existingCheckInOutData.branchId.toString() == request.body.branchId.toString())) approvalBits['isLocationMatch'] = attendanceApprovalStatus.approved;
     
 
-        if(request.body.existingCheckInOutLog) { // when check-out
-            //Check Branch Match
-            if(request.body.existingCheckInOutLog.branchId.toString() == request.body.branchId.toString()) approvalBits['isBranchMatch'] = attendanceApprovalStatus.approved;
+        // if(request.body.existingCheckInOutLog) { // when check-out
+        //     //Check Branch Match
+        //     if(request.body.existingCheckInOutLog.branchId.toString() == request.body.branchId.toString()) approvalBits['isBranchMatch'] = attendanceApprovalStatus.approved;
 
-            //Check Shift Match
-            if(request.body.existingCheckInOutLog.shiftId.toString() == request.body.shiftId.toString()) approvalBits['isShiftMatch'] = attendanceApprovalStatus.approved;
-        }
-        else if(request.body.shiftByDate && request.body.shiftByDate.length > 0) { // when check-in
+        //     //Check Shift Match
+        //     if(request.body.existingCheckInOutLog.shiftId.toString() == request.body.shiftId.toString()) approvalBits['isShiftMatch'] = attendanceApprovalStatus.approved;
+        // }
+        // else if(request.body.shiftByDate && request.body.shiftByDate.length > 0) { // when check-in
 
-            let getShiftByDate = request.body.shiftByDate.find(sbd => sbd.currentShiftId.toString() == request.body.shiftId.toString());
-            //Check Branch Match
-            if ((getShiftByDate?.branchId?.toString() ?? getShiftByDate?.clientBranchId?.toString()) == request.body.branchId.toString()) approvalBits['isBranchMatch'] = attendanceApprovalStatus.approved;
+        //     let getShiftByDate = request.body.shiftByDate.find(sbd => sbd.currentShiftId.toString() == request.body.shiftId.toString());
+        //     //Check Branch Match
+        //     if ((getShiftByDate?.branchId?.toString() ?? getShiftByDate?.clientBranchId?.toString()) == request.body.branchId.toString()) approvalBits['isBranchMatch'] = attendanceApprovalStatus.approved;
 
-            //Check Shift Match
-            if (getShiftByDate.currentShiftId.toString() == request.body.shiftId.toString()) approvalBits['isShiftMatch'] = attendanceApprovalStatus.approved;
+        //     //Check Shift Match
+        //     if (getShiftByDate.currentShiftId.toString() == request.body.shiftId.toString()) approvalBits['isShiftMatch'] = attendanceApprovalStatus.approved;
 
-            //check only if client shift assigned
-            if (getShiftByDate.clientBranchId && getShiftByDate.clientMappedId) {
-                approvalBits['isClientMatch'] = getShiftByDate.clientBranchId.toString() == request.body.branchId.toString() ? attendanceApprovalStatus.approved : attendanceApprovalStatus.rejected;
-            }
-        }
-        else if(request.body.shiftGroupDataListResponse) { // when check-in
+        //     //check only if client shift assigned
+        //     if (getShiftByDate.clientBranchId && getShiftByDate.clientMappedId) {
+        //         approvalBits['isClientMatch'] = getShiftByDate.clientBranchId.toString() == request.body.branchId.toString() ? attendanceApprovalStatus.approved : attendanceApprovalStatus.rejected;
+        //     }
+        // }
+        // else if(request.body.shiftGroupDataListResponse) { // when check-in
 
-            let shiftGroup = request.body.shiftGroupDataListResponse
-            //Check Branch Match
-            if ((shiftGroup?.branchId?.toString() ?? shiftGroup?.clientBranchId?.toString()) == request.body.branchId.toString()) approvalBits['isBranchMatch'] = attendanceApprovalStatus.approved;
+        //     let shiftGroup = request.body.shiftGroupDataListResponse
+        //     //Check Branch Match
+        //     if ((shiftGroup?.branchId?.toString() ?? shiftGroup?.clientBranchId?.toString()) == request.body.branchId.toString()) approvalBits['isBranchMatch'] = attendanceApprovalStatus.approved;
 
-            //Check Shift Match
-            if (shiftGroup.currentShiftId.toString() == request.body.shiftId.toString()) approvalBits['isShiftMatch'] = attendanceApprovalStatus.approved;
+        //     //Check Shift Match
+        //     if (shiftGroup.currentShiftId.toString() == request.body.shiftId.toString()) approvalBits['isShiftMatch'] = attendanceApprovalStatus.approved;
 
-            //check only if client shift assigned
-            if (shiftGroup.clientBranchId && shiftGroup.clientMappedId) {
-                approvalBits['isClientMatch'] = shiftGroup.clientBranchId.toString() == request.body.branchId.toString() ? attendanceApprovalStatus.approved : attendanceApprovalStatus.rejected;
+        //     //check only if client shift assigned
+        //     if (shiftGroup.clientBranchId && shiftGroup.clientMappedId) {
+        //         approvalBits['isClientMatch'] = shiftGroup.clientBranchId.toString() == request.body.branchId.toString() ? attendanceApprovalStatus.approved : attendanceApprovalStatus.rejected;
+        //     }
+        // }
+
+        let validationTypeData = ['existingCheckInOutLog','shiftByDate','shiftGroupDataListResponse']
+
+        for (let i = 0; i < validationTypeData.length; i++) {
+            const type = validationTypeData[i];
+            if(request.body[type] && request.body[type]?.length) {
+                let data;
+
+                if(Array.isArray(request.body[type])) {
+                    data = request.body[type].find(item => item.currentShiftId?.toString() == request.body.shiftId.toString() || item.shiftId?.toString() == request.body.shiftId.toString());
+                }
+                else {
+                    data = request.body[type];
+                }
+
+                //Check Branch Match
+                if ((data?.branchId?.toString() ?? data?.clientBranchId?.toString()) == request.body.branchId.toString()) approvalBits['isBranchMatch'] = attendanceApprovalStatus.approved;
+
+                //Check Shift Match
+                if ((data.currentShiftId?.toString() ?? data.shiftId?.toString()) == request.body.shiftId?.toString() || type == 'existingCheckInOutLog') approvalBits['isShiftMatch'] = attendanceApprovalStatus.approved;
+
             }
         }
 
@@ -1569,6 +1595,10 @@ export const getNearestClientBranchLocation=(request,response,next)=>{
                 request.body.isWithinRadius=branch.isWithinRadius;
                 request.body.distanceAway = branch.outsideBy
                 request.body.branchRadius = branch.radius;
+
+                request.body.branch = request.body.nearestBranchDetails  // to dyanimically set branch or shift timing
+                //for branch validation with attendance
+                request.body.matchedAssignment = request.body.assignmentDetails?.find(assignment => assignment.branchId.toString() === branch._id.toString());
                 
                 return next();
             } else {
@@ -1724,4 +1754,27 @@ export const approveRejectAttendenceLogs=(request,response,next)=>{
     }
 }
   
-  
+export const setAssignedShift = async(request,response,next) => {
+    try {
+        request.body.shiftGroupDataListResponse = request.body.shiftGroupDataListResponse.find(sg => sg.employeeId.toString() == request.body.userId.toString())
+
+        // shift roasters
+        let mergedData = [...request.body.shiftByDate]
+
+        // shift groups
+        if(request.body.shiftGroupDataListResponse && request.body.shiftGroupDataListResponse.length > 0) mergedData.push(request.body.shiftGroupDataListResponse)
+
+        // client requirements based shifts
+        if(!mergedData.length && request.body.shiftIdsFromRequirement && request.body.shiftIdsFromRequirement?.length > 0) mergedData = request.body.shiftIdsFromRequirement.map(id => ({currentShiftId: id}))
+        
+        // user assigned shifts
+        if(!mergedData.length && request.body.user.shiftIds && request.body.user.shiftIds?.length > 0) mergedData = request.body.user.shiftIds.map(id => ({currentShiftId: id}))
+
+        request.body.mergedData = mergedData;
+        // console.log("mergedData", mergedData);
+        return next();
+    } catch (error) {
+        logger.error("Error in setAssignedShift:", { stack: error.stack });
+        return apiResponse.somethingResponse(response, error?.message);
+    }
+}

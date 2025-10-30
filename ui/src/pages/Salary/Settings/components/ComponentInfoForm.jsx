@@ -1,4 +1,4 @@
-import FormikInput from "../../../../components/input/FormikInput";
+import FormikInput from "../../../../components/Input/FormikInput";
 import { componentTypes } from "../../../../constants/Constants";
 
 const ComponentInfoForm = ({ values, setFieldValue }) => {

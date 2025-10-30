@@ -8,6 +8,7 @@ import {
   clientDesignationAction,
   clientEditAction,
   clientListAction,
+  clientUpdateKYCAction,
   clientOwnerCreateAction,
   clientOwnerEditAction,
   clientOwnerGetAction,
@@ -19,7 +20,8 @@ import {
   ClientEmergencyContactsEditAction,
   ClientDefaultSettingsListAction,
   ClientDefaultSettingsAddAction,
-  clientListEmpWiseAction
+  clientListEmpWiseAction,
+  clientListwithFeildOfficerAction
 } from "../Action/Client/ClientAction";
 const initialState = {
   clientList: [],
@@ -38,7 +40,7 @@ const initialState = {
   clientDepartments: [],
   clientDesignations: [],
   clientEmergencyContactList: [],
-  clientDefaultSettings:[]
+  clientDefaultSettings: []
 };
 
 const ClientReducer = createSlice({
@@ -578,6 +580,69 @@ const ClientReducer = createSlice({
         console.log("Branch Create Error:", backendError?.validation?.body);
 
         // toast.error(validationMessage);
+      });
+    builder
+      .addCase(clientListwithFeildOfficerAction.pending, (state, action) => {
+        // Avoid redundant calls by checking the status and existing data
+        state.pageNo = action?.meta?.arg?.page || 1;
+        state.limit = action?.meta?.arg?.limit || 10;
+        state.status = "loading";
+        state.error = "";
+        state.loading = true;
+      })
+      .addCase(clientListwithFeildOfficerAction.fulfilled, (state, action) => {
+        console.log("Full payload:", action.payload); // Debug the payload structure
+        state.status = "success";
+        state.error = "";
+        state.loading = false;
+        state.clientList = action.payload?.data || []; // Ensure correct path to data and handle empty cases
+        state.totalRecord = action.payload?.totalRecord;
+        console.log("Branch list:", action.payload.data);
+        // toast.success(
+        //   action.payload.message || "Branch data loaded successfully!"
+        // );
+      })
+      .addCase(clientListwithFeildOfficerAction.rejected, (state, action) => {
+        toast.dismiss();
+        console.log("Action failed:", action);
+        state.status = "failed";
+        state.error = action.error.message;
+        state.clientList = [];
+        state.loading = false;
+        console.log("desigantion Error rejected-->", action.error);
+
+        toast.error(
+          action.error.message ||
+          "Failed to load branch data. Please try again."
+        );
+      });
+       
+
+    builder
+      .addCase(clientUpdateKYCAction.pending, (state) => {
+        state.status = "loading";
+        state.error = false;
+        state.loading = true;
+      })
+      .addCase(clientUpdateKYCAction.fulfilled, (state, action) => {
+        console.log("Full payload:", action?.payload); // Check the structure of the payload
+        state.status = "success";
+        state.error = "";
+        state.loading = false;
+        toast.success(action.payload.message);
+      })
+      .addCase(clientUpdateKYCAction.rejected, (state, action) => {
+        toast.dismiss();
+        state.status = "failed";
+        state.loading = false;
+        const backendError =
+          action.error?.response?.data || action.payload || action.error;
+        const validationMessage =
+          backendError?.validation?.body?.message ||
+          backendError?.message ||
+          "Something went wrong";
+        state.error = validationMessage;
+        toast.error(validationMessage);
       });
   },
 

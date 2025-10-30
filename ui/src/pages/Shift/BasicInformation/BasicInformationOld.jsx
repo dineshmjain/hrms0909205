@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Typography } from '@material-tailwind/react';
 import { useDispatch, useSelector } from 'react-redux';
-import CustomField from '../../../components/input/CustomFeild';
+import CustomField from '../../../components/Input/CustomFeild';
 import { getTypeOfIndustyAction } from '../../../redux/Action/Global/GlobalAction';
 
 const BasicInformation = ({ onChange, onValidate,data,isEditAvaliable }) => {

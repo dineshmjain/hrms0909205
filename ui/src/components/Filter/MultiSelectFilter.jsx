@@ -46,6 +46,7 @@ const MultiSelectFilter = ({
     department: 2,
     designation: 3,
     employee: 4,
+    leave: 4,
     client: 4,
     attendreport: 4,
     attendancemonthreport: 4,
@@ -91,6 +92,15 @@ const MultiSelectFilter = ({
       multiselect: isEmployeeMulti,
       required: "branch",
       reqbody: ["orgId", "branchIds", "departmentIds", "designationIds"],
+    },
+    policy: {
+      action: BranchGetAction,
+      getOnSelect: [],
+      list: branchList,
+      list: branchList,
+      multiselect: isBranchMulti,
+      required: user?.modules?.["suborganization"]?.r ? "org" : "",
+      reqbody: user?.modules?.["suborganization"]?.r ? ["orgIds"] : [],
     },
     attendreport: {
       action: EmployeeGetActionForFilter,
@@ -167,6 +177,7 @@ const MultiSelectFilter = ({
       "year",
       "month",
     ],
+    policy: ["org", "branch"],
     attendancemonthreport: [
       "org",
       "branch",
@@ -312,6 +323,7 @@ const MultiSelectFilter = ({
           "department",
           "designation",
           "employee",
+          "policy",
           "attendreport",
           "attendancemonthreport",
           "attendanceapprovals",
@@ -385,7 +397,41 @@ const MultiSelectFilter = ({
       dispatch(BranchGetAction({}));
     }
   }, []);
+  // Effect for initial policy page load
+  useEffect(() => {
+    if (pageName === "policy" && filtersReady) {
+      if (checkModules("suborganization", "r")) {
+        if (selectedFilters.orgIds) {
+          setLoadingState((prev) => ({ ...prev, branch: true }));
+          dispatch(
+            BranchGetAction({ subOrgId: selectedFilters.orgIds })
+          ).finally(() =>
+            setLoadingState((prev) => ({ ...prev, branch: false }))
+          );
+        }
+      } else {
+        setLoadingState((prev) => ({ ...prev, branch: true }));
+        dispatch(BranchGetAction({})).finally(() =>
+          setLoadingState((prev) => ({ ...prev, branch: false }))
+        );
+      }
+    }
+  }, [pageName, filtersReady]);
 
+  // Effect to handle org selection changes for policy page
+  useEffect(() => {
+    if (
+      pageName === "policy" &&
+      checkModules("suborganization", "r") &&
+      selectedFilters.orgIds &&
+      filtersReady
+    ) {
+      setLoadingState((prev) => ({ ...prev, branch: true }));
+      dispatch(BranchGetAction({ subOrgId: selectedFilters.orgIds })).finally(
+        () => setLoadingState((prev) => ({ ...prev, branch: false }))
+      );
+    }
+  }, [selectedFilters.orgIds]);
   const selectedPage = filterMap[pageName];
   if (!selectedPage) return null;
 

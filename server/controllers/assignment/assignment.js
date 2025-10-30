@@ -378,7 +378,7 @@ export const getIdBasedAssignment =async(request,response,next)=>{
             const branchIds = request.body.assignmentDetails.map(a => a.branchId)
             if(request.body.detailsType == 'official') {
                 let {assignmentId, ...rest} = request.body.userDetails
-                request.body.userDetails = {roleId : rest.role[0],joinDate:rest.joinDate} 
+                request.body.userDetails = {roleId : rest.role[0],joinDate:rest.joinDate,workTimingType:rest.workTimingType,shiftIds:rest.shiftIds ?? null,employeeId: rest.employeeId} 
                 let fields = ['branchId', 'subOrgId', 'departmentId', 'designationId']
 
                 fields.forEach(f => {
@@ -388,6 +388,22 @@ export const getIdBasedAssignment =async(request,response,next)=>{
                     }
                 })
             }
+            return next()
+        }
+        return apiResponse.notFoundResponse(response,'No Data Mapped under organisation/branch/departmet')
+
+    }catch(error){
+        console.log("....error.in checkingDeaprtmentMapped assignment Controller....",error?.message)
+        return apiResponse.ErrorResponse(response,error?.message)
+    }
+}
+
+export const getUserAssignment =async(request,response,next)=>{
+    try{
+        const result = await assignmentModel.getUserAssignment(request.body)
+        if(result.status){
+            request.body.assignmentDetails = result.data
+            request.body.userBranchIds = request.body.assignmentDetails.map(a => a.branchId)
             return next()
         }
         return apiResponse.notFoundResponse(response,'No Data Mapped under organisation/branch/departmet')

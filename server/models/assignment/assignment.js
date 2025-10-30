@@ -435,6 +435,27 @@ export const getIdBasedAssignment=async(body)=>{
     }
 }
 
+export const getUserAssignment = async(body)=>{
+    try{
+        let query = {}
+        const assignmentId = body.user?.assignmentId
+
+          if(assignmentId) {
+            if(Array.isArray(assignmentId)) {
+                query = {_id:{ $in:assignmentId }}
+            } else {
+                query = {_id:assignmentId}
+            }
+        }
+        return await getMany(query,collection_name)
+
+    }catch(error){
+        console.log("....error in getAllLevelAssignmentIds model...",error?.message)
+        logger.error("Error while getAllLevelAssignmentIds function in assignment model");
+        throw error;
+    }
+}
+
 export const checkMultipleAssignment=async(body)=>{
     try{
         let query = {

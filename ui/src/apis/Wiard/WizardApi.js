@@ -14,7 +14,8 @@ export const getStructureApi = async (userCredentials) => {
 export const getOrganizationApi = async (userCredentials) => {
   try {
     const response = await axiosInstance.post(
-      "/organization/wizard/add",
+      // "/organization/wizard/add",
+      "/organization/update/structure",
       userCredentials
     );
     return response.data;
@@ -23,7 +24,19 @@ export const getOrganizationApi = async (userCredentials) => {
     throw error.response.data || error.message;
   }
 };
-
+export const getOrganizationDetailsApi = async (userCredentials) => {
+  try {
+    const response = await axiosInstance.post(
+      // "/organization/wizard/add",
+      "/organization/get/details",
+      userCredentials
+    );
+    return response.data;
+  } catch (error) {
+    console.log(error);
+    throw error.response.data || error.message;
+  }
+};
 export const getBranchCreationApi = async (userCredentials) => {
   try {
     const response = await axiosInstance.post(
@@ -63,6 +76,21 @@ export const OtUpdateApi = async (userCredentials) => {
   try {
     const response = await axiosInstance.post(
       "/overtime/update",
+      userCredentials
+    );
+    return response.data;
+  } catch (error) {
+    console.log(error);
+
+    throw error.response.data || error.message;
+  }
+};
+
+
+export const OtGetApi = async (userCredentials) => {
+  try {
+    const response = await axiosInstance.post(
+      "/overtime/get/list",
       userCredentials
     );
     return response.data;

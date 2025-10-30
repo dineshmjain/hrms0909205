@@ -20,6 +20,7 @@ import * as departmentModel from '../../models/department/department.js';
 import * as assignmentModel from '../../models/assignment/assignment.js';
 import * as orgModel from '../../models/organization/organization.js';
 import * as designationModel from  '../../models/designation/designation.js';
+import * as shiftModel from '../..//models/shift/shift.js';
 import { response } from 'express'
 const kafka = new KafkaService();
 //============================ AUTH ==================================
@@ -730,10 +731,23 @@ export const updateDisabledModules = async (request, response, next) => {
 
 export const checkDisabledModules = async (request, response, next) => {
     try {
-        if(request.body?.authUser?.owner || request.body?.user?.owner) return next()
+        // if(request.body?.authUser?.owner || request.body?.user?.owner) return next()
         const ALL_PERMS = ["c", "r", "u", "d"];
-        let disabledModules = request.body.authUser?.disabledModules || request.body.userDetails?.disabledModules 
+        let disabledModules = request.body.authUser?.disabledModules || request.body.userDetails?.disabledModules || request.body.designation?.disabledModules
         // console.log("disabledmodules",JSON.stringify(disabledModules));
+        // const disabledModules = [
+        //     ...(Array.isArray(request.body.authUser?.disabledModules)
+        //       ? request.body.authUser.disabledModules
+        //       : []),
+      
+        //     ...(Array.isArray(request.body.userDetails?.disabledModules)
+        //       ? request.body.userDetails.disabledModules
+        //       : []),
+      
+        //     ...(Array.isArray(request.body.designation?.disabledModules)
+        //       ? request.body.designation.disabledModules
+        //       : []),
+        // ];
         let dbModules = request.body.assignedModules
         // console.log("dbModules",JSON.stringify(dbModules));
         // let moduleMap = new Map(dbModules.map(m => [m.moduleId.toString(), m.permissions]))
@@ -741,11 +755,20 @@ export const checkDisabledModules = async (request, response, next) => {
         
         if (Array.isArray(disabledModules)) {
             for (const m of disabledModules) {
+                // const moduleId = typeof m === "string" ? String(m) : String(m.moduleId);
+                // const perms = m && m.permissions ? m.permissions : ["all"];
             if (typeof m === "string") {
                 disabledMap.set(String(m), new Set(["all"]));
             } else if (m && m.moduleId) {
                 disabledMap.set(String(m.moduleId), new Set(m.permissions || ["all"]));
             }
+            // if (!disabledMap.has(moduleId)) {
+            //     disabledMap.set(moduleId, new Set(perms));
+            //   } else {
+            //     const existing = disabledMap.get(moduleId);
+            //     for (const p of perms) existing.add(p); // ✅ merge permissions
+            //     disabledMap.set(moduleId, existing);
+            //   }
             }
         } else if (disabledModules && typeof disabledModules === "object") {
             for (const [k, v] of Object.entries(disabledModules)) {
@@ -998,7 +1021,8 @@ export const isEmployeeUserValid = async (request, response, next) => {
             //is not registered
             if (!res.status) return apiResponse.notFoundResponse(response, "Invalid Emloyee user")
             request.body.userEmployee = res.data
-            request.body.existingDisabledModules = res.data.disabledModules ?? []
+            // request.body.existingDisabledModules = res.data.disabledModules ?? []
+            request.body.existingDisabledModules = res.data.disabledModules ?? {}
 
 
             return next()
@@ -1234,6 +1258,16 @@ export const importEmployeeExcel= async (request, response, next) => {
                 duplicateUserData.push({ ...row, status: 'this employee mobile alreday  existed' });
                 continue
             }
+
+            let shiftExist
+            if(row.workTimingType==='NO' && row.shiftIds!=='NO'){
+                 shiftExist=await shiftModel.getShiftIdOnName({...request.body,name:row.shiftIds})
+                 if(!shiftExist?.status){
+                    duplicateUserData.push({ ...row, status: 'Shift Is Not In Shift Master Please Create Shift In Portal' });
+                    continue
+                 }
+            }
+
             let subOrgId
             if(request.body.orgDetails?.structure==='group'){
                 const subOrgExist=await orgModel.isSubOrgExist({...request.body,subOrgName:row.subOrganization})
@@ -1255,6 +1289,7 @@ export const importEmployeeExcel= async (request, response, next) => {
             const branchExist= await branchModel.isBranchExists({...request.body,name:row.branch,subOrgId})
             const departmentExist=await departmentModel.getOneDepartment({...request.body,name:row.department})
             const designationExists=await designationModel.getOneDesignation({...request.body,name:row.designation})
+            
             let branchId
             let departmentId
             let designationId
@@ -1331,25 +1366,38 @@ export const importEmployeeExcel= async (request, response, next) => {
                 "geoLocation":{...row.address}
             }
 
+            const workTimingType=row.workTimingType==='NO' ?'shift':'branch'
+            const salaryConfig=row.salaryConfig==='YES'?true:false
             //user creation
             const addUserBody={
                 ...request.body,
                 ...row,
                 "mobile":String(row.mobile).trim(),
+                "emergencyNumber":String(row.emergencyNumber).trim(),
+                "guardianNumber":String(row.guardianNumber).trim(),
                 "name":{
                     "firstName":row.firstName,
                     "lastName":row.lastName
                 },
+                "gender":row.gender==='Female'?"female":"male",
                 "addUser":true,
                 "assignmentIds":[assignmentId],
                 "orgId":request.body.user.orgId,
                 ...(subOrgId && {subOrgId:new ObjectId(subOrgId)}),
+                workTimingType,
+                ...(shiftExist?.data && {shiftIds:[new ObjectId(shiftExist.data._id)]}),
+                salaryConfig
+                
             }
             if(hasValidAddressField){
                 addUserBody["presentAddress"]={...presentAddress}
                 
             }
             delete addUserBody.address
+            if(workTimingType==='branch'){
+                delete addUserBody.shiftIds
+            }
+           
             await userModel.createUser(addUserBody)
             addUserCount++
 
@@ -1621,12 +1669,26 @@ export const updateNotificationReadTime = async (request, response, next) => {
 export const isCheckDisabledModulesValid= async (request, response, next) => {
     try{
         if(!request.body?.authUser?.owner || !request.body?.user?.owner) return apiResponse.validationError(response, "Owner can able to do  disabled modules");
-        const disabledModules = request.body.disabledModules || [];
-        if (disabledModules.length === 0) {
+        
+        if (request.body.disabledModules.length === 0) {
             return apiResponse.validationError(response, "disabled modules cant be empty");
         }
+        
+        const disabledModules = request.body.disabledModules || [];
+        // const disabledModules = request.body.disabledModules.reduce((acc,mod)=>{
+        //     if(mod?.moduleId){
+        //         acc[mod.modulesId]=mod.permissions
+        //     }
+
+        //     return acc
+
+        // },{})
+
+
+       
         const dbModules = request.body.assignedModules || [];
         for (let dis of disabledModules) {
+
             // Ensure module exists in role
             const foundModule = dbModules.find(
               m => m.moduleId.toString() === dis.moduleId.toString()

@@ -8,6 +8,7 @@ import * as user from '../controllers/user/user.js'
 import { celebrate } from 'celebrate'
 import { validation } from '../helper/validationSchema.js'
 import * as leavePolicy from '../controllers/leavePolicy/leavePolicy.js';
+import * as branch from '../controllers/branch/branch.js';
 
 
 router.post('/create',
@@ -38,6 +39,8 @@ router.post('/add',
     celebrate(validation.addPolicyMaster),
     auth.isAuth,
     user.isUserValid,
+    branch.getBranchDetails,
+    leavePolicy.isPolicyLeaveMasterExists,
     leavePolicy.createPolicy
 )
 

@@ -59,13 +59,37 @@ const Edit = () => {
   const submitForm1 = async (values) => {
     try {
       console.log("full", values);
-      const { name, structuredAddress, subOrgId } = values;
+      const {
+        name,
+        structuredAddress,
+        subOrgId,
+        timeSettingType,
+        startTime,
+        endTime,
+        maxIn,
+        minOut,
+        reportingTime,
+
+        salaryCycle,
+        financialYear,
+        weekoff,
+      } = values;
 
       const responseData = removeEmptyStrings({
         name,
         subOrgId,
         ...structuredAddress,
         id: state?._id,
+        timeSettingType,
+        startTime,
+        endTime,
+        maxIn,
+        minOut,
+        reportingTime,
+        timeSettingType,
+        salaryCycle,
+        financialYear,
+        weekoff,
       });
 
       console.log(responseData);
@@ -74,13 +98,12 @@ const Edit = () => {
       console.log(meta);
       setIsEditAvaliable(!isEditAvaliable);
       if (meta?.requestStatus === "fulfilled") {
-          navigate(isClient ? -1 : "/branch/list");
+        navigate(isClient ? -1 : "/branch/list");
       }
     } catch (error) {
       console.log(error);
     }
   };
-
 
   return (
     <div className="flex flex-col w-full p-2   bg-white border border-gray-100 rounded-md overflow-auto ">
@@ -97,8 +120,8 @@ const Edit = () => {
               subHeaderLabel="Edit Branch Details"
               isEditAvaliable={isEditAvaliable}
               handleEdit={() => {
-                if (checkMoudles('branch', 'u')) {
-                  setIsEditAvaliable(!isEditAvaliable)
+                if (checkMoudles("branch", "u")) {
+                  setIsEditAvaliable(!isEditAvaliable);
                 } else {
                   toast.error("You don't have permission to edit this branch");
                 }
@@ -107,9 +130,9 @@ const Edit = () => {
                 submitForm();
                 submitForm1(values);
               }}
-            // handleBack={() => {
-            //   navigate("../");
-            // }}
+              // handleBack={() => {
+              //   navigate("../");
+              // }}
             />
             <Form>
               <div className="ml-[3rem] flex-col">

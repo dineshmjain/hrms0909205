@@ -1,5 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { clientCreateApi, clientUpdateApi, clientListApi, clientUpdateKYCApi, clientOwnerCreateApi, clientOwnerGetApi, clientKYCCreateApi, clientKYCGetApi, clientOwnerEditApi, clientKYCEditApi, clientExcelBlukUpload, clientSampleFileDownload, clientDepartments, clientDesignations ,ClientBranchStatusUpdateApi,ClientStatusUpdateApi, ClientEmergencyContactsGetApi, ClientEmergencyContactsAddApi, ClientEmergencyContactsEditApi, ClientDefaultSettingsListApi, ClientDefaultSettingsAddApi, clientListEmpWiseApi} from "../../../apis/Client/Client";
+import { clientCreateApi, clientUpdateApi, clientListApi, clientUpdateKYCApi, clientOwnerCreateApi, clientOwnerGetApi, clientKYCCreateApi, clientKYCGetApi, clientOwnerEditApi, clientKYCEditApi, clientExcelBlukUpload, clientSampleFileDownload, clientDepartments, clientDesignations ,ClientBranchStatusUpdateApi,ClientStatusUpdateApi, ClientEmergencyContactsGetApi, ClientEmergencyContactsAddApi, ClientEmergencyContactsEditApi, ClientDefaultSettingsListApi, ClientDefaultSettingsAddApi, clientListEmpWiseApi, clientListFeildOfficerApi} from "../../../apis/Client/Client";
 
 
 export const clientCreateAction = createAsyncThunk('clientCreate', async(userCredentials,{rejectWithValue}) => {
@@ -251,3 +251,14 @@ export const ClientDefaultSettingsAddAction = createAsyncThunk('ClientSettingsad
         return rejectWithValue(error || { message: 'Unknown error occurred' });
     }
 }); 
+export const clientListwithFeildOfficerAction= createAsyncThunk('clientListwithFeildOfficer', async (clientDetails,{rejectWithValue}) => {
+    console.log(clientDetails)
+    try {
+        const data = await clientListFeildOfficerApi(clientDetails);
+        console.log('client Get Successs -->', data)
+        return data;
+    } catch (error) {
+        console.log('client Get Error -->', error)
+       throw rejectWithValue(error);
+    }
+});

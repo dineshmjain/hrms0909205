@@ -89,6 +89,8 @@ const List = () => {
     pageNo,
     limit,
   } = useSelector((state) => state.branch);
+
+  
   const handleShowPrompt = (data) => {
     showPrompt({
       heading: "Are you sure?",

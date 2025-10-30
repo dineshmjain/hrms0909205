@@ -40,6 +40,73 @@ router.post('/add',
 
 )
 
+router.post('/requirements/add',
+    // celebrate(validation.addClientBranch),
+    auth.isAuth,
+    user.isUserValid,
+    branch.addClientRequirements,
+    (request, response, next) => {
+        return apiResponse.successResponse(response, `Branch Requirements Created successfully`)
+    },
+)
+
+router.post('/requirements/update',
+    // celebrate(validation.addClientBranch),
+    auth.isAuth,
+    user.isUserValid,
+    branch.updateClientRequirements,
+    (request, response, next) => {
+        return apiResponse.successResponse(response, `Branch Requirements Updated Successfully`)
+    },
+)
+
+router.post('/requirements/list',
+    // celebrate(validation.addClientBranch),
+    auth.isAuth,
+    user.isUserValid,
+    branch.listClientRequirements,
+    (request, response, next) => {
+        return apiResponse.responseWithPagination(response, "Requirements fetched successfully!", request.body.requirements)
+    },
+)
+
+router.post('/requirements/employees',
+    // celebrate(validation.addClientBranch),
+    auth.isAuth,
+    user.isUserValid,
+    branch.assignEmployeesToRequirements,
+    (request, response, next) => {
+        console.log(request.body);
+        next();
+    },
+    (request, response, next) => {
+        return apiResponse.successResponseWithData(response, "Employees Assigned successfully!", request.body.requirements)
+    },
+)
+
+router.post('/wizard/add',
+    auth.isAuth,
+    user.isUserValid,
+    client.getClient,
+    branch.addBranch,
+    // assign field officer
+    (request, response, next) => {
+        request.body.clientBranchIds = [String(request.body.insertedBranchId)];
+        request.body.clientMappedId = [request.body.clientMappedId];
+        request.body.id = request.body.fieldOfficer.id;
+        delete request.body.fieldOfficer;
+        next();
+    },
+    user.isUpdatingUserValid,
+    client.isMultipleClientValid,
+    clientBranch.isMultipleBranchValid,
+    user.filterExistingClientIds,
+    user.multipleClientMapping,
+    (request, response) => {
+        return apiResponse.successResponseWithData(response, "Branch added successfully!", request.body.clientOrgDetails)
+    }
+)
+
 //get branch by Id
 router.post('/get',
     auth.isAuth,

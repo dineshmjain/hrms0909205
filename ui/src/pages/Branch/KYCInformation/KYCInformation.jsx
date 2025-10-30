@@ -2,7 +2,7 @@
 import { useDispatch, useSelector } from 'react-redux';
 import * as Yup from 'yup';
 import { Form, Formik } from 'formik';
-import FormikInput from '../../../components/input/FormikInput';
+import FormikInput from '../../../components/Input/FormikInput';
 import SubCardHeader from '../../../components/header/SubCardHeader';
 import { SubOrgListAction } from '../../../redux/Action/SubOrgAction/SubOrgAction';
 import AddressNew, { AddressCon } from '../../../components/Address/AddressNew';

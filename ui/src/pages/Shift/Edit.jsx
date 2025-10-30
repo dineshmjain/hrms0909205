@@ -29,7 +29,14 @@ const Edit = () => {
     ...BasicCon.validationSchema,
   });
 
-  function validateShift({ startTime, endTime, minIn, maxIn, minOut, maxOut }) {
+  function validateShift({
+    startTime,
+    endTime,
+    minIn,
+    maxIn,
+    minOut,
+    maxOut,
+  }) {
     const errors = [];
 
     function parseTime(timeStr) {
@@ -50,12 +57,12 @@ const Edit = () => {
       start = parseTime(startTime);
       end = parseTime(endTime);
 
-      // Optional fields: parse only if provided
+      // Optional fields: parse only if provided (use computed values)
       if (minIn) minInTime = parseTime(minIn);
       if (maxIn) maxInTime = parseTime(maxIn);
       if (minOut) minOutTime = parseTime(minOut);
       if (maxOut) maxOutTime = parseTime(maxOut);
-    } catch (errors) {
+    } catch (e) {
       errors.push("Invalid time format. Use 'HH:mm'.");
       return errors;
     }
@@ -78,71 +85,31 @@ const Edit = () => {
     if (start < new Date(0, 0, 0, 0, 0) || end < new Date(0, 0, 0, 0, 0)) {
       errors.push("Start Time and End Time must be valid times.");
     }
-    if (
-      minInTime &&
-      maxInTime &&
-      (minInTime < new Date(0, 0, 0, 0, 0) ||
-        maxInTime < new Date(0, 0, 0, 0, 0))
-    ) {
-      errors.push("Grace Min-In and Grace Max In must be valid times.");
-    }
-    if (
-      minOutTime &&
-      maxOutTime &&
-      (minOutTime < new Date(0, 0, 0, 0, 0) ||
-        maxOutTime < new Date(0, 0, 0, 0, 0))
-    ) {
-      errors.push("Grace Min Out and Grace Max Out must be valid times.");
-    }
-    if (start >= end)
-      errors.push(
-        "Start Time must be before End Time (or valid overnight shift)."
-      );
-
-    // Conditional validations based on presence
-    if (minInTime && maxInTime) {
-      if (minInTime > maxInTime) {
-        errors.push("Grace Min-In must be before or equal to Grace Max-In.");
-      }
-      if (start < minInTime) {
-        errors.push("Grace Min-In Cannot Be Greater Than Start Time");
-      }
-      if (start > maxInTime) {
-        errors.push("Grace Max In Cannot Be Lesser Than Start Time");
-      }
-    }
-
-    if (minOutTime && maxOutTime) {
-      if (minOutTime > maxOutTime) {
-        errors.push("Grace Min-Out must be before or equal to Grace Max Out.");
-      }
-      if (end < minOutTime) {
-        errors.push("Grace Min Out Cannot Be Greater Than End Time");
-      }
-      if (end > maxOutTime) {
-        errors.push("Grace Max Out Cannot Be Lesser Than End Time");
-      }
-    }
-
-    // Overlap check (only if both ranges present)
-    if (maxInTime && minOutTime && maxInTime > minOutTime) {
-      errors.push("Grace Max In Cannot Be Greater Than Grace Min Out");
-    }
+    if (start >= end) errors.push("Start Time must be before End Time (or valid overnight shift).");
 
     return errors;
   }
 
+
   const handleSubmit = async (formData) => {
     try {
-      console.log('Form submitted:', formData);
-      const validationErrors = validateShift(formData); // If using time validation
-      if (validationErrors?.length > 0) {
-        validationErrors.forEach((err) => toast.error(err));
-        return;
+      const start = formData.startTime;
+      const end = formData.endTime;
+      const maxInMinutes = parseInt(formData.maxIn || 0, 10);
+      const minOutMinutes = parseInt(formData.minOut || 0, 10);
+
+      if (start && !isNaN(maxInMinutes)) {
+        payload.maxIn = moment(start, 'HH:mm').add(maxInMinutes, 'minutes').format('HH:mm');
+        payload.minIn = moment(start, 'HH:mm').subtract(maxInMinutes, 'minutes').format('HH:mm');
+      }
+
+      if (end && !isNaN(minOutMinutes)) {
+        payload.minOut = moment(end, 'HH:mm').subtract(minOutMinutes, 'minutes').format('HH:mm');
+        payload.maxOut = moment(end, 'HH:mm').add(minOutMinutes, 'minutes').format('HH:mm');
       }
       // Clean the form data
       // const cleanedData = removeEmptyStrings(formData);
-      const {_id,orgId,createDate,createdBy,modifiedBy,modifiedDate,actualIdx,selectedFilterType,...rest}=formData
+      const { _id, orgId, createDate, createdBy, modifiedBy, modifiedDate, actualIdx, selectedFilterType, ...rest } = formData
       const result = await dispatch(ShiftUpdateAction(removeEmptyStrings(rest)));
       const { meta, payload } = result || {};
       console.log(meta, payload, "te");

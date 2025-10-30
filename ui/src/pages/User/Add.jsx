@@ -64,6 +64,9 @@ const Add = () => {
         workTimingType: values?.workTimingType,
         shiftIds: values?.shiftIds || [],
         salaryConfig: values?.salaryConfig || false,
+        guardianNumber:values?.guardianNumber,
+        emergencyNumber:values?.emergencyNumber,
+        guardianName:values?.guardianName,
         isSubOrg: !!user?.modules?.["suborganization"]?.r,
 
         // ...(values?.isSubOrg ? { isSubOrg: true } : {}), // ← Adds isSubOrg: true if applicable

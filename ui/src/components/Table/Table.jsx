@@ -21,6 +21,8 @@ const Table = ({
   uniqueRowKey = "_id",
   paginationProps,
   onRowClick,
+  hideReload,
+  hideColumns = false,
 }) => {
   let initialHeaders = useRef([]);
   let initialChildHeaders = useRef([]);
@@ -122,7 +124,9 @@ const Table = ({
       if (text === "actions") {
         actionColIndexes.push(i);
       } else {
-        headerData.push(`"${headerRow.cells[i].innerText.replace(/"/g, '""')}"`);
+        headerData.push(
+          `"${headerRow.cells[i].innerText.replace(/"/g, '""')}"`
+        );
       }
     }
     csv += headerData.join(",") + "\n";
@@ -166,6 +170,8 @@ const Table = ({
           paginationProps={paginationProps}
           globalSerch={globalSerch}
           setGlobalSerch={setGlobalSerch}
+          hideReload={hideReload}
+          hideColumns={hideColumns}
         />
       )}
       {validate && (

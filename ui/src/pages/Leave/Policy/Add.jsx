@@ -9,6 +9,7 @@ import {
 import { useDispatch, useSelector } from "react-redux";
 import PolicyForm from "./PolicyForm";
 import { BranchGetAction } from "../../../redux/Action/Branch/BranchAction";
+
 const AddConfig = () => {
   const [errors, setErrors] = useState({});
   const navigate = useNavigate();
@@ -19,19 +20,20 @@ const AddConfig = () => {
 
   const [leavePolicyOptions, setLeavePolicyOptions] = useState([]);
 
+  // ✅ Set default values for Carry Forward and Monthly
   const [form, setForm] = useState({
     leavePolicy: {},
     yearlyCount: "",
-    isMonthly: false,
+    isMonthly: true, // ✅ Default to Monthly
     monthlyCount: "",
     creditedDay: {},
     creditedMonth: {},
-    leaveHandling: {},
-    handlingType: {},
+    leaveHandling: { label: "Carry Forward", value: "carry" }, // ✅ Default to Carry Forward
+    handlingType: { label: "Monthly", value: "monthly" }, // ✅ Default to Monthly
     maxAllowedLeave: "",
     salaryBasis: {},
     salaryPercent: "",
-    branchId: "", // Make sure to set this from somewhere
+    branchId: "",
   });
 
   const monthDay = Array.from({ length: 28 }, (_, i) => ({
@@ -53,16 +55,20 @@ const AddConfig = () => {
     { label: "November", value: "November" },
     { label: "December", value: "December" },
   ];
+
   const { branchList } = useSelector((state) => state?.branch);
   console.log("branchList from Redux:", branchList);
+  
   // Convert branchList to dropdown options
   const branchOptions = branchList.map((b) => ({
     label: b.name,
     value: b._id,
   }));
+
   useEffect(() => {
     dispatch(LeavePolicyNameGetAction());
   }, [dispatch]);
+
   useEffect(() => {
     dispatch(BranchGetAction({ mapedData: "branch", orgLevel: true }));
   }, [dispatch]);
@@ -88,14 +94,15 @@ const AddConfig = () => {
 
       // Auto-calc monthlyCount when yearlyCount changes
       if (name === "yearlyCount" && updatedForm.isMonthly) {
-        updatedForm.monthlyCount = Math.floor(value / 12) || 0;
+        const yearlyVal = parseFloat(value) || 0;
+        updatedForm.monthlyCount = (yearlyVal / 12).toFixed(2);
       }
 
       // Auto-calc monthlyCount when toggling isMonthly
       if (name === "isMonthly") {
         if (checked && updatedForm.yearlyCount) {
-          updatedForm.monthlyCount =
-            Math.floor(updatedForm.yearlyCount / 12) || 0;
+          const yearlyVal = parseFloat(updatedForm.yearlyCount) || 0;
+          updatedForm.monthlyCount = (yearlyVal / 12).toFixed(2);
         } else {
           updatedForm.monthlyCount = "";
         }
@@ -117,7 +124,7 @@ const AddConfig = () => {
         return {
           ...prev,
           branch: selected || {},
-          branchId: selected?.value || "", // <-- crucial
+          branchId: selected?.value || "",
         };
       }
       return {
@@ -158,12 +165,8 @@ const AddConfig = () => {
       temp.leaveHandling = "Please select leave handling option";
     }
 
-    // Validate handling type if carry or salary
-    if (
-      (form.leaveHandling?.value === "carry" ||
-        form.leaveHandling?.value === "salary") &&
-      !form.handlingType?.value
-    ) {
+    // ✅ Handling type is now always required (removed "none" option)
+    if (!form.handlingType?.value) {
       temp.handlingType = "Please select handling type";
     }
 
@@ -196,7 +199,6 @@ const AddConfig = () => {
       // Base payload
       const payload = {
         branchId: form.branchId,
-        noOfDays: form.isMonthly ? form.monthlyCount : form.yearlyCount,
         cycle: {
           type: form.isMonthly ? "monthly" : "yearly",
           creditedDay: form.creditedDay?.value,
@@ -222,6 +224,17 @@ const AddConfig = () => {
           : {}),
         isExpiredLeaveAtMonthEnd: false,
       };
+
+      // ✅ Apply consistent leave count logic
+      if (form.isMonthly) {
+        // For monthly: send monthlyCount as noOfDays, yearlyCount as yearlyLeaveCount
+        payload.noOfDays = parseFloat(form.monthlyCount) || 0;
+        payload.yearlyLeaveCount = parseFloat(form.yearlyCount) || 0;
+      } else {
+        // For yearly: send yearlyCount as both noOfDays and yearlyLeaveCount
+        payload.noOfDays = parseFloat(form.yearlyCount) || 0;
+        payload.yearlyLeaveCount = parseFloat(form.yearlyCount) || 0;
+      }
 
       // CREATE: include leavePolicyId
       if (!form._id) {
@@ -264,7 +277,7 @@ const AddConfig = () => {
         monthDay={monthDay}
         YearlyMonth={YearlyMonth}
         setErrors={setErrors}
-        onSubmit={(e) => e.preventDefault()} // Prevent default form submission
+        onSubmit={(e) => e.preventDefault()}
         isEdit={false}
       />
     </div>

@@ -22,6 +22,7 @@ import { role } from '../helper/constants.js';
 // import * as roles from '../controllers/access/role.js';
 // import * as item from '../controllers/warehouse/item.js';
 // import * as subscription from '../controllers/subscription/subscription.js';
+import * as shift from '../controllers/shift/shift.js';
 const router = Router();
 
 
@@ -311,6 +312,8 @@ router.post('/get/:type', // for official, personal, address, password
    user.checkDisabledModules,
    user.getUserById,
    assignment.getIdBasedAssignment,
+   shift.getShiftByBranchId,
+   branch.getBranchShiftDetails,
    (request, response, next)=>{
       return apiResponse.successResponseWithData(response, "User details fetched successfully!", request.body.userDetails)
    }
@@ -326,7 +329,9 @@ router.post('/getDetails',
    //    return next()
    // },
    user.getUserModules,
-   modules.getOwnerModules,
+   // modules.getOwnerModules,
+   assignment.getSingleAssignment,
+   designation.getOneDesignation,
    user.checkDisabledModules,
    modules.format,
 
@@ -439,7 +444,8 @@ router.post('/designation/role/modules',
    assignment.getAssignmentIdBasedDesignation,
    designation.getOneDesignation,
    (request, response, next) => {
-      request.body.roles = request.body.designation.roles || []
+      // request.body.roles = request.body.designation.roles || []
+      request.body.roles = request.body.designation.roleId || []
       return next()
    },
    roles.isRoleValid,

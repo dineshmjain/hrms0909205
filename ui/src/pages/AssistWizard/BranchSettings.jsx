@@ -12,9 +12,9 @@ const BranchSettings = ({
 }) => {
   return (
     <div className="flex w-full flex-col">
-      <Typography className="text-primary font-semibold text-[18px] capitalize  ">
+      {/* <Typography className="text-primary font-semibold text-[18px] capitalize  ">
         Branch Settings
-      </Typography>
+      </Typography> */}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="col-span-1 md:col-span-2 ">
@@ -35,13 +35,13 @@ const BranchSettings = ({
             }
           />
         </div>
-         <Typography className="text-primary font-medium text-[14px] capitalize ">
+        <Typography className="text-primary font-medium text-[14px] capitalize ">
           Branch Timings
         </Typography>
         <div className="col-span-1 md:col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Start Time */}
           <div>
-              <Typography className="text-gray-700 text-[14px] mb-1 font-medium">
+            <Typography className="text-gray-700 text-[14px] mb-1 font-medium">
               Start Time
             </Typography>
             <Input
@@ -54,7 +54,7 @@ const BranchSettings = ({
 
           {/* End Time */}
           <div>
-              <Typography className="text-gray-700 text-[14px] mb-1 font-medium">
+            <Typography className="text-gray-700 text-[14px] mb-1 font-medium">
               End Time
             </Typography>
             <Input
@@ -67,33 +67,37 @@ const BranchSettings = ({
 
           {/* Max In */}
           <div>
-                <Typography className="text-gray-700 text-[14px] mb-1 font-medium">
-              Max In
+            <Typography className="text-gray-700 text-[14px] mb-1 font-medium">
+              Grace In(Minutes)
             </Typography>
             <Input
-              type="time"
+              type="number"
+              min="0"
               value={formData.maxIn || ""}
               className="bg-white text-gray-900 rounded-md"
+              placeholder="Enter minutes"
               onChange={(e) => handleInputChange("maxIn", e.target.value)}
             />
           </div>
 
           {/* Min Out */}
           <div>
-                <Typography className="text-gray-700 text-[14px] mb-1 font-medium">
-              Min Out
+            <Typography className="text-gray-700 text-[14px] mb-1 font-medium">
+              Grace Out(Minutes)
             </Typography>
             <Input
-              type="time"
+              type="number"
+              min="0"
               value={formData.minOut || ""}
               className="bg-white text-gray-900 rounded-md"
+              placeholder="Enter minutes"
               onChange={(e) => handleInputChange("minOut", e.target.value)}
             />
           </div>
         </div>
         {/* Week Off */}
         <div className="col-span-1 md:col-span-2">
-        <Typography className="text-primary mb-4 font-medium text-[14px] capitalize ">
+          <Typography className="text-primary mb-4 font-medium text-[14px] capitalize ">
             Week Off
           </Typography>
           <div className="grid grid-cols-2 md:grid-cols-7 gap-3">

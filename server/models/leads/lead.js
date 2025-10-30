@@ -11,7 +11,7 @@ export const isLeadExist = async (body) => {
             $match: {
                 orgId: new ObjectId(body?.user?.orgId),
                 $or: [
-                    { email: body?.email },
+                    { email: body?.contactPersonEmail },
                     { mobile: body?.mobile }
                 ]
             }
@@ -65,11 +65,13 @@ export const add = async (body) => {
             createdDate: getCurrentDateTime(),
         };
 
-        if (body?.userAssigmentDetails?.subOrgId || body?.subOrgId) {
-            query.subOrgId = new ObjectId(body?.userAssigmentDetails?.subOrgId || body?.subOrgId)
+        if(body?.userAssigmentDetails?.subOrgId  || body?.subOrgId)
+        {
+               query.subOrgId= new ObjectId(body?.userAssigmentDetails?.subOrgId || body?.subOrgId)
         }
-        if (body?.userAssigmentDetails?.branchId || body?.branchId) {
-            query.branchId = new ObjectId(body?.userAssigmentDetails?.branchId ||  body?.branchId)
+        if(body?.userAssigmentDetails?.branchId || body?.branchId)
+        {
+             query.branchId= new ObjectId(body?.userAssigmentDetails?.branchId || body?.branchId)
         }
         return await create(query, collection_name);
     }
@@ -123,6 +125,33 @@ export const getList = async (body) => {
                     // assigned: { $cond: { if: { $in: ["$_id", assignmentIds] }, then: true, else: false } }
                 }
             },
+
+            {
+                $lookup: {
+                    from: "organization",
+                    localField: "subOrgId",
+                    foreignField: "_id",
+                    as: "subOrgs"
+                }
+            },
+            {
+                $lookup: {
+                    from: "branches",
+                    localField: "branchId",
+                    foreignField: "_id",
+                    as: "branches"
+                }
+            },
+            {
+                $addFields: {
+                    "subOrgName": { $arrayElemAt: ["$subOrgs.name", 0] }
+                }
+            },
+            {
+                $addFields: {
+                    "branchName": { $arrayElemAt: ["$branches.name", 0] }
+                }
+            },
             {
                 $project: {
                     user: 0
@@ -145,7 +174,8 @@ export const getList = async (body) => {
 
 export const getDetails = async (body) => {
     try {
-        let query = { orgId: body.user.orgId, _id: new ObjectId(body.leadId) };
+        let query = { orgId: new ObjectId(body.user.orgId), _id: new ObjectId(body.leadId) };
+        console.log(query)
         return await getOne(query, collection_name);
     }
     catch (error) {
@@ -286,7 +316,7 @@ export const updateKycDetails = async (body) => {
     }
 };
 
-//get by Feild Officer Id
+//get by Feild Officer Id or assigned 
 export const getLeadsCreatedBy = async (body) => {
     try {
         let query = [

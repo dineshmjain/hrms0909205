@@ -6,7 +6,8 @@ import {
   SalaryTemplatesGetApi,
   SalaryTemplateCreateApi,
   SalaryTemplatePreviewApi,
-  SalaryComponentUpdateApi
+  SalaryComponentUpdateApi,
+  SalaryTemplateGetOneApi
 } from "../../../apis/Salary/Salary";
 
 // ---------- Components ----------
@@ -63,6 +64,20 @@ export const SalaryComponentToggleAction = createAsyncThunk(
 );
 
 // ---------- Templates ----------
+
+export const SalaryTemplateGetOneAction = createAsyncThunk(
+  "TemplatesGet",
+  async (payload, { rejectWithValue }) => {
+    try {
+      const data = await SalaryTemplateGetOneApi(payload);
+      return data;
+    } catch (error) {
+      console.log("SalaryTemplatesGet Error -->", error);
+      return rejectWithValue(error?.response?.data || { message: "Unknown error occurred" });
+    }
+  }
+);
+
 export const SalaryTemplatesGetAction = createAsyncThunk(
   "TemplatesList",
   async (payload, { rejectWithValue }) => {

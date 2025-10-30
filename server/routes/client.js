@@ -9,6 +9,7 @@ import { validation } from '../helper/validationSchema.js';
 import * as branch from '../controllers/branch/branch.js'
 import * as global from '../controllers/globle/globle.js'
 import clientBranch from './clientBranch.js'
+import * as clientBranchController from '../controllers/client/clientBranch.js'
 import * as shift from '../controllers/shift/shift.js';
 
 
@@ -63,6 +64,74 @@ router.post('/add',
     }
 )
 
+router.post('/wizard/add',
+    // celebrate(validation.createClientOrg),
+    auth.isAuth,
+    user.isUserValid,
+    // creating client
+    (request, response, next) => {
+        request.body.name = request.body.client.name;
+        request.body.orgTypeId = request.body.client.orgTypeId;
+        request.body.clientSince = request.body.client.clientSince;
+        delete request.body.client;
+        next();
+    },
+    org.addClientOrganization,
+    client.mapClient,
+    // create owner
+    (request, response, next) => {
+        request.body.clientId = request.body.clientOrgDetails.data.insertedId;
+        request.body.mobile = request.body.registeredBy.mobile;
+        request.body.name = request.body.registeredBy.name;
+        request.body.relationshipToOrg = request.body.registeredBy.relationshipToOrg;
+        delete request.body.registeredBy;
+        next();
+    },
+    user.addUser,
+    // create default branch
+    (request, response, next) => {
+        request.body.clientMappedId = request.body.clientData.insertedId;
+        request.body.name = request.body.branch.name;
+        request.body.gstNo = request.body.branch.gstNo;
+        request.body.panNo = request.body.branch.panNo;
+        request.body.address = request.body.branch.address;
+        request.body.geoLocation = request.body.branch.geoLocation;
+        request.body.geoJson = request.body.branch.geoJson;
+        delete request.body.branch;
+        next();
+    },
+    client.getClient,
+    branch.addBranch,
+    // assign field officer
+    (request, response, next) => {
+        request.body.clientBranchIds = [String(request.body.insertedBranchId)];
+        request.body.clientMappedId = [request.body.clientMappedId];
+        request.body.id = request.body.fieldOfficer.id;
+        delete request.body.fieldOfficer;
+        console.log(request.body);
+        next();
+    },
+    user.isUpdatingUserValid,
+    client.isMultipleClientValid,
+    clientBranchController.isMultipleBranchValid,
+    user.filterExistingClientIds,
+    user.multipleClientMapping,
+    (request, response) => {
+        return apiResponse.successResponseWithData(response, "Client added successfully!", request.body.clientOrgDetails)
+    }
+)
+
+router.post('/import/excel',
+    auth.isAuth,
+    user.isUserValid,
+    client.decodeClientExcel,
+    client.prepareImportData,
+    client.addClientComplete,
+    (request, response, next) => {
+        return apiResponse.successResponseWithData(response,'Clients Imported Successfully',request.body.importData)
+    }
+)
+
 router.post('/add/owner',
     celebrate(validation.addClientOwner),
     auth.isAuth,
@@ -73,6 +142,31 @@ router.post('/add/owner',
     client.updateClientOwner,
     (request, response) => {
         return apiResponse.successResponse(response, "Client Details updated successfully!")
+    }
+)
+
+router.post('/get/owner',
+    auth.isAuth,
+    user.isUserValid,
+    client.getOwner,
+    (request,response) => {
+        return  apiResponse.successResponseWithData(response, "Owner Details", request.body.clientDetails)
+    }
+
+)
+
+router.post('/add/fieldOfficer',
+    // celebrate(validation.createClientOrg),
+    auth.isAuth,
+    user.isUserValid,
+    // assign field officer
+    user.isUpdatingUserValid,
+    client.isMultipleClientValid,
+    clientBranchController.isMultipleBranchValid,
+    user.filterExistingClientIds,
+    user.multipleClientMapping,
+    (request, response) => {
+        return apiResponse.successResponseWithData(response, "Field Officer assigned successfully!", request.body.clientOrgDetails)
     }
 )
 
@@ -118,6 +212,15 @@ router.post('/list',
     auth.isAuth,
     user.isUserValid,
     client.getClientList,
+    (request,response) => {
+        return  apiResponse.responseWithPagination(response, "Client list",request.body.clientData)
+    }
+)
+
+router.post('/branch/fieldOfficer/list',
+    auth.isAuth,
+    user.isUserValid,
+    client.getClientWithBranchAndFieldOfficer,
     (request,response) => {
         return  apiResponse.responseWithPagination(response, "Client list",request.body.clientData)
     }
@@ -190,17 +293,19 @@ router.post('/edit/owner',
 )
 
 // import client data in excel and add clients
-router.post('/import/excel',
-    auth.isAuth,
-    user.isUserValid,
-    client.decodeClientExcel,
-    global.listOrgType,
-    client.createMissingOrgTypes, 
-    client.initateRecords, 
-    client.createClientOwner, 
-    client.createClientShifts, 
+// router.post('/import/excel',
+//     auth.isAuth,
+//     user.isUserValid,
+//     client.decodeClientExcel,
+//     global.listOrgType,
+//     client.createMissingOrgTypes, 
+//     client.initateRecords, 
+//     client.createClientOwner, 
+//     client.createClientShifts, 
 
-)
+// )
+
+
 
 // get sample client excel
 router.get('/excel/format',

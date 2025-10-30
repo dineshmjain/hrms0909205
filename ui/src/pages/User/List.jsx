@@ -86,6 +86,7 @@ const List = () => {
     },
     email: { DisplayName: "Email" },
     mobile: { DisplayName: "Mobile" },
+
     ...conditionalLabels,
     branchName: { DisplayName: "Branch", type: "object", objectName: "branch" },
     departmentName: {
@@ -98,6 +99,18 @@ const List = () => {
       type: "object",
       objectName: "designation",
     },
+    workTiming: {
+      DisplayName: "Work Timing",
+      type: "function",
+      data: (data) => {
+        const timing = data?.workTiming;
+        if (!timing) return "N/A";
+
+        const { name, startTime, endTime } = timing;
+        return `${name || ""} (${startTime || "N/A"} - ${endTime || "N/A"})`;
+      },
+    },
+
     createdByName: {
       DisplayName: "CreatedBy",
       type: "function",

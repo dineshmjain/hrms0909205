@@ -6,6 +6,8 @@ import {
   getWizardApi,
   OtCreateApi,
   OtUpdateApi,
+  OtGetApi,
+  getOrganizationDetailsApi
 } from "../../../apis/Wiard/WizardApi";
 
 export const GetStructureAction = createAsyncThunk(
@@ -24,6 +26,8 @@ export const GetStructureAction = createAsyncThunk(
     }
   }
 );
+
+
 export const GetOrganizationAction = createAsyncThunk(
   "getOrganizationApi",
   async (userCredentials, { rejectWithValue }) => {
@@ -34,6 +38,22 @@ export const GetOrganizationAction = createAsyncThunk(
       return data;
     } catch (error) {
       console.log("Get Organization Create Error -->", error.message);
+      return rejectWithValue(
+        error?.response?.data || { message: "Unknown error occurred" }
+      );
+    }
+  }
+);
+export const GetOrganizationDetailsAction = createAsyncThunk(
+  "getOrganizationDetailsApi",
+  async (userCredentials, { rejectWithValue }) => {
+    console.log(userCredentials);
+    try {
+      const data = await getOrganizationDetailsApi(userCredentials);
+      console.log("Get Organization Details Successs -->", data);
+      return data;
+    } catch (error) {
+      console.log("Get Organization Details Error -->", error.message);
       return rejectWithValue(
         error?.response?.data || { message: "Unknown error occurred" }
       );
@@ -98,6 +118,23 @@ export const OtUpdateAction = createAsyncThunk(
       return data;
     } catch (error) {
       console.log("OT Update Error -->", error.message);
+      return rejectWithValue(
+        error?.response?.data || { message: "Unknown error occurred" }
+      );
+    }
+  }
+);
+
+export const OtGetAction = createAsyncThunk(
+  "OtGetApi",
+  async (userCredentials, { rejectWithValue }) => {
+    console.log("User Credentials in Action:", userCredentials);
+    try {
+      const data = await OtGetApi(userCredentials);
+      console.log("OT Get Success -->", data);
+      return data;
+    } catch (error) {
+      console.log("OT Get Error -->", error.message);
       return rejectWithValue(
         error?.response?.data || { message: "Unknown error occurred" }
       );

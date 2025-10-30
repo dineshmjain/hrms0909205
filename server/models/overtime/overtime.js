@@ -24,6 +24,10 @@ export const addOvertime = async (body) => {
             isActive: true,
         }
 
+        if(body.branchId){
+            query["branchId"]=new ObjectId(body.branchId)
+        }
+
         return await create(query, collection_name);
     }
     catch (error) {
@@ -36,6 +40,10 @@ export const getList = async (body) => {
     try {
         let query = {
             orgId: new ObjectId(body.user.orgId),
+            isActive:true
+        }
+        if(body.branchId){
+            query['branchId']=new ObjectId(body.branchId)
         }
 
         return await getMany(query, collection_name);

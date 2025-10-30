@@ -10,10 +10,11 @@ import BasicInformation, {
   BasicConfig,
 } from "./BasicInformation/BasicInformation";
 import AddressNew, { AddressCon } from "../../components/Address/AddressNew";
-
 import { BranchCreateAction } from "../../redux/Action/Branch/BranchAction";
+import { GetBranchCreationAction } from "../../redux/Action/Wizard/WizardAction";
 import { clientBranchCreateAction } from "../../redux/Action/ClientBranch/ClientBranchAction";
 import { removeEmptyStrings } from "../../constants/reusableFun";
+import { Typography, Input } from "@material-tailwind/react";
 
 const Add = ({ onComplete }) => {
   const dispatch = useDispatch();
@@ -23,18 +24,16 @@ const Add = ({ onComplete }) => {
   const { active: isSetupMode } = useSelector((state) => state?.setupMode);
   const { user } = useSelector((state) => state?.user);
   const [submitting, setSubmitting] = useState(false);
-  console.log(
-    user,
-    "useruseruseruseruseruseruseruseruseruseruseruseruseruseruseruseruseruseruseruseruseruser"
-  );
+
   // Configs
   const BasicCon = BasicConfig();
-  const AddressConf = AddressCon("branchAddress"); // Assuming prefix is supported
+  const AddressConf = AddressCon("branchAddress");
 
   const initialValues = {
     ...BasicCon.initialValues,
     ...AddressConf.initialValues,
   };
+
   const { subOrgId, ...res } = BasicCon.validationSchema;
 
   const validationSchema = Yup.object().shape({
@@ -44,35 +43,118 @@ const Add = ({ onComplete }) => {
   });
 
   // Handle form submit
-  const handleSubmit = async (values) => {
-    if (submitting) return; // Prevent double dispatch
-    setSubmitting(true);
-    console.log(values?.isEdit, "edit");
-    try {
-      console.log(values, "rrrrrrrrrrrrrrrrrrrrrrrrr");
-      const { name, branchAddress, subOrgId } = values;
+  // Handle form submit
+  // Update the handleSubmit function in the Add component
 
-      const payload = removeEmptyStrings({
+  const handleSubmit = async (values) => {
+    if (submitting) return;
+    setSubmitting(true);
+
+    try {
+      const {
+        name,
+        branchAddress,
+        subOrgId,
+        startTime,
+        endTime,
+        maxIn,
+        minOut,
+        reportingTime,
+        timeSettingType,
+        salaryCycle,
+        financialYear,
+        weekoff,
+      } = values;
+
+      // ✅ Helper function to add minutes to time (HH:MM format)
+      const addMinutesToTime = (time, minutes) => {
+        if (!time || !minutes || minutes === 0) return time;
+
+        const [hours, mins] = time.split(":").map(Number);
+        const totalMinutes = hours * 60 + mins + Number(minutes);
+
+        const newHours = Math.floor(totalMinutes / 60) % 24;
+        const newMins = totalMinutes % 60;
+
+        return `${String(newHours).padStart(2, "0")}:${String(newMins).padStart(
+          2,
+          "0"
+        )}`;
+      };
+
+      // ✅ Helper function to subtract minutes from time (HH:MM format)
+      const subtractMinutesFromTime = (time, minutes) => {
+        if (!time || !minutes || minutes === 0) return time;
+
+        const [hours, mins] = time.split(":").map(Number);
+        let totalMinutes = hours * 60 + mins - Number(minutes);
+
+        // Handle negative values (previous day)
+        if (totalMinutes < 0) {
+          totalMinutes += 24 * 60;
+        }
+
+        const newHours = Math.floor(totalMinutes / 60) % 24;
+        const newMins = totalMinutes % 60;
+
+        return `${String(newHours).padStart(2, "0")}:${String(newMins).padStart(
+          2,
+          "0"
+        )}`;
+      };
+
+      // Build base payload
+      const payload = {
         name,
         subOrgId,
         clientMappedId: isClient ? state?.clientMappedId : "",
         clientId: isClient ? state?.clientId : "",
         ...branchAddress?.structuredAddress,
-      });
-      console.log(payload, "final");
+        salaryCycle: {
+          startDay: Number(salaryCycle.startDay),
+          endDay: Number(salaryCycle.endDay),
+        },
+        financialYear: {
+          startDate: financialYear.startDate,
+          endDate: financialYear.endDate,
+        },
+        weekOff: weekoff,
+        timeSettingType,
+      };
+
+      //  Conditionally add time fields based on timeSettingType
+      if (timeSettingType === "startEnd") {
+        payload.startTime = startTime;
+        payload.endTime = endTime;
+
+        //  Calculate maxIn by ADDING minutes to startTime
+        payload.maxIn = addMinutesToTime(startTime, maxIn);
+
+        //  Calculate minOut by SUBTRACTING minutes from endTime
+        payload.minOut = subtractMinutesFromTime(endTime, minOut);
+
+        console.log("Time Calculations:");
+        console.log(`startTime: ${startTime}`);
+        console.log(`maxIn input (minutes): ${maxIn}`);
+        console.log(`maxIn result: ${payload.maxIn}`);
+        console.log(`endTime: ${endTime}`);
+        console.log(`minOut input (minutes): ${minOut}`);
+        console.log(`minOut result: ${payload.minOut}`);
+      } else if (timeSettingType === "reporting") {
+        payload.reportingTime = reportingTime;
+      }
+
+      const finalPayload = removeEmptyStrings(payload);
+
+      console.log(finalPayload, "Final Payload Before Dispatch");
 
       const Action = isClient ? clientBranchCreateAction : BranchCreateAction;
-      const response = await dispatch(Action(payload));
+      const response = await dispatch(Action(finalPayload));
       const { meta } = response || {};
-      console.log("Action Response:", response);
 
       if (meta?.requestStatus === "fulfilled") {
-        console.log("Navigating after success");
-        if (isSetupMode) {
-          onComplete?.();
-        } else {
-          navigate(isClient ? -1 : "/branch/list");
-        }
+        if (isSetupMode) onComplete?.();
+        else navigate(isClient ? -1 : "/branch/list");
       }
     } catch (error) {
       console.error("Submission Error:", error);
@@ -84,8 +166,6 @@ const Add = ({ onComplete }) => {
   useEffect(() => {
     setIsClient(!!state?.clientId);
   }, [state]);
-
- 
 
   return (
     <div className="flex flex-col w-full flex-1 bg-white border border-gray-100 rounded-md shadow-hrms overflow-scroll">
@@ -112,9 +192,16 @@ const Add = ({ onComplete }) => {
                   <div className="pb-2 border-b-2 border-gray-200">
                     <BasicInformation isClient={isClient} />
                   </div>
-                  <div className="pb-2 ml-1 border-b-2 border-gray-200">
-                    <SubCardHeader headerLabel="Address" />
-                    <AddressNew prefix="branchAddress" isCitySearchWithTimezone={false} isMap={true} isRadius={false} isAdd={true} />
+
+                  <div className="pb-2 ml-1 border-b-2 border-gray-200 mt-6">
+                    <SubCardHeader headerLabel="Branch Settings" />
+                    <AddressNew
+                      prefix="branchAddress"
+                      isCitySearchWithTimezone={false}
+                      isMap={true}
+                      isRadius={false}
+                      isAdd={true}
+                    />
                   </div>
                 </div>
               </Form>

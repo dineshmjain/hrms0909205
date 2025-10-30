@@ -1,5 +1,5 @@
 import { ObjectId } from "mongodb";
-import { create, getOne, createMany, updateMany, aggregate, aggregationWithPegination } from "../../helper/mongo.js";
+import { create, getOne, getMany, createMany, updateMany, aggregate, aggregationWithPegination } from "../../helper/mongo.js";
 import { logger } from '../../helper/logger.js';
 import { defaultSalaryComponents } from "../../helper/constants.js";
 
@@ -217,6 +217,74 @@ export const createSalaryTemplate = async (body) => {
   }
 };
 
+export const getSalaryTemplate = async (body) => {
+  try {
+    if (!body.orgDetails?._id) {
+      throw new Error("orgId is required");
+    }
+    if (!body.templateId) {
+      throw new Error("templateId is required");
+    }
+
+    const params = {
+      _id: new ObjectId(body.templateId),
+      orgId: new ObjectId(body.orgDetails._id),
+      isActive: true,
+    };
+
+    const aggregationPipeline = [
+      { $match: params },
+      {
+        $lookup: {
+          from: "salaryComponents",
+          localField: "components.componentName",
+          foreignField: "_id",
+          as: "componentDocs",
+        },
+      },
+      {
+        $addFields: {
+          components: {
+            $map: {
+              input: "$components",
+              as: "comp",
+              in: {
+                componentName: {
+                  $arrayElemAt: [
+                    {
+                      $filter: {
+                        input: "$componentDocs",
+                        as: "doc",
+                        cond: { $eq: ["$$doc._id", "$$comp.componentName"] },
+                      },
+                    },
+                    0,
+                  ],
+                },
+                valueType: "$$comp.valueType",
+                componentValue: "$$comp.componentValue",
+                percentageOf: "$$comp.percentageOf",
+              },
+            },
+          },
+        },
+      },
+      { $project: { componentDocs: 0 } },
+    ];
+
+    const result = await aggregate(aggregationPipeline, salaryTemplatesCollection);
+
+    if (!result.status || !result.data || result.data.length === 0) {
+      return { status: false, message: "Salary template not found" };
+    }
+
+    return { status: true, data: result.data[0] };
+  } catch (error) {
+    logger.error("Error while getting salary template", error);
+    throw error;
+  }
+};
+
 export const listSalaryTemplates = async (body) => {
   try {
     if (!body.orgDetails?._id) {
@@ -297,6 +365,7 @@ export const previewSalaryTemplate = async (body) => {
       throw new Error("templateId is required");
     }
 
+    // --- STEP 1: FETCH TEMPLATE
     const pipeline = [
       { $match: { _id: new ObjectId(templateId), isActive: true } },
       {
@@ -342,12 +411,46 @@ export const previewSalaryTemplate = async (body) => {
 
     const template = data[0];
     const totalCTC = parseFloat(ctc);
-    const comps = template.components || [];
+    const orgId = template.orgId;
+    let comps = template.components || [];
 
-    const safeNum = (v) => {
-      const n = Number(v);
-      return Number.isFinite(n) ? n : 0;
-    };
+    // --- STEP 2: AUTO-INJECT STATUTORY COMPONENTS (EPF, ESI, PT, etc.)
+    const statutoryDocs = await getMany(
+      { isActive: true, isStatutory: true, orgId: orgId },
+      salaryComponentsCollection
+    );
+
+    if (statutoryDocs?.status && Array.isArray(statutoryDocs.data)) {
+      const existingIds = new Set(
+        comps.map((c) => String(c.componentName?._id || c.componentName))
+      );
+      const existingNames = new Set(
+        comps.map((c) => c.componentName?.name?.toLowerCase?.() || "")
+      );
+
+      for (const stat of statutoryDocs.data) {
+        const statId = String(stat._id);
+        const statName = (stat.name || "").toLowerCase();
+
+        if (existingIds.has(statId) || existingNames.has(statName)) continue;
+
+        const appliesTo = (stat.statutoryDetails?.appliesTo || []).map(String);
+        const applies = appliesTo.some((id) => existingIds.has(id));
+
+        if (applies || statName.includes("tax") || statName.includes("esi") || statName.includes("epf")) {
+          comps.push({
+            componentName: stat,
+            valueType: "statutory",
+            componentValue: null,
+            percentageOf: [],
+          });
+          existingIds.add(statId);
+          existingNames.add(statName);
+        }
+      }
+    }
+
+    const safeNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
     const compId = (comp) => {
       const cid = comp?.componentName?._id || comp?.componentName;
       return cid?.toString?.() || String(cid);
@@ -355,11 +458,11 @@ export const previewSalaryTemplate = async (body) => {
 
     const compValues = {};
     const resolved = {};
-
     let changed = true;
     let iter = 0;
     const SAFETY = 100;
 
+    // --- STEP 3: MAIN CALCULATION LOOP
     while (changed && iter < SAFETY) {
       iter++;
       changed = false;
@@ -384,6 +487,9 @@ export const previewSalaryTemplate = async (body) => {
         const id = compId(comp);
         if (!id || resolved[id]) continue;
 
+        const meta = comp.componentName || {};
+
+        // --- Fixed components
         if (comp.valueType === "fixed") {
           compValues[id] = safeNum(comp.componentValue);
           resolved[id] = true;
@@ -391,6 +497,7 @@ export const previewSalaryTemplate = async (body) => {
           continue;
         }
 
+        // --- Percentage-based components
         if (comp.valueType === "percentage") {
           const pct = safeNum(comp.componentValue) / 100;
           const refs = Array.isArray(comp.percentageOf) ? comp.percentageOf : [];
@@ -403,7 +510,8 @@ export const previewSalaryTemplate = async (body) => {
               const key = String(basis.value).toLowerCase();
               if (key === "ctc") baseSum += totalCTC;
               else if (key === "gross") baseSum += currEarnings;
-              else if (key === "net") baseSum += Math.max(0, currEarnings - currDeductions);
+              else if (key === "net")
+                baseSum += Math.max(0, currEarnings - currDeductions);
             } else if (basis.type === "component") {
               const refId = basis.value?.toString?.() || String(basis.value);
               if (resolved[refId]) baseSum += safeNum(compValues[refId]);
@@ -419,19 +527,63 @@ export const previewSalaryTemplate = async (body) => {
             resolved[id] = true;
             changed = true;
           }
+
+          continue;
+        }
+
+        // --- Statutory (EPF, ESI, PT, etc.)
+        if (meta.isStatutory && meta.statutoryDetails) {
+          const details = meta.statutoryDetails || {};
+          const employeePct = safeNum(details.contribution?.employee);
+          const employerPct = safeNum(details.contribution?.employer);
+          const appliesTo = details.appliesTo || [];
+          const limit = safeNum(details.limit);
+          const fixedAmount = safeNum(details.amount);
+
+          // Case 1: Fixed statutory (like Professional Tax)
+          if (fixedAmount > 0) {
+            compValues[id] = fixedAmount;
+            resolved[id] = true;
+            changed = true;
+            continue;
+          }
+
+          // Case 2: Percentage-based (PF/ESI)
+          let baseSum = 0;
+          let canResolve = true;
+
+          for (const refId of appliesTo) {
+            const refStr = refId?.toString?.() || String(refId);
+            if (resolved[refStr]) baseSum += safeNum(compValues[refStr]);
+            else {
+              canResolve = false;
+              break;
+            }
+          }
+
+          if (canResolve) {
+            const cappedBase = limit > 0 ? Math.min(baseSum, limit) : baseSum;
+            const empValue = employeePct * cappedBase;
+            const employerValue = employerPct * cappedBase;
+
+            compValues[id] = empValue;
+            compValues[`${id}_employer`] = employerValue;
+
+            resolved[id] = true;
+            changed = true;
+          }
         }
       }
     }
 
-    for (const comp of comps) {
-      const id = compId(comp);
-      if (!resolved[id]) compValues[id] = 0;
-    }
-
+    // --- STEP 4: Compute totals (Monthly + Yearly)
     let totalEarnings = 0;
     let totalDeductions = 0;
+    let totalEmployerContrib = 0;
+
     const earnings = [];
     const deductions = [];
+    const employerContribs = [];
 
     for (const comp of comps) {
       const id = compId(comp);
@@ -440,17 +592,66 @@ export const previewSalaryTemplate = async (body) => {
       const name = meta.name || id;
       const value = safeNum(compValues[id]);
 
+      // Handle statutory components
+      if (meta.isStatutory && meta.statutoryDetails) {
+        const details = meta.statutoryDetails;
+        const baseAppliesTo = details.appliesTo || [];
+        const limit = safeNum(details.limit);
+        const employeePct = safeNum(details.contribution?.employee);
+        const employerPct = safeNum(details.contribution?.employer);
+        const fixedAmount = safeNum(details.amount);
+
+        // Fixed statutory (PT)
+        if (fixedAmount > 0) {
+          deductions.push({
+            name,
+            monthly: fixedAmount,
+            yearly: fixedAmount * 12,
+          });
+          totalDeductions += fixedAmount;
+          continue;
+        }
+
+        // Percentage-based (PF/ESI)
+        let baseSum = 0;
+        for (const refId of baseAppliesTo) {
+          const refStr = refId?.toString?.() || String(refId);
+          baseSum += safeNum(compValues[refStr]);
+        }
+
+        const cappedBase = limit > 0 ? Math.min(baseSum, limit) : baseSum;
+        const empDeduction = employeePct * cappedBase;
+        const employerShare = employerPct * cappedBase;
+
+        deductions.push({
+          name: `${name} (Employee Deduction)`,
+          monthly: empDeduction,
+          yearly: empDeduction * 12,
+        });
+        employerContribs.push({
+          name: `${name} (Employer Contribution)`,
+          monthly: employerShare,
+          yearly: employerShare * 12,
+        });
+
+        totalDeductions += empDeduction;
+        totalEmployerContrib += employerShare;
+        continue;
+      }
+
+      // Normal components
       if (cat === "earning") {
         totalEarnings += value;
-        earnings.push({ name, value });
+        earnings.push({ name, monthly: value, yearly: value * 12 });
       } else {
         totalDeductions += value;
-        deductions.push({ name, value });
+        deductions.push({ name, monthly: value, yearly: value * 12 });
       }
     }
 
     const gross = totalEarnings;
     const netSalary = totalEarnings - totalDeductions;
+    const ctcValue = totalEarnings + totalEmployerContrib;
 
     return {
       status: true,
@@ -460,9 +661,27 @@ export const previewSalaryTemplate = async (body) => {
         gross,
         earnings,
         deductions,
-        totalEarnings,
-        totalDeductions,
-        netSalary,
+        employerContribs,
+        totalEarnings: {
+          monthly: totalEarnings,
+          yearly: totalEarnings * 12,
+        },
+        totalDeductions: {
+          monthly: totalDeductions,
+          yearly: totalDeductions * 12,
+        },
+        totalEmployerContrib: {
+          monthly: totalEmployerContrib,
+          yearly: totalEmployerContrib * 12,
+        },
+        netSalary: {
+          monthly: netSalary,
+          yearly: netSalary * 12,
+        },
+        totalCTCValue: {
+          monthly: ctcValue,
+          yearly: ctcValue * 12,
+        },
       },
     };
   } catch (error) {
@@ -470,6 +689,7 @@ export const previewSalaryTemplate = async (body) => {
     throw error;
   }
 };
+
 
 export const toggleSalaryComponents = async (body) => {
   try {

@@ -17,6 +17,19 @@ router.use((request, response, next) => {
     return next();
 })
 
+// for my convenience when working on existing orgs
+router.post(
+   "/component/create/default",
+//    celebrate(validation.addingUser),
+   auth.isAuth,
+   user.isUserValid,
+   org.getOrg,
+   salary.createDefaultSalaryComponents,
+   (request,response) => {
+      return  apiResponse.successResponse(response, "Component Created Successfully")
+   }
+)
+
 router.post(
    "/component/create",
 //    celebrate(validation.addingUser),
@@ -73,6 +86,18 @@ router.post(
    salary.createSalaryTemplate,
    (request,response) => {
       return  apiResponse.successResponse(response, "Template Created Successfully")
+   }
+)
+
+router.post(
+   "/template/get",
+//    celebrate(validation.addingUser),
+   auth.isAuth,
+   user.isUserValid,
+   org.getOrg,
+   salary.getSalaryTemplate,
+   (request,response) => {
+       return  apiResponse.successResponseWithData(response, "Data found successfully",request.body.template)
    }
 )
 

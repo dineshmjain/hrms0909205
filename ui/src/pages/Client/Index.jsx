@@ -6,6 +6,7 @@ import ImportClient from "./ImportClient";
 const Add = lazy(() => import("./Add"));
 const List = lazy(() => import("./List"));
 const Edit = lazy(() => import("./Edit"));
+const ClientWizard = lazy(() => import("../ClientWizard/Index"))
 const Index = () => {
   return (
     <Suspense fallback={<Loader />}>
@@ -14,7 +15,8 @@ const Index = () => {
         <Route element={<Add />} path="add" />
         <Route element={<List />} path="list" />
         <Route element={<Edit />} path="edit" />
-          <Route element={<ImportClient />} path="import" />
+        <Route element={<ImportClient />} path="import" />
+        <Route element={<ClientWizard />} path="wizard" />
       </Routes>
     </Suspense>
   );

@@ -30,6 +30,7 @@ export const getOneDesignation = async (request,response,next) => {
 
             request.logger.debug(JSON.stringify(res));
             request.body.designation = res.data;
+            request.body.designationDisabledModules=res.data?.disabledModules ?? {}
             return next();
         }).catch(error => {
             request.logger.error("Error while get designation in designation controller ",{ stack: error.stack });
@@ -212,6 +213,211 @@ export const findDesignations = async (request,response,next) => {
         }else return next()
     } catch (error) {
         request.logger.error("Error while findDesignations in designation controller ", { stack: error.stack });
+        return apiResponse.somethingResponse(response, error.message)
+    }
+}
+
+
+export const updateDesignationAsService=async(request,response,next)=>{
+    try{
+        if(request.body.orgExist) return next();
+        designationModel.updateDesignationAsService(request.body).then(res => {
+            if(!res.status) return apiResponse.ErrorResponse(response,"Something went worng",res.error);
+            return next();
+        }).catch(error => {
+            request.logger.error("Error while addDefaultDesignations in designation controller ",{ stack: error.stack });
+            return apiResponse.somethingResponse(response, error.message)
+        })
+
+    }catch(error){
+        request.logger.error("Error while addDefaultDesignations in designation controller ",{ stack: error.stack });
+        return apiResponse.somethingResponse(response, error.message)
+    }
+}
+
+export const getDesignationAsService=async(request,response,next)=>{
+    try{
+     
+        designationModel.getDesignationAsService(request.body).then(res => {
+            if(!res.status) return apiResponse.ErrorResponse(response,"Something went worng",res.error);
+            request.body.designationList =res.data
+            return next();
+        }).catch(error => {
+            request.logger.error("Error while getDesignationasService in designation controller ",{ stack: error.stack });
+            return apiResponse.somethingResponse(response, error.message)
+        })
+
+    }catch(error){
+        request.logger.error("Error while getDesignationasService in designation controller ",{ stack: error.stack });
+        return apiResponse.somethingResponse(response, error.message)
+    }
+}
+
+
+export const updateDisabledModules = async (request,response,next) => {
+    try{
+        if(!request.body.designationId) return apiResponse.validationError(response,"designationId is required");
+        designationModel.updateDisabledModules(request.body).then(res => {
+            if(!res.status) return apiResponse.validationError(response,"Unable to update disabledModules");
+            return next();
+        }).catch(error => {
+            request.logger.error("Error while updateDisabledModules in designation controller ",{ stack: error.stack });
+            return apiResponse.somethingResponse(response, error.message)  
+        })
+    }catch(error){
+        request.logger.error("Error while updateDisabledModules in designation controller ",{ stack: error.stack });
+        return apiResponse.somethingResponse(response, error.message)   
+    }
+}
+
+
+export const getDesignationModules = async (request, response, next) => {
+    try {
+        if(!request.body.designation?.roles)return apiResponse.validationError(response,'role is not mapped to this designation')
+        designationModel.getDesignationModules(request.body).then(res => {
+            if (res.status) {
+                let result = res.data[0]
+
+                // Create an object to store unique module names as keys
+                const uniqueModules = {};
+                // Iterate through roles and their modules
+                result?.roles.forEach((role) => {
+                    role?.Modules.forEach((module) => {
+
+                        //Module needs to be active
+                        if (module.isActive === 1 || module.isActive === true) {
+
+                            const moduleName = module.name;
+                            const permissions = role.modules.find(m => m.moduleId.toString() === module._id.toString())?.permissions
+
+                            // Check if the module name is already in the uniqueModules object
+                            if (uniqueModules[moduleName]) {
+                                // Merge the permissions array for the duplicate module
+                                uniqueModules[moduleName].permissions = [
+                                    ...new Set([
+                                        ...uniqueModules[moduleName].permissions,
+                                        ...permissions,
+                                    ]),
+                                ];
+                            } else {
+                                // If it's a new module name, add it to uniqueModules
+                                uniqueModules[moduleName] = {
+                                    moduleId: module._id,
+                                    name: moduleName,
+                                    moduleKey: module.moduleKey,
+                                    permissions,
+                                };
+                            }
+                        }
+                    });
+                });
+
+                // Extract the unique merged modules as an array
+                request.body.assignedModules = Object.values(uniqueModules);
+                return next()
+            }
+
+            else throw {}
+        }).catch(error => {
+            request.logger.error("Error while getUserModules in user controller.",{ stack: error.stack });
+            return apiResponse.somethingResponse(response, error.toString())
+        })
+    }
+    catch (error) {
+        request.logger.error("Error while getUserModules in user controller.",{ stack: err.stack });
+        return apiResponse.somethingResponse(response, error.toString())
+    }
+}
+
+
+export const mergeBothEnableDisableModules = async (request, response, next) => {
+    try {
+        if(request.body.designation?.disabledModules.length<1)return next()
+        const ALL_PERMS = ["c", "r", "u", "d"];
+     
+        const disabledModules = [
+            ...(Array.isArray(request.body.designation?.disabledModules)
+              ? request.body.designation.disabledModules
+              : []),
+        ];
+        let dbModules = request.body.assignedModules
+      
+        const disabledMap = new Map();
+        
+        if (Array.isArray(disabledModules)) {
+            for (const m of disabledModules) {
+                const moduleId = typeof m === "string" ? String(m) : String(m.moduleId);
+                const perms = m && m.permissions ? m.permissions : ["all"];
+            
+            if (!disabledMap.has(moduleId)) {
+                disabledMap.set(moduleId, new Set(perms));
+              } else {
+                const existing = disabledMap.get(moduleId);
+                for (const p of perms) existing.add(p); // ✅ merge permissions
+                disabledMap.set(moduleId, existing);
+              }
+            }
+        } else if (disabledModules && typeof disabledModules === "object") {
+            for (const [k, v] of Object.entries(disabledModules)) {
+            disabledMap.set(String(k), new Set(Array.isArray(v) ? v : ["all"]));
+            }
+        }
+      
+        const filteredModules = dbModules.map((m) => {
+            const moduleId = String(m.moduleId);
+            const rolePerms = new Set(m.permissions || []);
+            const disabledPerms = disabledMap.get(moduleId) || new Set();
+            const isAllDisabled = disabledPerms.has("all");
+      
+            const permissions = {};
+            for (const p of ALL_PERMS) {
+              // If disabled -> unchecked
+              if (isAllDisabled || disabledPerms.has(p)) {
+                // permissions[p] = "unchecked";
+                permissions[p] = false;
+              } else if (rolePerms.has(p)) {
+                // permissions[p] = "checked";
+                permissions[p] = true;
+              } else {
+                // permissions[p] = "unchecked";
+                permissions[p] = false;
+              }
+            }
+      
+            return {
+              moduleId: m.moduleId,
+              name: m.name,
+              moduleKey: m.moduleKey,
+              permissions, // always the {c,r,u,d} status object
+            };
+          });
+      
+          request.body.assignedModules = filteredModules;
+        // console.log("...filterdModules",JSON.stringify(filteredModules));
+        return next()
+    }
+    catch (error) {
+        request.logger.error("Error while checkDisabledModules in user controller.",{ stack: error.stack });
+        return apiResponse.somethingResponse(response, error.toString())
+    }
+}
+
+
+
+export const getDesignationAsServicePrice=async(request,response,next)=>{
+    try{
+     
+        designationModel.getDesignationAsServicePrice(request.body).then(res => {
+            if(!res.status) return apiResponse.ErrorResponse(response,"Something went worng",res.error);
+            request.body.designationList =res.data
+            return next();
+        }).catch(error => {
+            request.logger.error("Error while getDesignationasService in designation controller ",{ stack: error.stack });
+            return apiResponse.somethingResponse(response, error.message)
+        })
+
+    }catch(error){
+        request.logger.error("Error while getDesignationasService in designation controller ",{ stack: error.stack });
         return apiResponse.somethingResponse(response, error.message)
     }
 }

@@ -4,7 +4,7 @@
 // import { useFormikContext } from 'formik';
 // import { getAddressTypesAction } from '../../redux/Action/Global/GlobalAction';
 
-// import FormikInput from '../input/FormikInput';
+// import FormikInput from '../Input/FormikInput';
 // import SubCardHeader from '../header/SubCardHeader';
 // import CitySearchWithTimezone from '../Input/CitySearchWithTimezone';
 // import { Typography } from '@material-tailwind/react';
@@ -192,7 +192,7 @@ import * as Yup from 'yup';
 import { useFormikContext } from 'formik';
 import { getAddressTypesAction } from '../../redux/Action/Global/GlobalAction';
 
-import FormikInput from '../input/FormikInput';
+import FormikInput from '../Input/FormikInput';
 import CitySearchWithTimezone from '../Input/CitySearchWithTimezone';
 import { Typography } from '@material-tailwind/react';
 

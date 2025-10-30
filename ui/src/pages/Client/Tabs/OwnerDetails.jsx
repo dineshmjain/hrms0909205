@@ -34,6 +34,8 @@ const OwnerDetails = () => {
       const responseData = removeEmptyStrings({
         name: { firstName: values?.firstName, lastName: values?.lastName },
         mobile: values?.mobile?.toString(),
+        email: values?.email,
+        relationshipToOrg: values?.relationshipToOrg,
         clientId: values?.clientId,
         _id: values?._id,
       });

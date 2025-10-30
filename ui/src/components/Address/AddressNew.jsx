@@ -4,7 +4,7 @@ import * as Yup from "yup";
 import { useFormikContext } from "formik";
 import { getAddressTypesAction } from "../../redux/Action/Global/GlobalAction";
 import currentlocation from "../../assets/Images/current-location.png";
-import FormikInput from "../input/FormikInput";
+import FormikInput from "../Input/FormikInput";
 import CitySearchWithTimezone from "../Input/CitySearchWithTimezone";
 import { Input, Typography } from "@material-tailwind/react";
 import { GoogleMap, Marker, Circle, Polygon } from "@react-google-maps/api";
@@ -489,7 +489,7 @@ const AddressNew = ({
           editValue={addressTypes.find((d) => d._id === addressTypeId)?.name}
         />
 
-        {["hno", "street", "landmark", "city", "district", "taluk", "state", "country", "pincode"].map((field) => (
+        {["hno", "landmark", "city", "district", "state", "country", "pincode"].map((field) => (
           <FormikInput
             key={field}
             name={getFieldName(field)}

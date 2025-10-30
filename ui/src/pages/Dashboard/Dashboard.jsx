@@ -1,112 +1,133 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSelector } from 'react-redux';
-import { Card, Typography } from '@material-tailwind/react';
+import { Typography } from '@material-tailwind/react';
 
-// Import role-specific dashboards
-import AdminDashboard from './RoleDashboards/AdminDashboard';
-import SecurityGuardDashboard from './RoleDashboards/SecurityGuardDashboard';
-import ManagerDashboard from './RoleDashboards/ManagerDashboard';
-import SupervisorDashboard from './RoleDashboards/SupervisorDashboard';
-import HRDashboard from './RoleDashboards/HRDashboard';
-import ClientDashboard from './RoleDashboards/ClientDashboard';
-import NurseDashboard from './RoleDashboards/NurseDashboard';
-import ReceptionistDashboard from './RoleDashboards/ReceptionistDashboard';
-import MaintenanceDashboard from './RoleDashboards/MaintenanceDashboard';
-import FieldOfficerDashboard from './RoleDashboards/FieldOfficerDashboard';
+// 🌀 Lazy-loaded dashboards for performance
+const AdminDashboard = React.lazy(() => import('./RoleDashboards/AdminDashboard'));
+const SecurityGuardDashboard = React.lazy(() => import('./RoleDashboards/SecurityGuardDashboard'));
+const ManagerDashboard = React.lazy(() => import('./RoleDashboards/ManagerDashboard'));
+const SupervisorDashboard = React.lazy(() => import('./RoleDashboards/SupervisorDashboard'));
+const HRDashboard = React.lazy(() => import('./RoleDashboards/HRDashboard'));
+const ClientDashboard = React.lazy(() => import('./RoleDashboards/ClientDashboard'));
+const NurseDashboard = React.lazy(() => import('./RoleDashboards/NurseDashboard'));
+const ReceptionistDashboard = React.lazy(() => import('./RoleDashboards/ReceptionistDashboard'));
+const MaintenanceDashboard = React.lazy(() => import('./RoleDashboards/MaintenanceDashboard'));
+const FieldOfficerDashboard = React.lazy(() => import('./RoleDashboards/FieldOfficerDashboard'));
+
+// 🧭 Role → Component mapping
+const roleComponents = {
+  admin: AdminDashboard,
+  'super admin': AdminDashboard,
+
+  manager: ManagerDashboard,
+  'branch manager': ManagerDashboard,
+  'area manager': ManagerDashboard,
+
+  supervisor: SupervisorDashboard,
+  'team leader': SupervisorDashboard,
+
+  'security guard': SecurityGuardDashboard,
+  guard: SecurityGuardDashboard,
+  'security officer': SecurityGuardDashboard,
+
+  'field officer': FieldOfficerDashboard,
+  'field supervisor': FieldOfficerDashboard,
+  'operations officer': FieldOfficerDashboard,
+
+  hr: HRDashboard,
+  'hr manager': HRDashboard,
+  'human resource': HRDashboard,
+
+  client: ClientDashboard,
+  'client admin': ClientDashboard,
+
+  nurse: NurseDashboard,
+  'staff nurse': NurseDashboard,
+  'head nurse': NurseDashboard,
+
+  receptionist: ReceptionistDashboard,
+  'front desk': ReceptionistDashboard,
+
+  maintenance: MaintenanceDashboard,
+  technician: MaintenanceDashboard,
+  housekeeping: MaintenanceDashboard,
+};
+
+// 🧩 Dev-only role switcher
+const RoleSwitcher = ({ currentRole, onChange }) => {
+  const roles = Object.keys(roleComponents);
+  return (
+    <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+      <Typography variant="small" color="blue-gray" className="mb-2 font-semibold">
+        🧪 Test Mode - Switch Role:
+      </Typography>
+      <div className="flex flex-wrap gap-2">
+        {roles.map((role) => (
+          <button
+            key={role}
+            onClick={() => onChange(role)}
+            className={`px-3 py-1 text-xs rounded-full border transition ${
+              currentRole === role
+                ? 'bg-blue-500 text-white border-blue-500'
+                : 'bg-white text-blue-600 border-blue-300 hover:bg-blue-50'
+            }`}
+          >
+            {role.charAt(0).toUpperCase() + role.slice(1)}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const Dashboard = () => {
-  const [userRole, setUserRole] = useState('');
+  const [userRole, setUserRole] = useState('admin');
   const [loading, setLoading] = useState(true);
-  const [debugInfo, setDebugInfo] = useState({});
-
-  // Get user data from Redux store
   const { user } = useSelector((state) => state.user || {});
+
+  const isDevMode = true; // set to false in production
 
   useEffect(() => {
     let isMounted = true;
-    
-    const loadDashboard = () => {
-      if (!isMounted) return;
-      
-      // Debug information
-      // const modules = JSON.parse(localStorage.getItem('modules') || '[]');
-      const modules = user?.modules
-      // const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      const userData = user
-      const token = localStorage.getItem('token');
+
+    const determineRole = () => {
       const testRole = localStorage.getItem('testRole');
+      let detectedRole = 'admin';
 
-      setDebugInfo({
-        hasModules: modules.length > 0,
-        hasUserData: Object.keys(userData).length > 0,
-        hasToken: !!token,
-        hasTestRole: !!testRole,
-        moduleCount: modules.length,
-        userDataKeys: Object.keys(userData)
-      });
-
-      // Check for test role first (for development/testing)
       if (testRole) {
-        console.log('Using test role:', testRole);
-        if (isMounted) {
-          setUserRole(testRole);
-          setTimeout(() => {
-            if (isMounted) setLoading(false);
-          }, 1000);
-        }
-        return;
+        detectedRole = testRole;
+      } else if (user?.roleName) {
+        detectedRole = user.roleName.toLowerCase();
+      } else if (user?.roleDetails?.length) {
+        detectedRole = user.roleDetails[0]?.name?.toLowerCase();
+      } else if (user?.modules?.length) {
+        const moduleNames = user.modules.map((m) => m.name.toLowerCase());
+        if (moduleNames.includes('hr')) detectedRole = 'hr';
+        else if (moduleNames.includes('security')) detectedRole = 'security guard';
+        else if (moduleNames.includes('client')) detectedRole = 'client';
+        else if (moduleNames.includes('manager')) detectedRole = 'manager';
       }
 
-      // Determine role based on modules or user role
-      let role = 'admin'; // Default role for demo
-
-      if (userData.roleDetails && userData.roleDetails.length > 0) {
-        const primaryRole = userData.roleDetails[0].name.toLowerCase();
-        role = primaryRole;
-      } else if (modules.length > 0) {
-        // Determine role based on available modules
-        const moduleNames = modules.map(m => m.name.toLowerCase());
-
-        if (moduleNames.includes('user management') && moduleNames.includes('organization')) {
-          role = 'admin';
-        } else if (moduleNames.includes('security')) {
-          role = 'security guard';
-        } else if (moduleNames.includes('hr')) {
-          role = 'hr';
-        } else if (moduleNames.includes('client')) {
-          role = 'client';
-        } else if (moduleNames.includes('manager')) {
-          role = 'manager';
-        } else if (moduleNames.includes('supervisor')) {
-          role = 'supervisor';
-        }
-      }
-           role=user?.roleName?.toLowerCase() || 'admin'
-      // else{
-          console.log('Detected user role:', role,user?.roleName);
-   
-      // }
-
-    
-      
       if (isMounted) {
-        setUserRole(role);
-        setTimeout(() => {
-          if (isMounted) setLoading(false);
-        }, 1000);
+        setUserRole(detectedRole);
+        setTimeout(() => setLoading(false), 800);
       }
     };
 
-    // Set initial loading state
     setLoading(true);
-    
-    // Load dashboard data
-    loadDashboard();
-    
+    determineRole();
+
     return () => {
       isMounted = false;
     };
   }, [user]);
+
+  const handleRoleChange = (newRole) => {
+    setLoading(true);
+    localStorage.setItem('testRole', newRole);
+    setUserRole(newRole);
+    setTimeout(() => setLoading(false), 600);
+  };
 
   if (loading) {
     return (
@@ -121,8 +142,14 @@ const Dashboard = () => {
           <div className="mt-4 flex justify-center">
             <div className="flex space-x-1">
               <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+              <div
+                className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"
+                style={{ animationDelay: '0.2s' }}
+              ></div>
+              <div
+                className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"
+                style={{ animationDelay: '0.4s' }}
+              ></div>
             </div>
           </div>
         </div>
@@ -130,112 +157,30 @@ const Dashboard = () => {
     );
   }
 
-  // Role selector for testing (only show in development)
-  // const isDevMode = window.location.hostname === 'localhost' || window.location.hostname.includes('replit');
-const isDevMode =true
-  const handleRoleChange = (newRole) => {
-    setLoading(true);
-    localStorage.setItem('testRole', newRole);
-    setUserRole(newRole);
-    
-    // Ensure loading state is visible for role switching
-    setTimeout(() => {
-      setLoading(false);
-    }, 800);
-  };
+  const SelectedDashboard = roleComponents[userRole] || AdminDashboard;
 
   return (
     <div className="p-6">
-      <div className="mb-6">
+      <header className="mb-6">
         <Typography variant="h4" color="blue-gray" className="mb-2">
           Dashboard
         </Typography>
-        <Typography color="gray" className="font-normal">
-          Welcome back! Here's what's happening in your organization.
-        </Typography>
+        <Typography color="gray">Welcome back! Here's what's happening in your organization.</Typography>
 
-        {/* Debug Information */}
-        {/* {isDevMode && (
-          <div className="mt-4 p-3 bg-gray-50 rounded-lg border">
-            <Typography variant="small" color="blue-gray" className="mb-2 font-semibold">
-              🔧 Debug Info:
-            </Typography>
-            <div className="text-xs text-gray-600">
-              <p>Current Role: <strong>{userRole}</strong></p>
-              <p>Has Token: {debugInfo.hasToken ? '✅' : '❌'}</p>
-              <p>Has Modules: {debugInfo.hasModules ? '✅' : '❌'} ({debugInfo.moduleCount})</p>
-              <p>Has User Data: {debugInfo.hasUserData ? '✅' : '❌'}</p>
-              <p>Has Test Role: {debugInfo.hasTestRole ? '✅' : '❌'}</p>
-            </div>
-          </div>
-        )} */}
-
-        {/* Role Selector for Testing */}
         {isDevMode && (
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <Typography variant="small" color="blue-gray" className="mb-2 font-semibold">
-              🧪 Test Mode - Switch Role:
-            </Typography>
-            <div className="flex flex-wrap gap-2">
-              {['admin', 'hr', 'manager', 'supervisor', 'security guard', 'field officer', 'client', 'nurse', 'receptionist', 'maintenance'].map((role) => (
-                <button
-                  key={role}
-                  onClick={() => handleRoleChange(role)}
-                  className={`px-3 py-1 text-xs rounded-full border ${
-                    userRole === role 
-                      ? 'bg-blue-500 text-white border-blue-500' 
-                      : 'bg-white text-blue-600 border-blue-300 hover:bg-blue-50'
-                  }`}
-                >
-                  {role.charAt(0).toUpperCase() + role.slice(1)}
-                </button>
-              ))}
-            </div>
-          </div>
+          <RoleSwitcher currentRole={userRole} onChange={handleRoleChange} />
         )}
-      </div>
-      {(() => {
-        switch (userRole) {
-          case 'admin':
-          case 'super admin':
-            return <AdminDashboard />;
-          case 'manager':
-          case 'branch manager':
-          case 'area manager':
-            return <ManagerDashboard />;
-          case 'supervisor':
-          case 'team leader':
-            return <SupervisorDashboard />;
-          case 'security guard':
-          case 'guard':
-          case 'security officer':
-            return <SecurityGuardDashboard />;
-          case 'field officer':
-          case 'field supervisor':
-          case 'operations officer':
-            return <FieldOfficerDashboard />;
-          case 'hr':
-          case 'hr manager':
-          case 'human resource':
-            return <HRDashboard />;
-          case 'client':
-          case 'client admin':
-            return <ClientDashboard />;
-          case 'nurse':
-          case 'staff nurse':
-          case 'head nurse':
-            return <NurseDashboard />;
-          case 'receptionist':
-          case 'front desk':
-            return <ReceptionistDashboard />;
-          case 'maintenance':
-          case 'technician':
-          case 'housekeeping':
-            return <MaintenanceDashboard />;
-          default:
-            return <AdminDashboard />; // Fallback to admin dashboard
+      </header>
+
+      <Suspense
+        fallback={
+          <div className="flex justify-center items-center h-40">
+            <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent"></div>
+          </div>
         }
-      })()}
+      >
+        <SelectedDashboard />
+      </Suspense>
     </div>
   );
 };

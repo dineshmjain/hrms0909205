@@ -8,6 +8,7 @@ import * as assignment from '../models/assignment/assignment.js';
 import * as leaveBalance from "../models/leave/leave.js";
 import * as leavePolicy from "../models/leavePolicy/leavePolicy.js";
 import {bulkWriteOperations} from '../helper/mongo.js'
+import { ObjectId } from 'mongodb';
 
 // Function to set up the cron job
 const setupCronJobs = () => {
@@ -35,10 +36,22 @@ const setupCronJobs = () => {
 // Setup cron for daily run
 export const scheduleLeaveCreditCron = () => {
   // Run every day at 12:05 am
-  cron.schedule("5 0 * * *", async () => {
+  cron.schedule("0 0 * * *", async () => {
     console.log("Leave Credit Cron started at", new Date());
     await runLeaveBalanceCron ();
   });
+};
+
+// setup cron for leave to salary conversion
+export const scheduleLeaveToSalaryCron=()=>{
+  // node-cron example
+// cron.schedule("59 23 30 * *", async () => {
+//   await runLeaveSalaryConversion();
+// });
+cron.schedule("0 0 * * *", async () => {
+  await runLeaveSalaryConversion();
+});
+
 };
 
 async function processAbsentEmployees() {
@@ -50,7 +63,7 @@ async function processAbsentEmployees() {
     
     // Subtract one day (in milliseconds)
     const previousDateIST = new Date(currentDateIST.getTime() - (24 * 60 * 60 * 1000));
-    console.log(".....",currentDateIST,"....",previousDateIST)
+    // console.log(".....",currentDateIST,"....",previousDateIST)
 
 
     
@@ -69,7 +82,7 @@ async function processAbsentEmployees() {
       userId: data.employeeId,
       createdAt: { $gte: previousDateIST, $lt: currentDateIST }},'employeeAttendance'
     );
-    console.log("....existingRecord...",existingRecord,`${data.employeeId}`)
+    // console.log("....existingRecord...",existingRecord,`${data.employeeId}`)
     if (!existingRecord.status) {
       // Create an attendance record marked as 'Absent'
       await create({
@@ -139,7 +152,8 @@ export const runLeaveBalanceCron  = async () => {
     today.setHours(0, 0, 0, 0);
 
     const dueBalances = await leaveBalance.leaveBalanceUsers();
-    if(dueBalances.data.length<1) return
+    // console.log("....JdueBalances..",JSON.stringify(dueBalances))
+    if(!dueBalances?.data?.length) return
     const userPoliciesMap =new Map()
     // const totalDueBalanceCount=dueBalances.data.length;
     for (const bal of dueBalances.data) {
@@ -151,7 +165,7 @@ export const runLeaveBalanceCron  = async () => {
     }
 
     const policiesMap = new Map();
-    for (const [userId, policies] of userPoliciesMap.entries()) {
+    for (const [userId,  policies ] of userPoliciesMap.entries()) {
       const policiesData = await leavePolicy.getLeavePolicies({ policies });
       for (const policy of policiesData.data || []) {
         policiesMap.set(policy.leavePolicyId.toString(), policy);
@@ -161,70 +175,96 @@ export const runLeaveBalanceCron  = async () => {
     const bulkOpsBalance = [];
     const bulkOpsCronTx = [];
 
-    for (const bal of dueBalances) {
+    for (const bal of dueBalances.data) {
       const policy = policiesMap.get(bal.policyId.toString());
       if (!policy) continue;
 
       const creditDays = policy.noOfDays || 0;
       if (creditDays <= 0) continue;
 
-      const tx = {
+      // const tx = {
+      //   _id: new ObjectId(),
+      //   date: today,
+      //   credited: creditDays,
+      //   remark: `${policy.cycle?.type || "monthly"} credit`
+      // };
+
+      // if (!bal.cronTransactionId) {
+      //   // first time for this user-policy
+      //   const newCronTxId = new ObjectId();
+      //   bulkOpsCronTx.push({
+      //     insertOne: {
+      //       document: {
+      //         _id: newCronTxId,
+      //         userId: bal.userId,
+      //         policyId: bal.policyId,
+      //         transactions: [tx],
+      //         createdAt: new Date()
+      //       }
+      //     }
+      //   });
+
+      //   bulkOpsBalance.push({
+      //     updateOne: {
+      //       filter: { _id: bal._id },
+      //       update: {
+      //         $inc: { totalAccrued: creditDays, currentBalance: creditDays },
+      //         $set: {
+      //           cronTransactionId: newCronTxId,
+      //           nextCreditingDate: calculateNextCreditingDate(policy, today),
+      //           lastCreditedMonth: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`
+      //         }
+      //       }
+      //     }
+      //   });
+      // } else {
+      //   // subsequent credit
+      //   bulkOpsCronTx.push({
+      //     updateOne: {
+      //       filter: { _id: bal.cronTransactionId },
+      //       update: { $push: { transactions: tx } }
+      //     }
+      //   });
+
+      //   bulkOpsBalance.push({
+      //     updateOne: {
+      //       filter: { _id: bal._id },
+      //       update: {
+      //         $inc: { totalAccrued: creditDays, currentBalance: creditDays },
+      //         $set: {
+      //           nextCreditingDate: calculateNextCreditingDate(policy, today),
+      //           lastCreditedMonth: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`
+      //         }
+      //       }
+      //     }
+      //   });
+      // }
+      // Prepare simplified cron document
+      const cronDoc = {
         _id: new ObjectId(),
-        date: today,
+        userId: bal.userId,
+        policyId: bal.policyId,
         credited: creditDays,
-        remark: `${policy.cycle?.type || "monthly"} credit`
+        remark: `${policy.cycle?.type || "monthly"} credit`,
+        createdAt: new Date()
       };
 
-      if (!bal.cronTransactionId) {
-        // first time for this user-policy
-        const newCronTxId = new ObjectId();
-        bulkOpsCronTx.push({
-          insertOne: {
-            document: {
-              _id: newCronTxId,
-              userId: bal.userId,
-              policyId: bal.policyId,
-              transactions: [tx],
-              createdAt: new Date()
+      bulkOpsCronTx.push({
+        insertOne: { document: cronDoc }
+      });
+      // Update leaveBalance
+      bulkOpsBalance.push({
+        updateOne: {
+          filter: { _id: bal._id },
+          update: {
+            $inc: { totalAccrued: creditDays, currentBalance: creditDays },
+            $set: {
+              nextCreditingDate: calculateNextCreditingDate(policy, today),
+              lastCreditedMonth: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`
             }
           }
-        });
-
-        bulkOpsBalance.push({
-          updateOne: {
-            filter: { _id: bal._id },
-            update: {
-              $inc: { totalAccrued: creditDays, currentBalance: creditDays },
-              $set: {
-                cronTransactionId: newCronTxId,
-                nextCreditingDate: calculateNextCreditingDate(policy, today),
-                lastCreditedMonth: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`
-              }
-            }
-          }
-        });
-      } else {
-        // subsequent credit
-        bulkOpsCronTx.push({
-          updateOne: {
-            filter: { _id: bal.cronTransactionId },
-            update: { $push: { transactions: tx } }
-          }
-        });
-
-        bulkOpsBalance.push({
-          updateOne: {
-            filter: { _id: bal._id },
-            update: {
-              $inc: { totalAccrued: creditDays, currentBalance: creditDays },
-              $set: {
-                nextCreditingDate: calculateNextCreditingDate(policy, today),
-                lastCreditedMonth: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`
-              }
-            }
-          }
-        });
-      }
+        }
+      });
     }
 
     // if (bulkOpsCronTx.length) {
@@ -234,11 +274,14 @@ export const runLeaveBalanceCron  = async () => {
     //   await leaveBalanceCol.bulkWrite(bulkOpsBalance);
     // }
 
+    // console.log("....balanceOps..",JSON.stringify(bulkOpsBalance))
+    // console.log("....cronTxnOps..",JSON.stringify(bulkOpsCronTx))
+
     if (bulkOpsBalance.length) {
-      await bulkWriteOperations(balanceOps, "leaveBalance", "Leave Balance Cron");
+      await bulkWriteOperations(bulkOpsBalance, "leaveBalance", "Leave Balance Cron");
     }
     if (bulkOpsCronTx.length) {
-      await bulkWriteOperations(cronTxnOps, "leaveBalanceCron", "Leave Balance Cron Txn");
+      await bulkWriteOperations(bulkOpsCronTx, "leaveBalanceCron", "Leave Balance Cron Txn");
     }
 
     
@@ -247,17 +290,126 @@ export const runLeaveBalanceCron  = async () => {
   }
 };
 
+// function calculateNextCreditingDate(policy, today) {
+//   const d = new Date(today);
+//   if (policy.cycle?.type === "monthly") {
+//     d.setMonth(d.getMonth() + 1);
+//   } else if (policy.cycle?.type === "yearly") {
+//     d.setFullYear(d.getFullYear() + 1);
+//   } else {
+//     d.setMonth(d.getMonth() + 1); // default
+//   }
+//   return d;
+// }
+
 function calculateNextCreditingDate(policy, today) {
+  // ensure local midnight, not UTC
   const d = new Date(today);
-  if (policy.cycle?.type === "monthly") {
-    d.setMonth(d.getMonth() + 1);
-  } else if (policy.cycle?.type === "yearly") {
-    d.setFullYear(d.getFullYear() + 1);
+  const year = d.getFullYear();
+  const month = d.getMonth();
+  const day = d.getDate();
+
+  let next;
+  if (policy.cycle?.type === "yearly") {
+    next = new Date(year + 1, month, day);
   } else {
-    d.setMonth(d.getMonth() + 1); // default
+    // monthly or default
+    next = new Date(year, month + 1, day);
   }
-  return d;
+
+  // normalize time to midnight local
+  next.setHours(0, 0, 0, 0);
+  return next;
 }
+
+
+export const runLeaveSalaryConversion = async () => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const policies = await leavePolicy.getLeavePoliciesOfSalaryEnabled();
+    // console.log(".......policies.",JSON.stringify(policies))
+    if(!policies.data)throw new Error ("leave policies under salaryenabled not found")
+    const salaryPolicies=policies.data.map(data=>new ObjectId(data.leavePolicyId))
+    const dueBalances = await leaveBalance.leaveBalanceSalaryEnabledUsers({salaryPolicies});
+    if (!dueBalances || !dueBalances?.data.length) return;
+
+   
+
+    const policyMap = new Map(policies.data.map(p => [p.leavePolicyId.toString(), p]));
+
+    const bulkOpsBalance = [];
+    const bulkOpsConversion = [];
+
+    
+    for (const bal of dueBalances.data) {
+      const policy = policyMap.get(bal.policyId.toString());
+      if (!policy) continue;
+
+      const creditDays = policy.noOfDays || 1; // monthly credit = 1
+      const rate = policy.leaveEncashmentRatePerDaySalary || 0;
+      const totalAmountRate = rate * creditDays;
+
+      if (creditDays <= 0 || totalAmountRate <= 0) continue;
+
+      // 4️⃣ Create log document
+      const conversionLog = {
+        _id: new ObjectId(),
+        userId: bal.userId,
+        policyId: bal.policyId,
+        credited: creditDays,
+        ratePerDay: rate,
+        totalAmountRate,
+        remark: `${policy.cycle?.type || "monthly"} salary conversion`,
+        createdAt: new Date()
+      };
+
+      bulkOpsConversion.push({ insertOne: { document: conversionLog } });
+
+      // 5️⃣ Update balance (reduce converted day)
+      bulkOpsBalance.push({
+        updateOne: {
+          filter: { _id: bal._id },
+          update: {
+            $inc: {
+              currentBalance: -creditDays,
+              usedLeaves: creditDays
+            },
+            $set: {
+              nextCreditingDate: calculateNextCreditingDate(policy, today),
+              lastCreditedMonth: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`
+            }
+          }
+        }
+      });
+    }
+
+    // 6️⃣ Apply bulk operations
+    // if (bulkOpsConversion.length) {
+    //   await leaveSalaryConversionCol.bulkWrite(bulkOpsConversion);
+    // }
+    // if (bulkOpsBalance.length) {
+    //   await leaveBalanceCol.bulkWrite(bulkOpsBalance);
+    // }
+
+    // console.log(".....bulkOpsBalance...",JSON.stringify(bulkOpsBalance))
+    // console.log(".....bulkOpsConversion...",JSON.stringify(bulkOpsConversion))
+
+    if (bulkOpsBalance.length) {
+      await bulkWriteOperations(bulkOpsBalance, "leaveBalance", "Leave Balance Cron");
+    }
+    if (bulkOpsConversion.length) {
+      await bulkWriteOperations(bulkOpsConversion, "leaveSalaryConversions", "Leave Balance Cron Txn");
+    }
+
+    
+
+    console.log("✅ leave balance salary conversion completed");
+  } catch (err) {
+    console.error("❌ Error updating salary conversion:", err);
+  }
+};
+
 
 
 

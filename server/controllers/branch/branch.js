@@ -40,13 +40,14 @@ export const addBranch = async (request, response, next) => {
         // if(request.body.orgExist) return next();
         // if(!request.body.addBranch) return next()
         if(request.body.branchByDefault == false) return next()
-        if(request.body.orgExist && request.body.orgDetails.structure==='branch'){
+        if(request.body.orgExist && (request.body.orgDetails.structure==='branch' && request.body.branchDetails)){
             return apiResponse.validationError(response,'branch subscription cant add branch,please upgrade either organization or group')
         }
         //error on without company
         request.body.clientMappedId = request.body?.clientDetails?._id
-        let fields = ['clientMappedId', 'patrolling', 'area', 'employeesRequired', 'floors', 'mobile', 'inchargeName', 'name', 'location', 'landmark', 'office', 'isActive', 'createdDate', 'createdBy', 'businessTypeId','panNo','gstNo','address','geoLocation','geoJson','subOrgId']
-     
+        // if(request.body.wizardAdd) request.body.name = request.body.branchName
+        let fields = ['clientMappedId', 'patrolling', 'area', 'employeesRequired', 'floors', 'mobile', 'inchargeName', 'name', 'location', 'landmark', 'office', 'isActive', 'createdDate', 'createdBy', 'businessTypeId','panNo','gstNo','address','geoLocation','geoJson','subOrgId',"timeSettingType","startTime","endTime","maxIn","minOut","weekOff","salaryCycle","financialYear"]
+
         let branchData = {orgId:new ObjectId(request.body.user.orgId)}
         let body = request.body
         fields.forEach(f => {
@@ -295,23 +296,81 @@ export const addClientBranch=async (request, response, next) => {
     }
 }
 
+export const addClientRequirements=async (request, response, next) => {
+    try {
+        const requirements = await branchModel.addRequirements(request.body)
+        if (!requirements.status) throw {}
+        return next()
+    } catch (error) {
+        console.log(error)
+        return apiResponse.ErrorResponse(response, "Failed to add branch")
+    }
+}
+
+export const updateClientRequirements=async (request, response, next) => {
+    try {
+        const requirements = await branchModel.updateRequirements(request.body)
+        if (!requirements.status) throw {}
+        return next()
+    } catch (error) {
+        console.log(error)
+        return apiResponse.ErrorResponse(response, "Failed to add branch")
+    }
+}
+
+export const listClientRequirements=async (request, response, next) => {
+    try {
+        const result = await branchModel.listRequirements(request.body)
+        if (result.status) {
+            request.body.requirements = result
+        } else {
+            request.logger.error("Error while fetching requirements ",{ stack: error.stack });
+            return apiResponse.somethingResponse(response, error.message)
+        }
+        return next()
+    } catch (error) {
+        console.log(error)
+        return apiResponse.ErrorResponse(response, "Failed to fetch requirements")
+    }
+}
+
+export const assignEmployeesToRequirements = async (request, response, next) => {
+    try {
+        const result = await branchModel.assignEmployeesToRequirements(request.body)
+        if (result.status) {
+            request.body.requirements = result.data
+        } else {
+            request.logger.error("Error while fetching requirements ",{ stack: error.stack });
+            return apiResponse.somethingResponse(response, error.message)
+        }
+        return next()
+    } catch (error) {
+        console.log(error)
+        return apiResponse.ErrorResponse(response, "Failed to add branch")
+    }
+}
+
 export const addDefaultBranch= async (request, response, next) => {
     try {
         if(request.body.orgExist) return next();
         // if(request.body.structure==='organization'||request.body.structure==='group') return next()
 
         let branchData = {
-            orgId: new ObjectId(request.body.user.orgId),
+            // orgId: new ObjectId(request.body.user.orgId),
+            orgId: request.body.defaultBranchOrgId?new ObjectId(request.body.defaultBranchOrgId):new ObjectId(request.body.user.orgId),
             name: request.body.name,
             ...(request.body.address && { address: request.body.address }),
             ...(request.body.geoLocation && { geoLocation: request.body.geoLocation }),
             ...(request.body.geoJson && { geoJson: request.body.geoJson }),
             isActive: true,
             createdDate: new Date(),
-            createdBy: new ObjectId(request.body.user._id),
+            // createdBy: new ObjectId(request.body.user._id),
+            createdBy: request.body?.authUser?._id ? new ObjectId(request.body.authUser._id): new ObjectId(request.body.user._id),
             radius: 500,
 
         }
+
+        if(request.body.subOrgId) branchData['subOrgId'] = new ObjectId(request.body.subOrgId)
 
         if(request.body.timeSettingType) {
             let timeSettingObj = {
@@ -329,6 +388,7 @@ export const addDefaultBranch= async (request, response, next) => {
         }
 
         if(request.body.weekOff) branchData['weekoff'] = request.body.weekOff
+        if(request.body.salaryCycle)branchData['salaryCycle']=request.body.salaryCycle
         request.body.branchData = branchData
         // request.body.branchData = {name:body.name,KYC:body.address?'completed':'pending',status:'Active',employeesRequired:body?.employeesRequired || 0,buildings:body?.buildings || 0,checkPoints:body?.checkPoints || 0,dutyPoints:body?.dutyPoints || 0,...branchData}
         const brancDetails = await branchModel.addBranch(request.body)
@@ -479,6 +539,7 @@ export const getDefaultBranch = (request, response, next) => {
             }
 
             if (!result.status) {
+                if(request.body.isFirstBranch) return next() // allow to create first branch
                 return apiResponse.notFoundResponse(response, "Branch Not Found!!")
             }
             
@@ -511,5 +572,80 @@ export const getBranchClientReq = (request, response, next) => {
     } catch (error) {
         logger.error("Error while updateBranchBoundary in branch controller ",{ stack: error.stack });
         return apiResponse.somethingResponse(response, "Failed to update BranchBoundary")
+    }
+}
+
+export const getAssignedBranchDetails = (request, response, next) => {
+    try {
+        branchModel.getAssignedBranchDetails(request.body)
+        .then(async (result) => {
+            request.body.nearestBranchDetails = result.data
+            request.body.branchId = result.data.branchId
+            return next()
+        })
+        .catch((error) => {
+            logger.error("Error while updateBranchBoundary in branch controller ",{ stack: error.stack });
+            return apiResponse.somethingResponse(response, "Failed to update BranchBoundary")
+        })
+
+    } catch (error) {
+        logger.error("Error while updateBranchBoundary in branch controller ",{ stack: error.stack });
+        return apiResponse.somethingResponse(response, "Failed to update BranchBoundary")
+    }
+}
+
+
+export const getAllBranches = (request, response, next) => {
+    try {
+        branchModel.getAllBranches(request.body)
+        .then(async (result) => {
+            if(!result.status) return next()
+
+            request.body.branchObjData = result.data.reduce((acc,branch) => {
+                acc[branch._id] = branch;
+                return acc
+            },{});
+            return next();
+        })
+        .catch((error) => {
+            logger.error("Error while getAllBranches in branch controller ",{ stack: error.stack });
+            return apiResponse.somethingResponse(response, "Unable to get All Branches")
+        })
+
+    } catch (error) {
+        logger.error("Error while getAllBranches in branch controller ",{ stack: error.stack });
+        return apiResponse.somethingResponse(response, "Unable to get All Branches")
+    }
+}
+
+
+export const getBranchShiftDetails= (request, response, next) => {
+    try {
+        const {user}=request.body
+        const {branchId}=request.body.userDetails
+        if(request.body.userDetails?.workTimingType!=='branch')return next()
+        if(branchId?.length<1)return next()
+        branchModel.isBranchExist({branchIds:branchId,user})
+        .then((result) => {
+            if (!result.status) {
+                // return apiResponse.validationError(response, "Invalid Branch!")
+                return next()
+            }
+            request.body.branchDetails = result.data
+            request.body.userDetails.workTiming={
+                name:"Regular Shift",
+                startTime:result.data.startTime,
+                endTime:result.data.endTime
+            }
+            return next()
+        })
+        .catch((error) => {
+            logger.error("Error while isBranchExist in branch controller ",{ stack: error.stack });
+            return apiResponse.somethingResponse(response, "Failed to check branch existence")
+        })
+
+    } catch (error) {
+        logger.error("Error while isBranchExist in branch controller ",{ stack: error.stack });
+        return apiResponse.somethingResponse(response, "Failed to check branch existence")
     }
 }

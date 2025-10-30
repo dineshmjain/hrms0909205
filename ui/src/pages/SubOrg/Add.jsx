@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Form, Formik, useFormikContext } from 'formik';
 import * as Yup from 'yup';
 import Header from '../../components/header/Header';
-import FormikInput from '../../components/input/FormikInput';
+import FormikInput from '../../components/Input/FormikInput';
 import { useDispatch, useSelector } from 'react-redux';
 import { getTypeOfIndustyAction } from '../../redux/Action/Global/GlobalAction';
 import { SubOrgCreateAction } from '../../redux/Action/SubOrgAction/SubOrgAction';

@@ -1,5 +1,5 @@
 import SubCardHeader from "../../../../components/header/SubCardHeader";
-import FormikInput from "../../../../components/input/FormikInput";
+import FormikInput from "../../../../components/Input/FormikInput";
 import MultiSelectDropdown from "../../../../components/MultiSelectDropdown/MultiSelectDropdown";
 import { IoMdAdd } from "react-icons/io";
 import { valueTypes } from "../../../../constants/Constants";

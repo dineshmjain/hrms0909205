@@ -10,6 +10,9 @@ import xlsx from 'xlsx';
 import * as apiResponse  from '../helper/apiResponse.js'
 import { logger } from '../helper/logger.js'
 import { defaultGraceTime } from './constants.js';
+import * as shiftModel from '../models/shift/shift.js';
+import { getMany } from './mongo.js';
+import { ObjectId } from 'mongodb';
 // import "jspdf-autotable"
 // import {jsPDF} from "jspdf"
 
@@ -576,76 +579,92 @@ export const matchesConditions = (obj, keys, dict, values) => {
 
 // checkig validation on extractedExcelData
 export const isCheckValidations = (excelData) => {
-    try {
-      const validData = [];
-      const inValidData = [];
-  
-      for (let each of excelData) {
-        let status = [];
-  
-        const {
-          name,
-          businessType,
-          branchName,
-          NoOfShifts,
-          noOfMaleSupervisors,
-          noOfFemaleSupervisors,
-          noOfMaleGuards,
-          noOfFemaleGuards,
-          dutyPoint,
-          checkPoint,
-          panNo,
-          gstNo,
-          ownerName,
-          firstName,
-          mobile
-        } = each;
+  try {
+    const validData = [];
+    const inValidData = [];
 
-        //String required fields
-        if (!name ) status.push("Name should not be empty");
-        if (!businessType) status.push("Business Type should not be empty");
-        if (!branchName) status.push("Branch Name should not be empty");
-        
-        if (!firstName) status.push("First Name should not be empty");
-  
-        // Number validations
-        if(!dutyPoint || isNaN(Number(dutyPoint))) status.push('Duty Point should be a valid number');
-        if(!checkPoint || isNaN(Number(checkPoint))) status.push('check Point should be a valid number');
-        if (!NoOfShifts || isNaN(Number(NoOfShifts))) status.push("No Of Shifts should be a valid number");
-        if (!noOfMaleSupervisors || isNaN(Number(noOfMaleSupervisors))) status.push("No Of Male Supervisors should be a valid number");
-        if (!noOfFemaleSupervisors || isNaN(Number(noOfFemaleSupervisors))) status.push("noOfFemaleSupervisors should be a valid number");
-        if (!noOfMaleGuards || isNaN(Number(noOfMaleGuards))) status.push("noOfMaleGuards should be a valid number");
-        if (!noOfFemaleGuards || isNaN(Number(noOfFemaleGuards))) status.push("noOfFemaleGuards should be a valid number");
-  
-        // PAN format check (optional)
-        if (panNo && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(panNo.trim())) {
-          status.push("Invalid PAN number format");
-        }
-  
-        // GST format check (optional)
-        if (gstNo && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gstNo.trim())) {
-          status.push("Invalid GST number format");
-        }
-  
-        // Mobile number check
-        if (!mobile || !/^\d{10}$/.test(mobile.toString())) {
-          status.push("mobile should be a 10-digit number");
-        }
-  
-        
-        if (status.length === 0) {
-          validData.push(each);
-        } else {
-          inValidData.push({ ...each, status: status.join(", ") });
+    for (let each of excelData) {
+      const status = [];
+
+      const {
+        clientName,
+        contractStartDate,
+        incharge,
+        branch,
+        shift,
+        requirements
+      } = each;
+
+      // ===== BASIC FIELDS =====
+      if (!clientName) status.push("Client Name should not be empty");
+      if (!contractStartDate) status.push("Contract Start Date should not be empty");
+
+      // ===== INCHARGE =====
+      if (!incharge?.name) status.push("Incharge Name should not be empty");
+      if (!incharge?.designation) status.push("Incharge Designation should not be empty");
+      if (!incharge?.mobile || !/^\d{10}$/.test(incharge.mobile.toString())) {
+        status.push("Incharge Mobile Number should be a 10-digit number");
+      }
+
+      // ===== BRANCH =====
+      if (!branch?.name) status.push("Branch Name should not be empty");
+      if (!branch?.gstNo) status.push("Branch GST Number should not be empty");
+      if (!branch?.panNo) status.push("Branch PAN Number should not be empty");
+      if (!branch?.address) status.push("Branch Address should not be empty");
+      if (!branch?.city) status.push("Branch City should not be empty");
+      if (!branch?.state) status.push("Branch State should not be empty");
+      if (!branch?.pincode || isNaN(Number(branch.pincode))) {
+        status.push("Branch Pincode should be a valid number");
+      }
+
+      // PAN format check (optional)
+      if (branch?.panNo && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(branch.panNo.trim())) {
+        status.push("Invalid Branch PAN Number format");
+      }
+
+      // GST format check (optional)
+      if (branch?.gstNo && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(branch.gstNo.trim())) {
+        status.push("Invalid Branch GST Number format");
+      }
+
+      // ===== SHIFT =====
+      if (!shift?.name) status.push("Shift Name should not be empty");
+      if (!shift?.startTime) status.push("Shift Start Time should not be empty");
+      if (!shift?.endTime) status.push("Shift End Time should not be empty");
+      if (!shift?.reportingTime) status.push("Shift Reporting Time should not be empty");
+
+      // ===== REQUIREMENTS (Dynamic roles) =====
+      if (!requirements || typeof requirements !== 'object') {
+        status.push("Requirements should be provided and valid");
+      } else {
+        for (const [role, values] of Object.entries(requirements)) {
+          const male = values?.male;
+          const female = values?.female;
+
+          if (male === undefined || isNaN(Number(male))) {
+            status.push(`${role} Male count should be a valid number`);
+          }
+          if (female === undefined || isNaN(Number(female))) {
+            status.push(`${role} Female count should be a valid number`);
+          }
         }
       }
-  
-      return { validData, inValidData };
-    } catch (error) {
-      console.error(".....error....", error.message);
-      throw error;
+
+      // ===== RESULT CLASSIFICATION =====
+      if (status.length === 0) {
+        validData.push(each);
+      } else {
+        inValidData.push({ ...each, status: status.join(", ") });
+      }
     }
+
+    return { validData, inValidData };
+  } catch (error) {
+    console.error("Error during validation:", error.message);
+    throw error;
+  }
 };
+
 
 /**
  * Utility: Normalize value for Excel import
@@ -660,6 +679,45 @@ const normalize = (value) => {
     }
     return typeof value === 'string' ? value.trim() : value;
 };
+
+
+export const normalizeDate = (value) => {
+    if (!value) return null;
+  
+    const parseToLocalDate = (y, m, d) => {
+      // Create date in local timezone (no Z)
+      return new Date(y, m - 1, d);
+    };
+  
+    if (value instanceof Date) {
+      return value.toISOString().split("T")[0];
+    }
+  
+    if (typeof value === "number") {
+      const date = xlsx.SSF.parse_date_code(value);
+      if (date) {
+        const local = parseToLocalDate(date.y, date.m, date.d);
+        return local.toISOString().split("T")[0];
+      }
+    }
+  
+    if (typeof value === "string") {
+      const match = value.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})$/);
+      if (match) {
+        const [, d, m, y] = match;
+        const year = y.length === 2 ? `20${y}` : y;
+        const local = parseToLocalDate(year, m, d);
+        return local.toISOString().split("T")[0];
+      }
+  
+      const parsed = new Date(value);
+      if (!isNaN(parsed)) return parsed.toISOString().split("T")[0];
+    }
+  
+    return null;
+};
+    
+  
 
 /**
  * extractimportclientExcel - optimized
@@ -684,7 +742,16 @@ const isCheckEmployeeValidations = (excelData = []) => {
             email,
             gender,
             dateOfBirth,
-            joinDate
+            joinDate,
+            bloodGroup,
+            qualification,
+            workTimingType,
+            shiftIds,
+            salaryConfig,
+            emergencyNumber,
+            guardianNumber,
+            guardianName,
+            martialStatus
         } = each;
 
         if (!employeeId) status.push("EmployeeId is required");
@@ -745,6 +812,16 @@ const isCheckEmployeeValidations = (excelData = []) => {
             }
         }
 
+        if (!bloodGroup) status.push("Blood Group is required");
+        if (!qualification) status.push("Qualification is required");
+        if (!workTimingType || !(workTimingType==='YES' || workTimingType==='NO')) status.push("Work Branch Timing is required && YES or NO valid data is required");
+        if (!shiftIds) status.push("Work Shift Timing is required");
+        if (!salaryConfig || !(salaryConfig==='YES' || salaryConfig==='NO')) status.push("Default Branch Salary Setting is required && YES or NO valid data is required");
+        if (!emergencyNumber|| !/^\d{10}$/.test(emergencyNumber)) status.push("Emergency Number is required && must be 10 digits");
+        if (!guardianNumber|| !/^\d{10}$/.test(guardianNumber)) status.push("Guardian Number is required && must be 10 digits");
+        if (!guardianName) status.push("Guardian Name is required");
+        if(!martialStatus) status.push('Martial Status id required');
+
         if (status.length === 0) {
             validData.push(each);
         } else {
@@ -782,7 +859,7 @@ const readExcelRows = (filePath, sampleRows = [], headerRow = 0) => {
         headers.push(cell ? cell.v : `UNKNOWN_${C}`);
     }
     const rows = xlsx.utils.sheet_to_json(sheet, {
-        range: headerRow + 1,
+        range: headerRow + 4,
         header: headers,
         defval: ''
     });
@@ -793,6 +870,9 @@ const readExcelRows = (filePath, sampleRows = [], headerRow = 0) => {
     });
 };  
 
+const getNestedValue = (obj, path) => 
+  path.split('.').reduce((acc, key) => acc?.[key], obj);
+
 /**
  * Utility: Remove duplicates from array of objects based on keys
  */
@@ -801,7 +881,7 @@ const removeDuplicates = (dataArray, uniqueKeys) => {
     const duplicates = [];
     dataArray.forEach(row => {
         const isDuplicate = unique.find(u =>
-            uniqueKeys.every(key => u[key] === row[key])
+            uniqueKeys.every(key => getNestedValue(u, key) === getNestedValue(row, key))
         );
         if (!isDuplicate) {
             unique.push(row);
@@ -829,10 +909,12 @@ const extractExcelData = async ({request, response, sampleRows = [], mapRowFn, u
         const filePath = `${tmpDir}/${fileName}`;
         fs.writeFileSync(filePath, file.data);
 
-        const excelRows = readExcelRows(filePath, sampleRows);
+        const excelRows = readExcelRows(filePath, sampleRows, 0);
+        console.log(excelRows)
 
         // Map and normalize
         const dataArray = excelRows.map(mapRowFn);
+        // console.log('data array', dataArray)
 
         // Remove duplicates
         const { unique, duplicates } = removeDuplicates(dataArray, uniqueKeys);
@@ -846,6 +928,7 @@ const extractExcelData = async ({request, response, sampleRows = [], mapRowFn, u
 
         // Validate
         const { validData, inValidData } = validateFn(unique);
+        // console.log('invalid data', inValidData)
 
         if (validData.length < 1 && inValidData.length > 0) {
             return { validData: [], inValidData, duplicates };
@@ -858,173 +941,249 @@ const extractExcelData = async ({request, response, sampleRows = [], mapRowFn, u
     }
 };
 
-export const clientExcelFormat = async () => {
-    try {
-        const businessTypes = ['Security Agency', 'Hospital', 'Garment Manufacturer','Cleaning Service','Construction Company'];
-        
+export const clientExcelFormat = async (body) => {
+  try {
+    const orgId = new ObjectId(body.user.orgId);
 
-        const headers = [
-            'Organization', 'Bussiness Type', 'Owner First Name', 'Owner Last Name', 'Owner Mobile Number',
-            'Branch Name', 'PAN', 'GST', 'No. of Shifts','No.of Male Supervisors','No.of Female Supervisors','No.of Male Guards','No.of Female Guards','DutyPoint', 'CheckPoint', 
-            'Hno(optional)', 'Street(optional)', 'LandMark(optional)', 'City(optional)', 'District(optional)', 'State(optional)', 'Country(optional)', 'Pincode(optional)'
-        ];
+    const designationResult = await getMany(
+      { orgId, isService: true, isActive: true },
+      "designation",
+      { name: 1 }
+    );
 
-        const sampleRows = [
-            ['MWb EnterPrises', 'Security Agency', 'Bafna', 'Mukesh', '9553737837',
-                'Mwb Trading', 'ABCDE1234F', '27ABCDE1234F1Z5', '3', '1','5','5','12','3', '7', 
-                '12A', 'MG Road', 'Near City Mall', 'Pune', 'Pune', 'Maharashtra', 'India', '411001'],
-            ['MWb EnterPrises', 'Security Agency',  'Bafna', 'Mukesh', '9553737838',
-                'Mwb Technologies',  'ABCDE1235F', '27ABCDE1234F1Z6', '3', '1','5','5','12','2', '8',
-                '13A', 'MG Road5', 'Near City Mall1', 'Pune', 'Pune', 'Maharashtra', 'India', '411002'],
-            ['MWb EnterPrises', 'Security Agency',  'Bafna', 'Mukesh', '9553737839',
-                'Mwb manufacturing', 'ABCDE1236F', '27ABCDE1234F1Z7', '3', '1','5','5','12','3', '9',
-                '14A', 'MG Road6', 'Near City Mall2', 'Pune', 'Pune', 'Maharashtra', 'India', '411003']
-        ];
+    const serviceDesignations = designationResult.data.map((d) => d.name);
 
-        const workbook = new ExcelJS.Workbook();
-        const sheet = workbook.addWorksheet('Client Template');
+    const headers = [
+      "Client Organisation Name",
+      "Contract Start Date",
+      "Incharge Name",
+      "Incharge Designation",
+      "Incharge Mobile Number",
+      "Branch Name",
+      "GST Number",
+      "PAN Number",
+      "Address",
+      "City",
+      "State",
+      "Pincode",
+      "Shift Name",
+      "Shift Start Time",
+      "Shift End Time",
+      "Shift Reporting Time Mins",
+      // Dynamic service designations will follow here
+    ];
 
-        sheet.columns = headers.map(header => ({ header, key: header }));
+    // Add dynamic service designations (male/female columns)
+    serviceDesignations.forEach((name) => {
+      headers.push(`${name} - Male`, `${name} - Female`);
+    });
 
-        // Unlock all cells initially
-        sheet.eachRow({ includeEmpty: true }, row => {
-            row.eachCell(cell => {
-                cell.protection = { locked: false };
-            });
-        });
+    const sampleRows = [
+      [
+        "MWB Tech Pvt Ltd",
+        "04-06-2025",
+        "Mukesh Bafna",
+        "Founder",
+        "7022667691",
+        "Hubli Branch",
+        "29ABCDE1234F1Z5",
+        "ABCDE1234F",
+        "WB Plaza, 1st Floor, Hubli",
+        "Hubli",
+        "Karnataka",
+        "580020",
+        "Morning Shift",
+        "09:00 AM",
+        "05:00 PM",
+        "08:45 AM",
+        ...Array(serviceDesignations.length * 2).fill(0),
+      ],
+      [
+        "MWB Tech Pvt Ltd",
+        "04-06-2025",
+        "Mukesh Bafna",
+        "Founder",
+        "7022667691",
+        "Dharwad Branch",
+        "29ABCDE1234F1Z6",
+        "ABCDE1234F",
+        "Industrial Area, Dharwad",
+        "Dharwad",
+        "Karnataka",
+        "580001",
+        "Night Shift",
+        "09:00 PM",
+        "05:00 AM",
+        "08:45 PM",
+        ...Array(serviceDesignations.length * 2).fill(0),
+      ],
+    ];
 
-        // Header formatting & lock
-        const headerRow = sheet.getRow(1);
-        headerRow.eachCell((cell, colNumber) => {
-            cell.font = { bold: true };
-            cell.alignment = { horizontal: 'center' };
-            cell.fill = {
-                type: 'pattern',
-                pattern: 'solid',
-                fgColor: { argb: 'FFCCE5FF' }
-            };
-            cell.protection = { locked: true };
-        });
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Client Data");
 
-        // Add sample data and lock
-        sampleRows.forEach((rowData) => {
-            const row = sheet.addRow(rowData);
-            row.eachCell(cell => {
-                cell.protection = { locked: true };
-                cell.fill = {
-                    type: 'pattern',
-                    pattern: 'solid',
-                    fgColor: { argb: 'FFE6E6E6' }
-                };
-            });
-        });
+    sheet.columns = headers.map((header) => ({ header, key: header }));
 
-        // Apply dropdowns to data rows (from row 5 to 105)
-        const applyDropdown = (colLetter, options) => {
-            for (let i = 5; i <= 105; i++) {
-                sheet.getCell(`${colLetter}${i}`).dataValidation = {
-                    type: 'list',
-                    allowBlank: true,
-                    formulae: [`"${options.join(',')}"`],
-                    showDropDown: true
-                };
-            }
+    const headerRow = sheet.getRow(1);
+    headerRow.eachCell((cell) => {
+      cell.font = { bold: true, size: 12 };
+      cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+      cell.numFmt = "@";
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFD9E1F2" },
+      };
+      cell.border = {
+        top: { style: "thin" },
+        bottom: { style: "thin" },
+        left: { style: "thin" },
+        right: { style: "thin" },
+      };
+      cell.protection = { locked: true };
+    });
+
+    // Add sample data
+    sampleRows.forEach((data) => {
+      const row = sheet.addRow(data);
+      row.eachCell((cell) => {
+        cell.value = cell.value?.toString?.() ?? "";
+        cell.numFmt = "@";
+        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFF2F2F2" },
         };
-
-        applyDropdown('B', businessTypes);  // BussinessType
-        
-
-        //  Apply dropdowns to header cells for visibility without changing value
-        const headerDropdowns = {
-            B: businessTypes,
+        cell.border = {
+          top: { style: "thin" },
+          bottom: { style: "thin" },
+          left: { style: "thin" },
+          right: { style: "thin" },
         };
+      });
+    });
 
-        for (const [colLetter, options] of Object.entries(headerDropdowns)) {
-            const cell = sheet.getCell(`${colLetter}1`);
-            cell.dataValidation = {
-                type: 'list',
-                allowBlank: true,
-                formulae: [`"${options.join(',')}"`],
-                showDropDown: true
-            };
-            const originalValue = cell.value;
-            cell.value = originalValue; // Reinforce original header value
-        }
-
-        // Unlock cells from row 5 to 105
-        for (let i = 5; i <= 105; i++) {
-            const row = sheet.getRow(i);
-            for (let j = 1; j <= headers.length; j++) {
-                row.getCell(j).protection = { locked: false };
-            }
-        }
-
-        // Protect sheet
-        await sheet.protect('teju123', {
-            selectLockedCells: true,
-            selectUnlockedCells: true
-        });
-
-        // Auto width
-        sheet.columns.forEach(col => {
-            let maxLen = col.header.length;
-            col.eachCell({ includeEmpty: true }, cell => {
-                const len = cell.value ? cell.value.toString().length : 0;
-                maxLen = Math.max(maxLen, len + 2);
-            });
-            col.width = maxLen;
-        });
-
-        const destFolder = `assets/client/excelformat`;
-        const fileName = `ClientImportTemplate_${Date.now()}.xlsx`;
-        if (!fs.existsSync(destFolder)) {
-            fs.mkdirSync(destFolder, { recursive: true });
-        }
-        const filePath = path.join(destFolder, fileName);
-        await workbook.xlsx.writeFile(filePath);
-
-        return { status: true, data: `/api/v1/client/excel/format/${fileName}` };
-    } catch (error) {
-        console.error("Error while generating Excel:", error);
-        return { status: false, message: "Failed to generate Excel" };
+    // Unlock user input cells (rows 5–105)
+    for (let i = 5; i <= 105; i++) {
+      const row = sheet.getRow(i);
+      for (let j = 1; j <= headers.length; j++) {
+        const cell = row.getCell(j);
+        cell.protection = { locked: false };
+        cell.numFmt = "@";
+        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+      }
     }
+
+    // Dropdowns
+    const applyDropdown = (colLetter, options) => {
+      for (let i = 5; i <= 105; i++) {
+        sheet.getCell(`${colLetter}${i}`).dataValidation = {
+          type: "list",
+          allowBlank: true,
+          formulae: [`"${options.join(",")}"`],
+          showDropDown: true,
+        };
+      }
+    };
+
+    applyDropdown("D", ["Founder", "Manager", "Director", "Owner"]);
+    applyDropdown("K", [
+      "Karnataka",
+      "Maharashtra",
+      "Tamil Nadu",
+      "Delhi",
+      "Gujarat",
+    ]);
+    applyDropdown("M", ["Morning Shift", "Evening Shift", "Night Shift"]);
+
+    // Set minimum column width
+    sheet.columns.forEach((col) => {
+      let maxLen = Math.max(20, col.header.length + 5);
+      col.eachCell({ includeEmpty: true }, (cell) => {
+        const len = cell.value ? cell.value.toString().length : 0;
+        maxLen = Math.max(maxLen, len + 5);
+      });
+      col.width = maxLen;
+    });
+
+    sheet.views = [{ state: "frozen", ySplit: 1 }];
+
+    await sheet.protect("teju123", {
+      selectLockedCells: true,
+      selectUnlockedCells: true,
+    });
+
+    const destFolder = `assets/client/excelformat`;
+    const fileName = `ClientOnboardingTemplate_${Date.now()}.xlsx`;
+    if (!fs.existsSync(destFolder)) fs.mkdirSync(destFolder, { recursive: true });
+    const filePath = path.join(destFolder, fileName);
+    await workbook.xlsx.writeFile(filePath);
+
+    return {
+      status: true,
+      data: `/api/v1/client/excel/format/${fileName}`,
+    };
+  } catch (error) {
+    console.error("Error while generating Excel:", error);
+    return { status: false, message: "Failed to generate Excel" };
+  }
 };
+
 
 export const extractImportClientExcel = async (request, response, next) => {
     const sampleRows = ['9553737837', '9553737838', '9553737839'];
     const mapRowFn = (row) => ({
-        name: normalize(row?.Organization),
-        businessType: normalize(row?.['Bussiness Type']),
-        branchName: normalize(row?.['Branch Name']),
-        panNo: normalize(row?.PAN),
-        gstNo: normalize(row?.GST),
-        NoOfShifts: Number(normalize(row?.['No. of Shifts'])),
-        noOfMaleSupervisors: Number(normalize(row?.['No.of Male Supervisors'])),
-        noOfFemaleSupervisors: Number(normalize(row?.['No.of Female Supervisors'])),
-        noOfMaleGuards: Number(normalize(row?.['No.of Male Guards'])),
-        noOfFemaleGuards: Number(normalize(row?.['No.of Female Guards'])),
-        dutyPoint: normalize(row?.['DutyPoint']),
-        checkPoint: normalize(row?.['CheckPoint']),
-        hno: normalize(row?.['Hno(optional)']),
-        street: normalize(row?.['Street(optional)']),
-        landmark: normalize(row?.['LandMark(optional)']),
-        city: normalize(row?.['City(optional)']),
-        district: normalize(row?.['District(optional)']),
-        state: normalize(row?.['State(optional)']),
-        country: normalize(row?.['Country(optional)']) ?? 'India',
-        pincode: normalize(row?.['Pincode(optional)']),
-        ownerName:{
-            firstName: normalize(row?.['Owner First Name']),
-            lastName: normalize(row?.['Owner Last Name']),
+        clientName: normalize(row?.['Client Organisation Name']),
+        contractStartDate: normalize(row?.['Contract Start Date']),
+
+        incharge: {
+            name: normalize(row?.['Incharge Name']),
+            designation: normalize(row?.['Incharge Designation']),
+            mobile: normalize(row?.['Incharge Mobile Number']),
         },
-        firstName: normalize(row?.['Owner First Name']),
-        lastName: normalize(row?.['Owner Last Name']),
-        mobile: normalize(row?.['Owner Mobile Number'])
+
+        branch: {
+            name: normalize(row?.['Branch Name']),
+            gstNo: normalize(row?.['GST Number']),
+            panNo: normalize(row?.['PAN Number']),
+            address: normalize(row?.['Address']),
+            city: normalize(row?.['City']),
+            state: normalize(row?.['State']),
+            pincode: normalize(row?.['Pincode']),
+        },
+
+        shift: {
+            name: normalize(row?.['Shift Name']),
+            startTime: normalize(row?.['Shift Start Time']),
+            endTime: normalize(row?.['Shift End Time']),
+            reportingTime: normalize(row?.['Shift Reporting Time Mins']),
+        },
+
+        requirements: {
+            // fieldOfficer: {
+            //     male: Number(normalize(row?.['Field Officer - Male'])) || 0,
+            //     female: Number(normalize(row?.['Field Officer - Female'])) || 0,
+            // },
+            supervisor: {
+                male: Number(normalize(row?.['Supervisor - Male'])) || 0,
+                female: Number(normalize(row?.['Supervisor - Female'])) || 0,
+            },
+            securityGuard: {
+                male: Number(normalize(row?.['Security Guard - Male'])) || 0,
+                female: Number(normalize(row?.['Security Guard - Female'])) || 0,
+            },
+        },
     });
+
     const uniqueKeys = [
-        'name', 'mobile', 'businessType', 'branchName', 'panNo', 'gstNo', 'NoOfShifts',
-        'dutyPoint', 'checkPoint', 'hno', 'street', 'landmark', 'city', 'district', 'state', 'country', 'pincode'
+        'clientName',
+        'branch.name',
+        'branch.address',
+        'branch.city',
+        'shift.name'
     ];
+
     const validateFn = isCheckValidations;
 
     return extractExcelData({
@@ -1038,41 +1197,136 @@ export const extractImportClientExcel = async (request, response, next) => {
     });
 };
 
+export const formatDesignationKey = (key) =>  {
+  if (!key) return "";
+  return key
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (str) => str.toUpperCase())
+    .trim();
+}
 
+export const prepareImportData = (request, response, next) => {
+  try {
+    const rows = request.body.excelData.validData;
+    const clientsMap = new Map();
 
-export const employeeExcelFormat= async (body) => {
+    for (let row of rows) {
+      const {
+        clientName,
+        contractStartDate,
+        incharge,
+        branch,
+        shift,
+        requirements
+      } = row;
+
+      if (!clientsMap.has(clientName)) {
+        clientsMap.set(clientName, {
+          clientName,
+          contractStartDate,
+          incharge,
+          branches: []
+        });
+      }
+
+      const client = clientsMap.get(clientName);
+
+      let branchObj = client.branches.find(
+        (b) =>
+          b.name === branch.name &&
+          b.gstNo === branch.gstNo &&
+          b.panNo === branch.panNo
+      );
+
+      if (!branchObj) {
+        branchObj = {
+          ...branch,
+          shifts: []
+        };
+        client.branches.push(branchObj);
+      }
+
+      let formattedRequirements = {};
+      if (requirements && typeof requirements === "object") {
+        for (const key in requirements) {
+          const formattedKey = formatDesignationKey(key); // "securityGuard" → "Security Guard"
+          formattedRequirements[formattedKey] = requirements[key];
+        }
+      }
+
+      let shiftObj = branchObj.shifts.find((s) => s.name === shift.name);
+      if (!shiftObj) {
+        shiftObj = {
+          ...shift,
+          requirements: formattedRequirements
+        };
+        branchObj.shifts.push(shiftObj);
+      }
+    }
+
+    const finalClients = Array.from(clientsMap.values());
+
+    return finalClients;
+  } catch (error) {
+    logger.error("Error while importing client from excel", { stack: error.stack });
+    return apiResponse.somethingResponse(response, error.message);
+  }
+};
+
+export const employeeExcelFormat2= async (body) => {
     try {
 
         const genderType=['Male','Female']
+        const branchTimingOptions = ["YES", "NO"];
+        let shiftOptions = ["NO"];
 
+        try {
+            const shiftRes=await shiftModel.listShift({query:{},...body})
+            console.log
+            
+            if (shiftRes.data?.length) {
+              const apiShifts = shiftRes.data.map((s) => s.name).filter(Boolean);
+              shiftOptions = ["NO", ...apiShifts];
+            }
+          } catch (err) {
+            console.warn("⚠️ Shift API failed, using default NO option only",err.message);
+
+        }
+      
+        // let headers = [
+        //     'EmployeeId',  'First Name',  'Last Name', 'Mobile Number','Password','Email(optional)','Gender(optional)','DOB','DOJ','Branch','Department','Designation','Hno(optional)', 'Street(optional)', 'LandMark(optional)', 'City(optional)', 'District(optional)', 'State(optional)', 'Country(optional)', 'Pincode(optional)'
+        // ];
         let headers = [
-            'EmployeeId',  'First Name',  'Last Name', 'Mobile Number','Password','Email(optional)','Gender(optional)','DOB','DOJ','Branch','Department','Designation','Hno(optional)', 'Street(optional)', 'LandMark(optional)', 'City(optional)', 'District(optional)', 'State(optional)', 'Country(optional)', 'Pincode(optional)'
+            'EmployeeId',  'First Name',  'Last Name', 'Mobile Number','Password','Email(optional)','Gender(optional)','DOB','DOJ','Branch','Department','Designation','Work Branch Timing','Work Shift Timing','Qualification','Blood Group','Hno(optional)', 'Street(optional)', 'LandMark(optional)', 'City(optional)', 'District(optional)', 'State(optional)', 'Country(optional)', 'Pincode(optional)'
         ];
 
         let sampleRows = [
-            ['EMP001', 'Mukesh', 'Bafna', '9553737837', 'test@1234', 'mukesh.bafna@example.com','Male', '1990-01-01', '2022-06-15', 'Mwb Trading', 'Accounts','Accountant','12A', 'MG Road', 'Near City Mall', 'Pune', 'Pune', 'Maharashtra', 'India', '411001'],
-            ['EMP002', 'Abani', 'Bafna', '9553737838', 'test@1234', 'abani.bafna@example.com', 'Male','1992-03-10', '2023-01-12', 'Mwb Trading', 'Accounts','Auditor','13A', 'MG Road5', 'Near City Mall1', 'Pune', 'Pune', 'Maharashtra', 'India', '411002'],
-            ['EMP003', 'Mukesh', 'Ramesh', '9553737839', 'test@1234', 'ramesh.bafna@example.com','Male', '1991-05-20', '2021-11-01', 'MWb Manufacturing','Cleaning','Supervisor','14A', 'MG Road6', 'Near City Mall2', 'Pune', 'Pune', 'Maharashtra', 'India', '411003']
+            ['EMP001', 'Mukesh', 'Bafna', '9553737837', 'test@1234', 'mukesh.bafna@example.com','Male', '1990-01-01', '2022-06-15', 'Mwb Trading', 'Accounts','Accountant','YES','NO','MBA', 'O+','12A', 'MG Road', 'Near City Mall', 'Pune', 'Pune', 'Maharashtra', 'India', '411001'],
+            ['EMP002', 'Abani', 'Bafna', '9553737838', 'test@1234', 'abani.bafna@example.com', 'Male','1992-03-10', '2023-01-12', 'Mwb Trading', 'Accounts','Auditor','YES','NO','MBA', 'O+','13A', 'MG Road5', 'Near City Mall1', 'Pune', 'Pune', 'Maharashtra', 'India', '411002'],
+            ['EMP003', 'Mukesh', 'Ramesh', '9553737839', 'test@1234', 'ramesh.bafna@example.com','Male', '1991-05-20', '2021-11-01', 'MWb Manufacturing','Cleaning','Supervisor','YES','NO','MBA', 'O+','14A', 'MG Road6', 'Near City Mall2', 'Pune', 'Pune', 'Maharashtra', 'India', '411003']
         ];
         if(body.orgDetails?.structure==='group'){
             headers = [
-                'EmployeeId',  'First Name',  'Last Name', 'Mobile Number','Password','Email(optional)','Gender(optional)','DOB','DOJ','Organization','Branch','Department','Designation','Hno(optional)', 'Street(optional)', 'LandMark(optional)', 'City(optional)', 'District(optional)', 'State(optional)', 'Country(optional)', 'Pincode(optional)'
+                'EmployeeId',  'First Name',  'Last Name', 'Mobile Number','Password','Email(optional)','Gender(optional)','DOB','DOJ','Organization','Branch','Department','Designation','Work Branch Timing','Work Shift Timing','Qualification','Blood Group','Hno(optional)', 'Street(optional)', 'LandMark(optional)', 'City(optional)', 'District(optional)', 'State(optional)', 'Country(optional)', 'Pincode(optional)'
             ];
             sampleRows = [
-                ['EMP001', 'Mukesh', 'Bafna', '9553737837', 'test@1234', 'mukesh.bafna@example.com', 'Male','1990-01-01', '2022-06-15', 'MWB EnterPrise','Mwb Trading', 'Accounts','Accountant','12A', 'MG Road', 'Near City Mall', 'Pune', 'Pune', 'Maharashtra', 'India', '411001'],
-                ['EMP002', 'Abani', 'Bafna', '9553737838', 'test@1234', 'abani.bafna@example.com', 'Male','1992-03-10', '2023-01-12', 'MWB EnterPrise', 'Mwb Trading', 'Accounts','Auditor','13A', 'MG Road5', 'Near City Mall1', 'Pune', 'Pune', 'Maharashtra', 'India', '411002'],
-                ['EMP003', 'Mukesh', 'Ramesh', '9553737839', 'test@1234', 'ramesh.bafna@example.com', 'Male','1991-05-20', '2021-11-01',  'MWB EnterPrise','MWb Manufacturing', 'Cleaning','Supervisor','14A', 'MG Road6', 'Near City Mall2', 'Pune', 'Pune', 'Maharashtra', 'India', '411003']
+                ['EMP001', 'Mukesh', 'Bafna', '9553737837', 'test@1234', 'mukesh.bafna@example.com', 'Male','1990-01-01', '2022-06-15', 'MWB EnterPrise','Mwb Trading', 'Accounts','Accountant','YES','NO','MBA', 'O+','12A', 'MG Road', 'Near City Mall', 'Pune', 'Pune', 'Maharashtra', 'India', '411001'],
+                ['EMP002', 'Abani', 'Bafna', '9553737838', 'test@1234', 'abani.bafna@example.com', 'Male','1992-03-10', '2023-01-12', 'MWB EnterPrise', 'Mwb Trading', 'Accounts','Auditor','YES','NO','MBA', 'O+','13A', 'MG Road5', 'Near City Mall1', 'Pune', 'Pune', 'Maharashtra', 'India', '411002'],
+                ['EMP003', 'Mukesh', 'Ramesh', '9553737839', 'test@1234', 'ramesh.bafna@example.com', 'Male','1991-05-20', '2021-11-01',  'MWB EnterPrise','MWb Manufacturing', 'Cleaning','Supervisor','YES','NO','MBA', 'O+','14A', 'MG Road6', 'Near City Mall2', 'Pune', 'Pune', 'Maharashtra', 'India', '411003']
             ];
         }
 
         if(body.orgDetails?.structure==='branch'){
+            // headers = [
+            //     'EmployeeId',  'First Name',  'Last Name', 'Mobile Number','Password','Email(optional)','Gender(optional)','DOB','DOJ','Department','Designation','Hno(optional)', 'Street(optional)', 'LandMark(optional)', 'City(optional)', 'District(optional)', 'State(optional)', 'Country(optional)', 'Pincode(optional)'
+            // ];
             headers = [
-                'EmployeeId',  'First Name',  'Last Name', 'Mobile Number','Password','Email(optional)','Gender(optional)','DOB','DOJ','Department','Designation','Hno(optional)', 'Street(optional)', 'LandMark(optional)', 'City(optional)', 'District(optional)', 'State(optional)', 'Country(optional)', 'Pincode(optional)'
-            ];
+                'EmployeeId',  'First Name',  'Last Name', 'Mobile Number','Password','Email(optional)','Gender(optional)','DOB','DOJ','Department','Designation','Work Branch Timing','Work Shift Timing','Qualification','Blood Group','Hno(optional)', 'Street(optional)', 'LandMark(optional)', 'City(optional)', 'District(optional)', 'State(optional)', 'Country(optional)', 'Pincode(optional)'
+            ];      
             sampleRows = [
-                ['EMP001', 'Mukesh', 'Bafna', '9553737837', 'test@1234', 'mukesh.bafna@example.com', 'Male','1990-01-01', '2022-06-15', 'Accounts','Accountant','12A', 'MG Road', 'Near City Mall', 'Pune', 'Pune', 'Maharashtra', 'India', '411001'],
-                ['EMP002', 'Abani', 'Bafna', '9553737838', 'test@1234', 'abani.bafna@example.com', 'Male','1992-03-10', '2023-01-12',  'Accounts','Auditor','13A', 'MG Road5', 'Near City Mall1', 'Pune', 'Pune', 'Maharashtra', 'India', '411002'],
-                ['EMP003', 'Mukesh', 'Ramesh', '9553737839', 'test@1234', 'ramesh.bafna@example.com', 'Male','1991-05-20', '2021-11-01', 'Cleaning','Supervisor','14A', 'MG Road6', 'Near City Mall2', 'Pune', 'Pune', 'Maharashtra', 'India', '411003']
+                ['EMP001', 'Mukesh', 'Bafna', '9553737837', 'test@1234', 'mukesh.bafna@example.com', 'Male','1990-01-01', '2022-06-15', 'Accounts','Accountant','YES','NO','MBA', 'O+','12A','MG Road', 'Near City Mall', 'Pune', 'Pune', 'Maharashtra', 'India', '411001'],
+                ['EMP002', 'Abani', 'Bafna', '9553737838', 'test@1234', 'abani.bafna@example.com', 'Male','1992-03-10', '2023-01-12',  'Accounts','Auditor','NO','Morning Shift','B.Com', 'O+','13A','MG Road5', 'Near City Mall1', 'Pune', 'Pune', 'Maharashtra', 'India', '411002'],
+                ['EMP003', 'Mukesh', 'Ramesh', '9553737839', 'test@1234', 'ramesh.bafna@example.com', 'Male','1991-05-20', '2021-11-01', 'Cleaning','Supervisor','YES','NO','Diploma','O+','14A', 'MG Road6', 'Near City Mall2', 'Pune', 'Pune', 'Maharashtra', 'India', '411003']
             ];
         }
 
@@ -1132,9 +1386,31 @@ export const employeeExcelFormat= async (body) => {
 
         applyDropdown('G', genderType);  // BussinessType
         
-
+         // L = Work Branch Timing
+        applyDropdown("L", branchTimingOptions);
+        // M = Work Shift Timing
+        applyDropdown("M", shiftOptions);
        
-        
+        // ✅ Add instruction row
+    sheet.insertRow(2, [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "👉 If Work Branch Timing = YES, keep Work Shift Timing = NO",
+      ]);
+
+      const instructionRow = sheet.getRow(2);
+    instructionRow.eachCell((cell) => {
+      cell.font = { italic: true, color: { argb: "FF0070C0" } };
+    });
 
         
 
@@ -1177,6 +1453,544 @@ export const employeeExcelFormat= async (body) => {
     }
 };
 
+export const employeeExcelFormat = async (body) => {
+    try {
+      const genderType = ["Male", "Female"];
+      const branchTimingOptions = ["YES", "NO"];
+      let shiftOptions = ["NO"];
+      const branchSalarySettingsOptions=["YES", "NO"];
+      const loanType=["Personal","Advance",'None'];
+      const loanStatus=['Active','Closed','None'];
+      const martialStatusOptions=['Single','Married'];
+      const bloodGroupOptions=["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
+
+  
+      // 🔹 Fetch shift list from API
+      try {
+        const shiftRes = await shiftModel.listShift({ query: {}, ...body });
+        if (shiftRes.data?.length) {
+          const apiShifts = shiftRes.data.map((s) => s.name).filter(Boolean);
+          shiftOptions = ["NO", ...apiShifts];
+        }
+      } catch (err) {
+        console.warn("Shift API failed, using default NO option only", err.message);
+      }
+  
+      // 🔹 Headers & Sample Data (default structure)
+      let headers = [
+        "EmployeeId",
+        "First Name",
+        "Last Name",
+        "Mobile Number",
+        "Password",
+        "Email(optional)",
+        "Gender(optional)",
+        "DOB",
+        "DOJ",
+        "Branch",
+        "Department",
+        "Designation",
+        "Work Branch Timing",
+        "Work Shift Timing",
+        "Default Branch Salary Setting",
+        "Qualification",
+        "Blood Group",
+        "Guardian Name",
+        "Guardian Number",
+        "Emergency Number",
+        "Marital Status",
+        "Hno(optional)",
+        "Street(optional)",
+        "LandMark(optional)",
+        "City(optional)",
+        "District(optional)",
+        "State(optional)",
+        "Country(optional)",
+        "Pincode(optional)",
+        "Loan Type(optional)",
+        "Loan/Advance Amount(optional)",
+        "Issued Date(optional)",
+        "Total Installments(optional)",
+        "EMI Amount(optional)",
+        "Amount Paid(optional)",
+        "Balance Amount(optional)",
+        "Loan/Adavance Status(optional)"
+      ];
+  
+      let sampleRows = [
+        [
+          "EMP001",
+          "Mukesh",
+          "Bafna",
+          "9553737837",
+          "Test@123",
+          "mukesh.bafna@example.com",
+          "Male",
+          "1990-01-01",
+          "2022-06-15",
+          "Mwb Trading",
+          "Accounts",
+          "Accountant",
+          "YES",
+          "NO",
+          "NO",
+          "MBA",
+          "O+",
+          "Mukesh Bafna",
+          "9998887770",
+          "9998887771",
+          "Married",
+          "12A",
+          "MG Road",
+          "Near City Mall",
+          "Pune",
+          "Pune",
+          "Maharashtra",
+          "India",
+          "411001",
+          "Personal Loan",
+          "50000",
+          "2024-11-01",
+          "10",
+          "5000",
+          "16500",
+          "33500",
+          "Active"
+        ],
+        [
+          "EMP002",
+          "Abani",
+          "Bafna",
+          "9553737838",
+          "Test@123",
+          "abani.bafna@example.com",
+          "Male",
+          "1992-03-10",
+          "2023-01-12",
+          "Mwb Trading",
+          "Accounts",
+          "Auditor",
+          "NO",
+          shiftOptions[1] || "Morning Shift",
+          "NO",
+          "MBA",
+          "O+",
+          "Mukesh Bafna",
+          "9998887770",
+          "9998887771",
+          "Single",
+          "13A",
+          "MG Road5",
+          "Near City Mall1",
+          "Pune",
+          "Pune",
+          "Maharashtra",
+          "India",
+          "411002",
+          "Advance Loan",
+          "50000",
+          "2024-11-01",
+          "10",
+          "0",
+          "16500",
+          "33500",
+          "Active"
+        ],
+        [
+          "EMP003",
+          "Ramesh",
+          "Kumar",
+          "9553737839",
+          "Test@123",
+          "ramesh.kumar@example.com",
+          "Male",
+          "1991-05-20",
+          "2021-11-01",
+          "MWB Manufacturing",
+          "Cleaning",
+          "Supervisor",
+          "YES",
+          "NO",
+          "NO",
+          "Diploma",
+          "O+",
+          "Mukesh Bafna",
+          "9998887770",
+          "9998887771",
+          "Married",
+          "14A",
+          "MG Road6",
+          "Near City Mall2",
+          "Pune",
+          "Pune",
+          "Maharashtra",
+          "India",
+          "411003",
+          "None",
+          "0",
+          "",
+          "0",
+          "0",
+          "0",
+          "0",
+          "None"
+        ],
+      ];
+  
+      // 🔹 Group structure case
+      if (body.orgDetails?.structure === "group") {
+        headers = [
+          "EmployeeId",
+          "First Name",
+          "Last Name",
+          "Mobile Number",
+          "Password",
+          "Email(optional)",
+          "Gender(optional)",
+          "DOB",
+          "DOJ",
+          "Organization",
+          "Branch",
+          "Department",
+          "Designation",
+          "Work Branch Timing",
+          "Work Shift Timing",
+          "Default Branch Salary Setting",
+          "Qualification",
+          "Blood Group",
+          "Guardian Name",
+          "Guardian Number",
+          "Emergency Number",
+          "Marital Status",
+          "Hno(optional)",
+          "Street(optional)",
+          "LandMark(optional)",
+          "City(optional)",
+          "District(optional)",
+          "State(optional)",
+          "Country(optional)",
+          "Pincode(optional)",
+          "Loan Type(optional)",
+        "Loan/Advance Amount(optional)",
+        "Issued Date(optional)",
+        "Total Installments(optional)",
+        "EMI Amount(optional)",
+        "Amount Paid(optional)",
+        "Balance Amount(optional)",
+        "Loan/Adavance Status(optional)"
+        ];
+      }
+  
+      // 🔹 Branch structure case
+      if (body.orgDetails?.structure === "branch") {
+        headers = [
+          "EmployeeId",
+          "First Name",
+          "Last Name",
+          "Mobile Number",
+          "Password",
+          "Email(optional)",
+          "Gender(optional)",
+          "DOB",
+          "DOJ",
+          "Department",
+          "Designation",
+          "Work Branch Timing",
+          "Work Shift Timing",
+          "Default Branch Salary Setting",
+          "Qualification",
+          "Blood Group",
+          "Guardian Name",
+          "Guardian Number",
+          "Emergency Number",
+          "Marital Status",
+          "Hno(optional)",
+          "Street(optional)",
+          "LandMark(optional)",
+          "City(optional)",
+          "District(optional)",
+          "State(optional)",
+          "Country(optional)",
+          "Pincode(optional)",
+          "Loan Type(optional)",
+        "Loan/Advance Amount(optional)",
+        "Issued Date(optional)",
+        "Total Installments(optional)",
+        "EMI Amount(optional)",
+        "Amount Paid(optional)",
+        "Balance Amount(optional)",
+        "Loan/Adavance Status(optional)"
+        ];
+
+        sampleRows= [
+            [
+              "EMP001",
+              "Mukesh",
+              "Bafna",
+              "9553737837",
+              "Test@123",
+              "mukesh.bafna@example.com",
+              "Male",
+              "1990-01-01",
+              "2022-06-15",
+              "Accounts",
+              "Accountant",
+              "YES",
+              "NO",
+              "NO",
+              "MBA",
+              "O+",
+              "Mukesh Bafna",
+              "9998887770",
+              "9998887771",
+              "Single",
+              "12A",
+              "MG Road",
+              "Near City Mall",
+              "Pune",
+              "Pune",
+              "Maharashtra",
+              "India",
+              "411001",
+              "Personal Loan",
+              "50000",
+              "2024-11-01",
+              "10",
+              "5000",
+              "16500",
+              "33500",
+              "Active"
+            ],
+            [
+              "EMP002",
+              "Abani",
+              "Bafna",
+              "9553737838",
+              "Test@123",
+              "abani.bafna@example.com",
+              "Male",
+              "1992-03-10",
+              "2023-01-12",
+              "Accounts",
+              "Auditor",
+              "NO",
+              shiftOptions[1] || "Morning Shift",
+              "NO",
+              "MBA",
+              "O+",
+              "Mukesh Bafna",
+              "9998887770",
+              "9998887771",
+              "Single",
+              "13A",
+              "MG Road5",
+              "Near City Mall1",
+              "Pune",
+              "Pune",
+              "Maharashtra",
+              "India",
+              "411002",
+              "Advance Loan",
+              "50000",
+              "2024-11-01",
+              "10",
+              "0",
+              "16500",
+              "33500",
+              "Active"
+            ],
+            [
+              "EMP003",
+              "Ramesh",
+              "Kumar",
+              "9553737839",
+              "Test@123",
+              "ramesh.kumar@example.com",
+              "Male",
+              "1991-05-20",
+              "2021-11-01",
+              "Cleaning",
+              "Supervisor",
+              "YES",
+              "NO",
+              "NO",
+              "Diploma",
+              "O+",
+              "Mukesh Bafna",
+              "9998887770",
+              "9998887771",
+              "Married",
+              "14A",
+              "MG Road6",
+              "Near City Mall2",
+              "Pune",
+              "Pune",
+              "Maharashtra",
+              "India",
+              "411003",
+              "None",
+              "0",
+              "",
+              "0",
+              "0",
+              "0",
+              "0",
+              "None"
+            ],
+        ];
+      }
+  
+      // ✅ Workbook setup
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet("Employee Template");
+      sheet.columns = headers.map((header) => ({ header, key: header }));
+  
+      // Unlock all cells initially
+      sheet.eachRow({ includeEmpty: true }, (row) => {
+        row.eachCell((cell) => {
+          cell.protection = { locked: false };
+        });
+      });
+  
+      // Header style
+      const headerRow = sheet.getRow(1);
+      headerRow.eachCell((cell) => {
+        cell.font = { bold: true };
+        cell.alignment = { horizontal: "center" };
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFCCE5FF" },
+        };
+        cell.protection = { locked: true };
+      });
+  
+      // Sample data
+      sampleRows.forEach((rowData) => {
+        const row = sheet.addRow(rowData);
+        row.eachCell((cell) => {
+          cell.protection = { locked: true };
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFE6E6E6" },
+          };
+        });
+      });
+  
+      // 🔹 Utility: get Excel column letter from index
+      const getColumnLetter = (colIndex) => {
+        let letter = "";
+        while (colIndex > 0) {
+          const remainder = (colIndex - 1) % 26;
+          letter = String.fromCharCode(65 + remainder) + letter;
+          colIndex = Math.floor((colIndex - 1) / 26);
+        }
+        return letter;
+      };
+  
+      // Find column positions dynamically
+      const branchTimingIndex = headers.indexOf("Work Branch Timing") + 1;
+      const shiftTimingIndex = headers.indexOf("Work Shift Timing") + 1;
+      const genderIndex = headers.indexOf("Gender(optional)") + 1;
+      const salarySeetingIndex=headers.indexOf('Default Branch Salary Setting')+1;
+      const loanTypeIndex=headers.indexOf('Loan Type(optional)')+1;
+      const loanStatusIndex=headers.indexOf('Loan/Adavance Status(optional)')+1;
+      const martialStatusIndex=headers.indexOf('Marital Status')+1;
+      const bloddGroupIndex=headers.indexOf('Blood Group')+1;
+  
+      const branchCol = getColumnLetter(branchTimingIndex);
+      const shiftCol = getColumnLetter(shiftTimingIndex);
+      const genderCol = getColumnLetter(genderIndex);
+      const salaryCol=getColumnLetter(salarySeetingIndex);
+      const loanTypeCol=getColumnLetter(loanTypeIndex);
+      const loanStatusCol=getColumnLetter(loanStatusIndex);
+      const martialStatusCol=getColumnLetter(martialStatusIndex);
+      const bloodGroupCol=getColumnLetter(bloddGroupIndex)
+  
+      // 🔹 Apply dropdowns (from row 5–105)
+      const applyDropdown = (colLetter, options) => {
+        for (let i = 5; i <= 105; i++) {
+          sheet.getCell(`${colLetter}${i}`).dataValidation = {
+            type: "list",
+            allowBlank: true,
+            formulae: [`"${options.join(",")}"`],
+            showDropDown: true,
+          };
+        }
+      };
+  
+      applyDropdown(genderCol, genderType);
+      applyDropdown(branchCol, branchTimingOptions);
+      applyDropdown(shiftCol, shiftOptions);
+      applyDropdown(salaryCol,branchSalarySettingsOptions);
+      applyDropdown(loanTypeCol,loanType);
+      applyDropdown(loanStatusCol,loanStatus);
+      applyDropdown(martialStatusCol,martialStatusOptions);
+      applyDropdown(bloodGroupCol,bloodGroupOptions)
+  
+      // 🔹 Instruction Row
+      sheet.insertRow(2, [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "👉 If Work Branch Timing = YES, keep Work Shift Timing = NO",
+      ]);
+      const instructionRow = sheet.getRow(2);
+      instructionRow.eachCell((cell) => {
+        cell.font = { italic: true, color: { argb: "FF0070C0" } };
+      });
+  
+      // Unlock rows for editing
+      for (let i = 5; i <= 105; i++) {
+        const row = sheet.getRow(i);
+        for (let j = 1; j <= headers.length; j++) {
+          row.getCell(j).protection = { locked: false };
+        }
+      }
+  
+      // Protect the sheet
+      await sheet.protect("teju123", {
+        selectLockedCells: true,
+        selectUnlockedCells: true,
+      });
+  
+      // Auto width
+      sheet.columns.forEach((col) => {
+        let maxLen = col.header?.length ?? 5;
+        col.eachCell({ includeEmpty: true }, (cell) => {
+          const len = cell.value ? cell.value.toString().length : 0;
+          maxLen = Math.max(maxLen, len + 2);
+        });
+        col.width = maxLen;
+      });
+  
+      // Save file
+      const destFolder = `assets/employee/excelformat`;
+      const fileName = `EmployeeImportTemplate_${Date.now()}.xlsx`;
+      if (!fs.existsSync(destFolder)) {
+        fs.mkdirSync(destFolder, { recursive: true });
+      }
+      const filePath = path.join(destFolder, fileName);
+      await workbook.xlsx.writeFile(filePath);
+  
+      return { status: true, data: `/api/v1/employee/excel/format/${fileName}` };
+    } catch (error) {
+      console.error("❌ Error while generating employee Excel:", error);
+      return { status: false, message: "Failed to generate employee Excel" };
+    }
+  };
+  
+
 export const extractImportEmployeeExcel = async (request, response, next) => {
     const sampleRows = ['EMP001', 'EMP002', 'EMP003', '9553737837', '9553737838', '9553737839'];
     const mapRowFn = (row) => {
@@ -1204,10 +2018,33 @@ export const extractImportEmployeeExcel = async (request, response, next) => {
                 state: normalize(row['State(optional)']),
                 country: normalize(row['Country(optional)']) ?? 'India',
                 pincode: normalize(row['Pincode(optional)'])
-            }
+            },
+            workTimingType:normalize(row["Work Branch Timing"]),
+            shiftIds:normalize(row["Work Shift Timing"]),
+            bloodGroup:normalize(row["Blood Group"]),
+            qualification:normalize(row['Qualification']),
+            salaryConfig:normalize(row["Default Branch Salary Setting"]),
+            isSubOrg:false,
+            emergencyNumber:normalize(row["Emergency Number"]),
+            guardianNumber:normalize(row["Guardian Number"]),
+            guardianName:normalize(row['Guardian Name']),
+            financialDetails:{
+                loanType:normalize(row['Loan Type(optional)']),
+                amount:normalize(row["Loan/Advance Amount(optional)"]),
+                issuedDate:normalize(row['Issued Date(optional)']),
+                totalInstallments:normalize(row['Total Installments(optional)']),
+                emiAmount:normalize(row['EMI Amount(optional)']),
+                amountPaid:normalize(row['Amount Paid(optional)']),
+                balanceAmount:normalize(row['Balance Amount(optional)']),
+                loanAdvanceStatus:normalize(row['Loan/Adavance Status(optional)'])
+            },
+            martialStatus:normalize(row['Marital Status'])
+            
+            
         };
         if (request.body.orgDetails?.structure === 'group') {
             emp.subOrganization = normalize(row['Organization']);
+            emp.isSubOrg=true
         }
         if (request.body.orgDetails?.structure === 'organization' || request.body.orgDetails?.structure === 'group') {
             emp.branch = normalize(row['Branch']);
@@ -1256,262 +2093,6 @@ export const getWorkingDaysTillToday=(year, month)=>{
     return { workingDays, monthDays };
 }
   
-
-
-// export const clientResponseExcelFormat = async (data) => {
-//     try {
-//       const formattedData = data.map((item) => ({
-//         'Status': item.status || '',
-//         'Organization': item.name || '',
-//         'Bussiness Type': item.businessType || item.bussinesstype || '',
-//         'Owner First Name': item.ownerName?.firstName || item.firstName || '',
-//         'Owner Last Name': item.ownerName?.lastName || item.lastName || '',
-//         'Owner Mobile Number': item.mobile || '',
-//         'Branch Name': item.branchName || '',
-//         'PAN': item.panNo || '',
-//         'GST': item.gstNo || '',
-//         'No. of Shifts': item.NoOfShifts || '',
-//         'No.of Male Supervisors': item.noOfMaleSupervisors || '',
-//         'No.of Female Supervisors': item.noOfFemaleSupervisors || '',
-//         'No.of Male Guards': item.noOfMaleGuards || '',
-//         'No.of Female Guards': item.noOfFemaleGuards || '',
-//         'DutyPoint': item.dutyPoint || '',
-//         'CheckPoint': item.checkPoint || '',
-//         'Hno(optional)': item.address?.hno || item.hno || '',
-//         'Street(optional)': item.address?.street || item.street || '',
-//         'LandMark(optional)': item.address?.landmark || item.landmark || '',
-//         'City(optional)': item.address?.city || item.city || '',
-//         'District(optional)': item.address?.district || item.district || '',
-//         'State(optional)': item.address?.state || item.state || '',
-//         'Country(optional)': item.address?.country || item.country || 'India',
-//         'Pincode(optional)': item.address?.pincode || item.pincode || ''
-//       }));
-  
-//       const workbook = new ExcelJS.Workbook();
-//       const worksheet = workbook.addWorksheet('Duplicate Data');
-  
-//       //  First define headers
-//       const headers = Object.keys(formattedData[0]);
-  
-//       worksheet.columns = headers.map(header => ({
-//         header,
-//         key: header,
-//         width: header === 'Status' ? 80 : 25,
-//         style: {
-//           font: { bold: true },
-//           alignment: {
-//             vertical: 'middle',
-//             horizontal: 'center',
-//             wrapText: true
-//           }
-//         }
-//       }));
-  
-//       // Insert Note row (top of sheet)
-//       const lastColLetter = String.fromCharCode(64 + headers.length); // A-Z
-//       worksheet.insertRow(1, []);
-//       worksheet.mergeCells(`A1:${lastColLetter}1`);
-//       const noteCell = worksheet.getCell('A1');
-//       noteCell.value = '?? Note: Upload this same file after correcting the issues mentioned in the Status column.';
-//       noteCell.font = { bold: true, italic: true, size: 12 };
-//       noteCell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-//       noteCell.fill = {
-//         type: 'pattern',
-//         pattern: 'solid',
-//         fgColor: { argb: 'FFFFF2CC' }
-//       };
-//       worksheet.getRow(1).height = 35; // Free space top/bottom of note
-  
-//       // Add data rows
-//       formattedData.forEach(row => {
-//         worksheet.addRow(row);
-//       });
-  
-//       // Header row (2nd row) styling
-//       worksheet.getRow(2).eachCell(cell => {
-//         cell.protection = { locked: true };
-//         cell.fill = {
-//           type: 'pattern',
-//           pattern: 'solid',
-//           fgColor: { argb: 'FFDCE6F1' }
-//         };
-//         cell.font = { bold: true };
-//         cell.alignment = {
-//           vertical: 'middle',
-//           horizontal: 'center',
-//           wrapText: true
-//         };
-//       });
-//       worksheet.getRow(2).height = 35;
-  
-//       // Unlock data rows
-//       worksheet.eachRow((row, rowNumber) => {
-//         if (rowNumber > 2) {
-//           row.eachCell(cell => {
-//             cell.protection = { locked: false };
-//           });
-//           row.alignment = { vertical: 'top', wrapText: true };
-//           row.height = 30; // More vertical space for data
-//         }
-//       });
-  
-//       // Freeze headers
-//       worksheet.views = [{ state: 'frozen', ySplit: 2 }];
-  
-//       // Protect Sheet
-//       await worksheet.protect('mwb@123', {
-//         selectLockedCells: true,
-//         selectUnlockedCells: true,
-//         formatCells: false,
-//         insertRows: false,
-//         deleteRows: false,
-//         editObjects: false
-//       });
-  
-//       // Save Excel file
-//       const destFolder = `assets/client/excelduplicate`;
-//       const fileName = `duplicate_clients_${Date.now()}.xlsx`;
-//       if (!fs.existsSync(destFolder)) {
-//         fs.mkdirSync(destFolder, { recursive: true });
-//       }
-//       const filePath = path.join(destFolder, fileName);
-//       await workbook.xlsx.writeFile(filePath);
-  
-//       return {
-//         status: true,
-//         data: `/api/v1/client/excel/duplicate/${fileName}`
-//       };
-//     } catch (error) {
-//       console.error('Excel generation failed:', error);
-//       return { status: false, message: 'Failed to generate Excel' };
-//     }
-// };
-
-// export const employeeResponseExcelFormat = async (data) => {
-//     try {
-//         const formattedData = data.map((item) => ({
-//             'Status': item.status || 'Duplicate',
-//             'EmployeeId': item.employeeId || '',
-//             'First Name': item.firstName || '',
-//             'Last Name': item.lastName || '',
-//             'Mobile Number': item.mobile || '',
-//             'Password': item.password || '',
-//             'Email(optional)': item.email || '',
-//             'Gender(optional)': item.gender || '',
-//             'DOB': item.dob || item.dateOfBirth || '',
-//             'DOJ': item.doj || item.joinDate || '',
-//             ...(item.subOrganization && { 'Organization': item.subOrganization || '' }),
-//             'Branch': item.branch || '',
-//             'Department': item.department || '',
-//             'Designation': item.designation || '',
-//             'Hno(optional)': item.address?.hno || item.hno || '',
-//             'Street(optional)': item.address?.street || item.street || '',
-//             'LandMark(optional)': item.address?.landmark || item.landmark || '',
-//             'City(optional)': item.address?.city || item.city || '',
-//             'District(optional)': item.address?.district || item.district || '',
-//             'State(optional)': item.address?.state || item.state || '',
-//             'Country(optional)': item.address?.country || item.country || 'India',
-//             'Pincode(optional)': item.address?.pincode || item.pincode || ''
-//         }));
-  
-//       const workbook = new ExcelJS.Workbook();
-//       const worksheet = workbook.addWorksheet('Duplicate Employees');
-  
-//       const headers = Object.keys(formattedData[0]);
-  
-//       worksheet.columns = headers.map(header => ({
-//         header,
-//         key: header,
-//         width: header === 'Status' ? 80 : 25,
-//         style: {
-//           font: { bold: true },
-//           alignment: {
-//             vertical: 'middle',
-//             horizontal: 'center',
-//             wrapText: true
-//           }
-//         }
-//       }));
-  
-//       // Insert Note Row
-//       const lastColLetter = String.fromCharCode(64 + headers.length);
-//       worksheet.insertRow(1, []);
-//       worksheet.mergeCells(`A1:${lastColLetter}1`);
-//       const noteCell = worksheet.getCell('A1');
-//       noteCell.value = '?? Note: Upload this same file after correcting the issues mentioned in the Status column.';
-//       noteCell.font = { bold: true, italic: true, size: 12 };
-//       noteCell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-//       noteCell.fill = {
-//         type: 'pattern',
-//         pattern: 'solid',
-//         fgColor: { argb: 'FFFFF2CC' }
-//       };
-//       worksheet.getRow(1).height = 35;
-  
-//       // Add data rows
-//       formattedData.forEach(row => {
-//         worksheet.addRow(row);
-//       });
-  
-//       // Style header row (2nd row)
-//       worksheet.getRow(2).eachCell(cell => {
-//         cell.protection = { locked: true };
-//         cell.fill = {
-//           type: 'pattern',
-//           pattern: 'solid',
-//           fgColor: { argb: 'FFDCE6F1' }
-//         };
-//         cell.font = { bold: true };
-//         cell.alignment = {
-//           vertical: 'middle',
-//           horizontal: 'center',
-//           wrapText: true
-//         };
-//       });
-//       worksheet.getRow(2).height = 35;
-  
-//       // Unlock data rows
-//       worksheet.eachRow((row, rowNumber) => {
-//         if (rowNumber > 2) {
-//           row.eachCell(cell => {
-//             cell.protection = { locked: false };
-//           });
-//           row.alignment = { vertical: 'top', wrapText: true };
-//           row.height = 60;
-//         }
-//       });
-  
-//       // Freeze header
-//       worksheet.views = [{ state: 'frozen', ySplit: 2 }];
-  
-//       // Protect sheet
-//       await worksheet.protect('mwb@123', {
-//         selectLockedCells: true,
-//         selectUnlockedCells: true,
-//         formatCells: false,
-//         insertRows: false,
-//         deleteRows: false,
-//         editObjects: false
-//       });
-  
-//       const destFolder = `assets/employee/excelduplicate`;
-//       const fileName = `duplicate_employees_${Date.now()}.xlsx`;
-//       if (!fs.existsSync(destFolder)) {
-//         fs.mkdirSync(destFolder, { recursive: true });
-//       }
-  
-//       const filePath = path.join(destFolder, fileName);
-//       await workbook.xlsx.writeFile(filePath);
-  
-//       return {
-//         status: true,
-//         data: `/api/v1/employee/excel/duplicate/${fileName}`
-//       };
-//     } catch (error) {
-//       console.error('Excel generation failed:', error);
-//       return { status: false, message: 'Failed to generate employee Excel' };
-//     }
-// };
 
 
 const generateDuplicateExcel = async ({
@@ -1701,6 +2282,18 @@ export const employeeResponseExcelFormat = async (data) => {
         { header: 'Branch', key: 'branch', value: item => item.branch || '' },
         { header: 'Department', key: 'department', value: item => item.department || '' },
         { header: 'Designation', key: 'designation', value: item => item.designation || '' },
+
+        { header: 'Work Branch Timing', key: 'workTimingType', value: item => item.workTimingType || '' },
+        { header: 'Work Shift Timing', key: 'shiftIds', value: item => item.shiftIds || '' },
+        { header: 'Default Branch Salary Setting', key: 'salaryConfig', value: item => item.salaryConfig || '' },
+        { header: 'Qualification', key: 'qualification', value: item => item.qualification || '' },
+        { header: 'Blood Group', key: 'bloodGroup', value: item => item.bloodGroup || '' },
+        { header: 'Guardian Name', key: 'guardianName', value: item => item.guardianName || '' },
+        { header: 'Guardian Number', key: 'guardianNumber', value: item => item.guardianNumber || '' },
+        { header: 'Emergency Number', key: 'emergencyNumber', value: item => item.emergencyNumber || '' },
+       
+
+
         { header: 'Hno(optional)', key: 'hno', value: item => item.address?.hno || item.hno || '' },
         { header: 'Street(optional)', key: 'street', value: item => item.address?.street || item.street || '' },
         { header: 'LandMark(optional)', key: 'landmark', value: item => item.address?.landmark || item.landmark || '' },
@@ -1708,7 +2301,17 @@ export const employeeResponseExcelFormat = async (data) => {
         { header: 'District(optional)', key: 'district', value: item => item.address?.district || item.district || '' },
         { header: 'State(optional)', key: 'state', value: item => item.address?.state || item.state || '' },
         { header: 'Country(optional)', key: 'country', value: item => item.address?.country || item.country || 'India' },
-        { header: 'Pincode(optional)', key: 'pincode', value: item => item.address?.pincode || item.pincode || '' }
+        { header: 'Pincode(optional)', key: 'pincode', value: item => item.address?.pincode || item.pincode || '' },
+
+
+        { header: 'Loan Type(optional)', key: 'loanType', value: item => item.financialDetails?.loanType || '' },
+        { header: 'Loan/Advance Amount(optional)', key: 'amount', value: item => item.financialDetails?.amount || '' },
+        { header: 'Issued Date(optional)', key: 'issuedDate', value: item => item.financialDetails?.issuedDate || '' },
+        { header: 'Total Installments(optional)', key: 'totalInstallments', value: item => item.financialDetails?.totalInstallments || '' },
+        { header: 'EMI Amount(optional)', key: 'emiAmount', value: item => item.financialDetails?.emiAmount || '' },
+        { header: 'Amount Paid(optional)', key: 'amountPaid', value: item => item.financialDetails?.amountPaid || '' },
+        { header: 'Balance Amount(optional)', key: 'balanceAmount', value: item => item.financialDetails?.balanceAmount || '' },
+        { header: 'Loan/Advance Status(optional)', key: 'loanAdvanceStatus', value: item => item.financialDetails?.loanAdvanceStatus || '' },
     ];
     // Remove Organization column if not present in any row
     const hasOrg = data.some(item => item.subOrganization);
@@ -1818,7 +2421,7 @@ export const matchisActiveStr = (str) => {
     return null; // No match
 }
 
-export const findMatchingShift = (shifts, targetDateTime, currentShift = []) => {
+export const findMatchingShift = (shifts, targetDateTime, currentShift = [], branchTimings = []) => {
 try {
     const matchingShifts = [];
     const upcomingShifts = [];
@@ -1829,6 +2432,10 @@ try {
         let shiftIds = currentShift.map(cs => cs._id.toString());
        shifts = shifts.filter(cs => shiftIds.includes(cs._id.toString()));
     }
+
+    // for branch timings configuration
+    if(!currentShift.length && branchTimings && branchTimings.length > 0) shifts = branchTimings
+
     for (const shift of shifts) {
         for (const offset of dayOffsets) {
             const shiftStart = new Date(targetDateTime);
@@ -1882,6 +2489,7 @@ try {
                 matchingShifts.push({
                     ...shift,
                     matchType,
+                    workTimingType: shift.workTimingType == 'branch' ? "branch" : "shift",
                     source: adjustedShiftStart > targetDateTime ? "upcoming" : "user",
                     timeDiff: Math.abs(adjustedShiftStart - targetDateTime),
                     shiftStart,
@@ -1948,44 +2556,140 @@ export const setGraceTime = (dateTime, startTime, graceTime, seconds) => {
 }
 
 
-export const formatModulesWithNames = (roleModules, moduleNames,disabledModules) => {
+// export const formatModulesWithNames = (roleModules, moduleNames,disabledModules,designationDisabledModulesObj ) => {
+//     if (!roleModules) return null;
+
+//     // Convert both disabled module objects to unique moduleId arrays
+//     const combinedDisabledIds = [
+//         ...new Set([
+//         ...Object.keys(disabledModules || {}),
+//         ...Object.keys(designationDisabledModulesObj || {}),
+//         ]),
+//     ];
+  
+//     const formattedModules = roleModules.modules?.filter(roleMod => !combinedDisabledIds.includes(roleMod.moduleId?.toString())).map(roleMod => {
+//       const match = moduleNames.find(
+//         m => m._id?.toString() === roleMod.moduleId?.toString()
+//       );
+  
+//       return {
+//         moduleId: roleMod.moduleId,
+//         name: match?.name ?? null,
+//         moduleKey: match?.moduleKey ?? null,
+//         permissions: roleMod.permissions
+//       };
+//     }) ?? [];
+
+//     // const formatDisableModules = disabledModules.map(mod => {
+//     //     const match = moduleNames.find(
+//     //       m => m._id?.toString() === mod.moduleId?.toString()
+//     //     );
+    
+//     //     return {
+//     //       moduleId: mod.moduleId,
+//     //       name: match?.name ?? null,
+//     //       moduleKey: match?.moduleKey ?? null,
+//     //       permissions: mod.permissions
+//     //     };
+//     //   }) ?? [];
+
+
+//     // Format disabled modules (merged from both sources)
+//   const allDisabledModules = combinedDisabledIds.map(id => {
+//     const match = moduleNames.find(m => m._id?.toString() === id);
+//     const perm =
+//     disabledModules[id] ||
+//       designationDisabledModulesObj[id] ||
+//       [];
+
+//     return {
+//       moduleId: id,
+//       name: match?.name ?? null,
+//       moduleKey: match?.moduleKey ?? null,
+//       permissions: perm,
+//     };
+//   });
+  
+//     return {
+//       _id: roleModules._id,
+//       name: roleModules.name,
+//       description: roleModules.description,
+//       modules: formattedModules,
+//     //    disabledModules: formatDisableModules
+//     disabledModules: allDisabledModules
+//     };
+//   };
+
+
+export const formatModulesWithNames = (
+    roleModules,
+    moduleNames,
+    userDisabledModules = {},
+    designationDisabledModules = {}
+  ) => {
     if (!roleModules) return null;
   
-    const formattedModules = roleModules.modules?.map(roleMod => {
-      const match = moduleNames.find(
-        m => m._id?.toString() === roleMod.moduleId?.toString()
-      );
+    //  Merge both disabled modules uniquely by moduleId
+    const combinedDisabledModules = {};
   
-      return {
-        moduleId: roleMod.moduleId,
-        name: match?.name ?? null,
-        moduleKey: match?.moduleKey ?? null,
-        permissions: roleMod.permissions
-      };
-    }) ?? [];
-
-    const formatDisableModules = disabledModules.map(mod => {
-        const match = moduleNames.find(
-          m => m._id?.toString() === mod.moduleId?.toString()
+    const mergeDisabled = (source) => {
+      for (const [moduleId, perms] of Object.entries(source || {})) {
+        if (!combinedDisabledModules[moduleId]) combinedDisabledModules[moduleId] = new Set();
+        perms.forEach((p) => combinedDisabledModules[moduleId].add(p));
+      }
+    };
+  
+    mergeDisabled(userDisabledModules);
+    mergeDisabled(designationDisabledModules);
+  
+    // Convert sets to arrays
+    for (const id in combinedDisabledModules) {
+      combinedDisabledModules[id] = Array.from(combinedDisabledModules[id]);
+    }
+  
+    //  Format modules: restrict permissions if they exist in disabled modules
+    const formattedModules =
+      roleModules.modules?.map((roleMod) => {
+        const moduleId = roleMod.moduleId?.toString();
+        const match = moduleNames.find((m) => m._id?.toString() === moduleId);
+  
+        // Remove disabled permissions if any
+        const disabledPerms = combinedDisabledModules[moduleId] || [];
+        const allowedPerms = roleMod.permissions.filter(
+          (p) => !disabledPerms.includes(p)
         );
-    
+  
         return {
-          moduleId: mod.moduleId,
+          moduleId,
           name: match?.name ?? null,
           moduleKey: match?.moduleKey ?? null,
-          permissions: mod.permissions
+          permissions: allowedPerms,
         };
       }) ?? [];
   
+    // Prepare formatted disabledModules array
+    const allDisabledModules = Object.entries(combinedDisabledModules).map(
+      ([id, perms]) => {
+        const match = moduleNames.find((m) => m._id?.toString() === id);
+        return {
+          moduleId: id,
+          name: match?.name ?? null,
+          moduleKey: match?.moduleKey ?? null,
+          permissions: perms,
+        };
+      }
+    );
+  
+    // Final formatted role
     return {
       _id: roleModules._id,
       name: roleModules.name,
       description: roleModules.description,
       modules: formattedModules,
-      disabledModules: formatDisableModules
+      disabledModules: allDisabledModules,
     };
-  };
-
+};
+  
 export const formatEmergencyContacts=(data)=>{
     const contacts=data.map(item=>{
         return item.contacts.map(c=>({"_id":item._id,...c}));

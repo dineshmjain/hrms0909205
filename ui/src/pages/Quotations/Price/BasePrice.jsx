@@ -819,6 +819,7 @@ import {
 } from '../../../redux/Action/Quotation/Price';
 import { ToastContainer, toast } from 'react-toastify';
 import moment from 'moment';
+import axiosInstance from '../../../config/axiosInstance';
 
 const BasePrice = ({ showPriceModal, setShowPriceModal, basePriceDetails, getPriceList }) => {
   // Form state
@@ -846,12 +847,14 @@ const BasePrice = ({ showPriceModal, setShowPriceModal, basePriceDetails, getPri
   const [validationErrors, setValidationErrors] = useState({});
 
   const dispatch = useDispatch();
-  const { designationList, loading } = useSelector((state) => state?.designation || {});
+  // const { designationList, loading } = useSelector((state) => state?.designation || {});
+
+  const [designationList,setDesignationList]=useState([])
 
   // Load designations on mount
   useEffect(() => {
     getDesignationList();
-  }, [dispatch]);
+  }, [showPriceModal]);
   useEffect(() => {
     getDesignationPrice();
   }, [designationId]);
@@ -873,14 +876,16 @@ const [qpId,setQPId]=useState(null)
     }
   }, [basePriceDetails, showPriceModal]);
 
-  const getDesignationList = (params) => {
+  const getDesignationList = async(params) => {
     const filters = {
       category: "assigned",
       mapedData: "designation",
       isActive: true
     };
-    const updatedParams = removeEmptyStrings({ ...params, ...filters });
-    dispatch(DesignationGetAction(updatedParams));
+    // const updatedParams = removeEmptyStrings({ ...params, ...filters });
+const data = await axiosInstance.post("/designation/get/asService",{type:'active'}).then((res)=> res?.data)
+setDesignationList(data?.data)
+    // dispatch(DesignationGetAction(updatedParams));
   };
 
   const resetFormData = () => {
@@ -1219,7 +1224,7 @@ const [qpId,setQPId]=useState(null)
           // priceId: priceId // or whatever identifier your API needs
         })));
       } else {
-        result = await dispatch(QuotationStandardPriceCreate(removeEmptyStrings(payload)));
+        result = await dispatch(QuotationStandardPriceCreate(payload));
       }
 
       const { meta, payload: responsePayload } = result || {};

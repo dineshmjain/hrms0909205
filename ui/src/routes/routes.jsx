@@ -221,7 +221,7 @@ const routes = [
       },
     ],
   },
-   {
+  {
     id: "salarymaster",
     title: "Salary",
     name: "salarymaster",
@@ -273,7 +273,7 @@ const routes = [
     iconSelected: <SvgHolidaySelected />,
     link: "leads",
   },
- 
+
   // {
   //   id: "attendance",
   //   title: "Attendance",
@@ -282,7 +282,47 @@ const routes = [
   //   icon: <FaListCheck className="w-5 h-5" />,
   //   link: "attendance",
   // },
-{
+
+  {
+    id: "gaurdMananagement",
+    title: "Guard Management",
+    name: "gaurdMananagement",
+    parent: true,
+    link: "",
+    icon: <MdSecurity className="w-5 h-5" />,
+    iconSelected: <MdSecurity className="w-5 h-5" />,
+    child: [
+      {
+        id: "patrolling",
+        title: "Patrolling",
+        name: "patrolling",
+        link: "patrolling",
+        icon: <BsPersonWalking />,
+      },
+      {
+        id: "checkpoint",
+        title: "Checkpoint",
+        name: "checkpoint",
+        link: "checkpoint",
+        icon: <IoLocationSharp />,
+      },
+    ],
+  },
+  // {
+  //   id: "client",
+  //   title: "Client",
+  //   name: "client",
+  //   parent: true,
+  //   icon: <FaBuildingUser className="w-5 h-5" />,
+  //   link: "client",
+  // },
+  {
+    id: "leads",
+    title: "Leads",
+    name: "lead",
+    link: "",
+  },
+  {
     id: "quotation",
     title: "Quotations",
     name: "quotation",
@@ -296,7 +336,7 @@ const routes = [
         id: "quotation",
         title: "quotations",
         name: "quotation",
-      link: "quotation",
+        link: "quotation",
         icon: <RxDotFilled />,
       },
       {

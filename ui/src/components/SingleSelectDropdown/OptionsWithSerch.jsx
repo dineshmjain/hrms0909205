@@ -115,7 +115,10 @@ const OptionsWithSerch = ({
       className={`flex items-center gap-2 cursor-pointer border border-gray-100 bg-white px-1 py-2 hover:bg-primaryMedium hover:text-black`}
         // className="bg-white-100 cursor-pointer text-sm hover:bg-gray-300 flex gap-2 p-1 px-2 maxsm:w-full rounded-md border border-gray-500 text-gray-900 items-center"
         key={idx}
-        onClick={() => handleClick(route)}
+        onClick={() => {
+          console.log('OptionsWithSerch clicked:', route);
+          handleClick(route);
+        }}
       >
         {label}
         {extraLabel && (

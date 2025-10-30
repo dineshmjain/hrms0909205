@@ -5,7 +5,7 @@ import { Form, useFormikContext } from 'formik';
 import { useLocation } from 'react-router-dom';
 
 import Header from '../../../components/header/Header';
-import FormikInput from '../../../components/input/FormikInput';
+import FormikInput from '../../../components/Input/FormikInput';
 import AddressNew from '../../../components/Address/AddressNew';
 import { SubOrgListAction } from '../../../redux/Action/SubOrgAction/SubOrgAction';
 import { BranchKycCreateAction, BranchKycGetAction } from '../../../redux/Action/Branch/BranchAction';

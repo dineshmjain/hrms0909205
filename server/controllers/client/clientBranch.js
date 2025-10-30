@@ -22,6 +22,21 @@ export const getBranchList = async (request, response, next) => {
     }
 }
 
+export const getShiftIdsByClientRequirement = async (request, response, next) => {
+    try 
+    {
+        const shiftsData = await clientBranchModel.getShiftIdsByClientRequirement(request.body)
+        if (!shiftsData.status)  return apiResponse.ErrorResponse(response,"Something went wrong",response.error);
+        request.body.shiftIdsFromRequirement = shiftsData.data;
+        return next()
+    } 
+    catch (error) 
+    {
+        logger.error("Error while getBranchList in client branch controller ",{ stack: error.stack });
+        return apiResponse.somethingResponse(response, error.message)  
+    }
+}
+
 //get one branch
 export const getBranch = async (request,response,next) => {
     try

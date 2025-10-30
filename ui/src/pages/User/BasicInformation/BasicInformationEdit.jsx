@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from "react";
 
 import { useDispatch, useSelector } from "react-redux";
 import * as Yup from "yup";
-import FormikInput from "../../../components/input/FormikInput";
+import FormikInput from "../../../components/Input/FormikInput";
 import SubCardHeader from "../../../components/header/SubCardHeader";
 import { getTypeOfIndustyAction } from "../../../redux/Action/Global/GlobalAction";
 import { useFormikContext } from "formik";
@@ -13,9 +13,29 @@ import axiosInstance from "../../../config/axiosInstance";
 import { Avatar } from "@material-tailwind/react";
 import ProfileImageUploader from "./ProfileImageUploader";
 import { EmployeeDetailsByTypeAction } from "../../../redux/Action/Employee/EmployeeAction";
+import SingleSelectDropdown from "../../../components/SingleSelectDropdown/SingleSelectDropdown";
 import { string } from "prop-types";
 import { set } from "date-fns";
+const genderOptions = [
+  { label: "Male", value: "male" },
+  { label: "Female", value: "female" },
+];
 
+const maritalStatusOptions = [
+  { label: "Single", value: "single" },
+  { label: "Married", value: "married" },
+];
+
+const bloodGroupOptions = [
+  { label: "A+", value: "A+" },
+  { label: "A-", value: "A-" },
+  { label: "B+", value: "B+" },
+  { label: "B-", value: "B-" },
+  { label: "O+", value: "O+" },
+  { label: "O-", value: "O-" },
+  { label: "AB+", value: "AB+" },
+  { label: "AB-", value: "AB-" },
+];
 // ✅ Exporting field config for Formik in parent
 export const BasicConfig = () => {
   return {
@@ -23,12 +43,25 @@ export const BasicConfig = () => {
       firstName: "",
       lastName: "",
       mobile: "",
-     
+
       email: "",
 
       joinDate: moment().format("yyyy-MM-DD"),
       dateOfBirth: moment().subtract(14, "y").format("yyyy-MM-DD"),
       profileImage: "",
+      employeeId: "",
+
+      gender: "",
+
+      maritalStatus: "",
+      bloodGroup: "",
+      workTimingType: "",
+      shiftIds: [],
+      salaryConfig: false,
+      qualification: "",
+      emergencyNumber: "",
+      guardianNumber: "",
+      guardianName: "",
     },
     validationSchema: {
       firstName: Yup.string().required("First Name is required"),
@@ -36,11 +69,29 @@ export const BasicConfig = () => {
       mobile: Yup.string()
         .matches("^[6-9][0-9]{9}$", "Not a valid Mobile Number")
         .required("Mobile Number is required"),
-      
+
       email: Yup.string().email(),
-         dateOfBirth:Yup.date().max(moment().subtract(14, 'years').toDate(), 'Employee must be at least 14 years old').required("Date Of Birth is required"),
-      
+
+      dateOfBirth: Yup.date()
+        .max(
+          moment().subtract(14, "years").toDate(),
+          "Employee must be at least 14 years old"
+        )
+        .required("Date Of Birth is required"),
+
       joinDate: Yup.date().required("Joining Date is required"),
+      emergencyNumber: Yup.string().matches(
+        "^[6-9][0-9]{9}$",
+        "Not a valid Mobile Number"
+      ),
+      guardianNumber: Yup.string().matches(
+        "^[6-9][0-9]{9}$",
+        "Not a valid Mobile Number"
+      ),
+      guardianName: Yup.string().min(
+        3,
+        "Guardian name must be at least 3 characters"
+      ),
     },
   };
 };
@@ -77,6 +128,13 @@ const BasicInformationEdit = ({ isEditAvailable }) => {
     setFieldValue("profileImage", employeePersonalDetails?.profileImage);
 
     setFieldValue("id", state?._id);
+    setFieldValue("employeeId", employeePersonalDetails?.employeeId);
+    setFieldValue("bloodGroup", employeePersonalDetails?.bloodGroup);
+    setFieldValue("qualification", employeePersonalDetails?.qualification);
+    setFieldValue("emergencyNumber", employeePersonalDetails?.emergencyNumber);
+    setFieldValue("guardianNumber", employeePersonalDetails?.guardianNumber);
+    setFieldValue("guardianName", employeePersonalDetails?.guardianName);
+    setFieldValue("gender", employeePersonalDetails?.gender);
   }, [employeePersonalDetails]);
   // console.log(employeePersonalDetails, state?._id);
   // console.log("gender", employeePersonalDetails?.gender);
@@ -98,7 +156,6 @@ const BasicInformationEdit = ({ isEditAvailable }) => {
     // fileInputRef.current.click();
     console.log("d");
   };
-
 
   const handleImageChange = async (event) => {
     const file = event.target.files[0];
@@ -159,6 +216,13 @@ const BasicInformationEdit = ({ isEditAvailable }) => {
       <SubCardHeader headerLabel={"Basic Information"} />
       <div className="flex flex-col lg:flex-row justify-between py-2 gap-4">
         <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 flex-1 flex-wrap gap-4">
+          {/* <FormikInput
+            name="employeeId"
+            size="sm"
+            label="Employee ID"
+            inputType={isEditAvailable ? "edit" : "input"}
+            editValue={values?.employeeId}
+          /> */}
           <FormikInput
             name="firstName"
             size="sm"
@@ -188,6 +252,66 @@ const BasicInformationEdit = ({ isEditAvailable }) => {
             inputType={isEditAvailable ? "edit" : "input"}
             editValue={values?.email}
           />
+
+          <FormikInput
+            name="qualification"
+            size="sm"
+            label="Qualification"
+            inputType={isEditAvailable ? "edit" : "input"}
+            editValue={values?.qualification}
+          />
+          <FormikInput
+            name="emergencyNumber"
+            size="sm"
+            label="Emergency Contact Number"
+            inputType={isEditAvailable ? "edit" : "input"}
+            editValue={values?.emergencyNumber}
+          />
+          <FormikInput
+            name="guardianName"
+            size="sm"
+            label="Guardian Name"
+            inputType={isEditAvailable ? "edit" : "input"}
+            editValue={values?.guardianName}
+          />
+          <FormikInput
+            name="guardianNumber"
+            size="sm"
+            label="Guardian Contact Number"
+            inputType={isEditAvailable ? "edit" : "input"}
+            editValue={values?.guardianNumber}
+          />
+          <FormikInput
+            name="gender"
+            size="sm"
+            label="Gender"
+            inputType={isEditAvailable ? "edit" : "dropdown"}
+            listData={genderOptions}
+            inputName="Select Gender"
+            feildName="label"
+            hideLabel={true}
+            showTip={false}
+            showSerch
+            handleClick={(option) => setFieldValue("gender", option?.value)}
+            selectedOption={values?.gender}
+            selectedOptionDependency="value"
+            editValue={
+              genderOptions?.find((d) => d.value === values?.gender)?.label
+            }
+          />
+
+          {/* <SingleSelectDropdown
+            inputName="Gender"
+            hideLabel={true}
+            listData={genderOptions}
+            selectedOption={values.gender}
+            selectedOptionDependency="value"
+            feildName="label"
+            inputType={isEditAvailable ? "edit" : "input"}
+            editValue={values?.gender}
+            handleClick={(option) => setFieldValue("gender", option.value)}
+          /> */}
+
           <FormikInput
             name="dateOfBirth"
             size="sm"
@@ -195,6 +319,37 @@ const BasicInformationEdit = ({ isEditAvailable }) => {
             inputType={isEditAvailable ? "edit" : "input"}
             editValue={values?.dateOfBirth}
             max={moment().subtract(14, "y").endOf("Year").format("yyyy-MM-DD")}
+          />
+
+          {/* <SingleSelectDropdown
+            inputName="Blood Group"
+            hideLabel={true}
+            listData={bloodGroupOptions}
+            selectedOption={values.bloodGroup}
+            selectedOptionDependency="value"
+            feildName="label"
+            inputType={isEditAvailable ? "edit" : "input"}
+            editValue={values?.bloodGroup}
+            handleClick={(option) => setFieldValue("bloodGroup", option.value)}
+          /> */}
+          <FormikInput
+            name="bloodGroup"
+            size="sm"
+            label="Blood Group"
+            inputType={isEditAvailable ? "edit" : "dropdown"}
+            listData={bloodGroupOptions}
+            inputName="Select Blood Group"
+            feildName="label"
+            hideLabel={true}
+            showTip={false}
+            showSerch
+            handleClick={(option) => setFieldValue("bloodGroup", option?.value)}
+            selectedOption={values?.bloodGroup}
+            selectedOptionDependency="value"
+            editValue={
+              bloodGroupOptions?.find((d) => d.value === values?.bloodGroup)
+                ?.label
+            }
           />
         </div>
         {console.log("ProfileImageUploader defaultImage:", values.profileImage)}

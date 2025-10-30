@@ -38,7 +38,7 @@ router.post(
     auth.isAuth,
     user.isUserValid,
     org.getOrg,
-    shift.getOneShift,
+    // shift.getOneShift, // temperary fix, will implement actual function later
     shift.createShift,
     (request,responce) => {
         return apiResponse.successResponse(responce,"Shift created succefully");

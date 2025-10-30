@@ -2,10 +2,10 @@
 import { createSlice } from "@reduxjs/toolkit";
 import toast from "react-hot-toast";
 import { GetStructureAction } from "../Action/Wizard/WizardAction";
-import { GetOrganizationAction } from "../Action/Wizard/WizardAction"; // import your action
+import { GetOrganizationAction ,GetOrganizationDetailsAction} from "../Action/Wizard/WizardAction"; // import your action
 import { GetBranchCreationAction } from "../Action/Wizard/WizardAction";
 import { GetAllWizardAction } from "../Action/Wizard/WizardAction";
-import { OtCreateAction, OtUpdateAction } from "../Action/Wizard/WizardAction";
+import { OtCreateAction, OtUpdateAction ,OtGetAction} from "../Action/Wizard/WizardAction";
 
 const initialState = {
   structure: null,
@@ -17,6 +17,8 @@ const initialState = {
   errorMessage: "",
   otCreation: null,
   otUpdate: null,
+  organizationDetails: null,
+  otGet: null,
 };
 
 const WizardReducer = createSlice({
@@ -151,8 +153,50 @@ const WizardReducer = createSlice({
           backendError?.message || "Failed to update OT";
         state.errorMessage = validationMessage;
         toast.error(validationMessage);
-      });
+      })
+      .addCase(GetOrganizationDetailsAction.pending, (state) => {
+        state.status = "loading";
+        state.error = false;
+      })
+      .addCase(GetOrganizationDetailsAction.fulfilled, (state, action) => {
+        state.status = "success";
+        state.organizationDetails = action.payload?.data || null;
+        toast.success("Organization details fetched successfully");
+      }
+      )
+      .addCase(GetOrganizationDetailsAction.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = true;
+        const backendError =
+          action.payload || action.error?.response?.data || action.error;
+        const validationMessage =
+          backendError?.message || "Failed to fetch organization details";
+        state.errorMessage = validationMessage;
+        toast.error(validationMessage);
+      })
+      .addCase(OtGetAction.pending, (state) => {
+        state.status = "loading";
+      } 
+      )
+      .addCase(OtGetAction.fulfilled, (state, action) => {
+        state.status = "success";
+        state.otGet = action.payload?.data || null;
+        toast.success("OT Fetched successfully");
+      }
+      )
+      .addCase(OtGetAction.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = true;
+        const backendError =
+          action.payload || action.error?.response?.data || action.error;
+        const validationMessage =
+          backendError?.message || "Failed to fetch OT";
+        state.errorMessage = validationMessage;
+        toast.error(validationMessage);
+      }
+      );
   },
 });
+
 
 export default WizardReducer.reducer;

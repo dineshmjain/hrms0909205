@@ -36,15 +36,15 @@ router.post('/login',
     auth.login, 
     roles.getAdminRole,
     user.getUserModules,
-    modules.getOwnerModules,
+    // modules.getOwnerModules,
     auth.updateVerfication,
-    user.checkDisabledModules,
-    modules.format,
     
     user.isUserValid,
     org.isOrgExist,
     assignment.getSingleAssignment,
     designation.getOneDesignation,
+    user.checkDisabledModules,
+    modules.format,
     modules.formatBranchOrgModules,
     notification.updateDeviceToken,
     org.checkPending,
@@ -81,6 +81,15 @@ router.post('/register',
     auth.register,
     auth.sendOTP,
     user.updateOTP,
+    user.getAuthUser,
+    org.addOrganization, 
+    (request,response,next)=>{
+        request.body.defaultBranchOrgId=request.body.orgId
+        return next()
+    },
+    // branch.addDefaultBranch, // add default branch
+    department.addDefaultDepartments,
+    designation.addDefaultDesignations,
     (request, response) => {
         return apiResponse.successResponseWithData(response, "OTP Sent Succesfully ", { otp: request.body.otp })
     }

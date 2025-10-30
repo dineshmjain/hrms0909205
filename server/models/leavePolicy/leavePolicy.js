@@ -157,11 +157,13 @@ export const isPolicyExists = async (body) => {
 export const createPolicyLeave=async(body)=>{
     try{
         
+        const {salaryCycle}=body?.branchDetails[0]
         const orgId = body?.user?.orgId
         const userId=body?.user._id
         if(!userId || !orgId){
             throw new Error('Either OrgId or UserId not found ')
         }
+        body.cycle['creditedDay']=+salaryCycle.startDay ?? 1
         const query={
             orgId: new ObjectId(orgId),
             leavePolicyId:new ObjectId(body.leavePolicyId),
@@ -184,6 +186,9 @@ export const createPolicyLeave=async(body)=>{
             isActive:true,
             createdBy:new ObjectId(userId),
             createdDate:new Date()
+        }
+        if(body.yearlyLeaveCount){
+            query['yearlyLeaveCount']=body.yearlyLeaveCount
         }
         
         if(body.branchId){
@@ -297,10 +302,12 @@ export const getleavePolicy=async(body)=>{
                   branchId: 1,
                   departmentId: 1,
                   approval: 1,
+                  isActive: 1,
             
                   // Fields from leavePolicyList
                   leavePolicyName: '$leavePolicyList.name',
-                  brachName:'$branch.name'
+                  brachName:'$branch.name',
+                  yearlyLeaveCount:1
                 }
             }
         ]
@@ -370,6 +377,7 @@ export const updatePolicy = async (body) => {
       if (body.noOfDays !== undefined) updateFields.noOfDays = body.noOfDays;
       if (body.eligibleNoOfDays !== undefined) updateFields.eligibleNoOfDays = body.eligibleNoOfDays;
       if (body.cycle !== undefined) updateFields.cycle = body.cycle;
+      if(body.yearlyLeaveCount!==undefined)updateFields.yearlyLeaveCount=body.yearlyLeaveCount
   
       // carry forward
       if (body.carryForwardEnabled !== undefined) {
@@ -505,6 +513,45 @@ export const getPolicy = async(body)=>{
 
     }catch(error){
         logger.error('Error while getPolicy in LeavePolicy model function')
+        throw error;
+    }
+}
+
+export const getleavePolicyMaster= async(body)=>{
+    try{
+        if(!body?.user?.orgId) throw new Error('user organization not found')
+        const query={
+            orgId:new ObjectId(body.user.orgId),
+            leavePolicyId:new ObjectId(body.leavePolicyId),
+            isActive:true
+        }
+
+        if(body.branchId){
+            query["branchId"]=new ObjectId(body.branchId)
+        }
+
+        
+
+        return await getMany(query,'LeavePolicyMaster',{_id:1,leavePolicyId:1})
+
+    }catch(error){
+        logger.error('Error while getPolicy in LeavePolicy model function')
+        throw error;
+    }
+}
+
+export const getLeavePoliciesOfSalaryEnabled=async(body)=>{
+    try{
+        
+        const query={
+            salaryConversionEnabled:true
+        }
+        
+        
+        return await getMany(query,'LeavePolicyMaster')
+        
+    }catch (error) {
+        logger.error("Error while getLeavePolicies in LeavePolicy  model function");
         throw error;
     }
 }

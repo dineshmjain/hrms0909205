@@ -28,6 +28,7 @@ const DashboardIndex = lazy(() => import("./pages/Dashboard/Index"));
 const OrganizationWizardIndex = lazy(() =>
   import("./pages/AssistWizard/AssistWizard")
 );
+// const OrganizationWizardIndex = lazy(() => import("./pages/OrganizationWizard/OrganizationWizard"));
 const DepartmentIndex = lazy(() => import("./pages/Department/Index"));
 const Layout = lazy(() => import("./layouts/Layout"));
 const DesignationIndex = lazy(() => import("./pages/Designation/Index"));
@@ -66,9 +67,13 @@ const BranchRadiusSettingIndex = lazy(() =>
 );
 import { LoadScript, LoadScriptNext } from "@react-google-maps/api";
 import BranchRadiusSetting from "./pages/Attendence/BranchRadiusSetting/BranchRadiusSetting";
+const SalaryTemplateIndex = lazy(() => import("./pages/Salary/Template/index"))
+const SalarySettingsIndex = lazy(() => import("./pages/Salary/Settings/index"))
 import Profile from "./pages/Profile/Profile";
 const BiometricIndex = lazy(() => import("./pages/Biometrics/index"));
+const Temp =lazy(()=> import("./pages/Temp3"))
 // const PriceConfigure = lazy(() => import("./pages/Quotations/"));
+
 const googleMapsApiKey = import.meta.env.VITE_MAPAPI;
 const GOOGLE_MAP_LIBRARIES = ["places"];
 const App = () => {
@@ -185,6 +190,8 @@ const App = () => {
             <Route element={<DutyRoaster />} path="dutyroaster/*" />
             <Route element={<CheckPointIndex />} path="checkpoint/*" />
             <Route element={<AttendenceReportIndex />} path="attendance/*" />
+            <Route element={<SalaryTemplateIndex />} path="salaryTemplate/*" />
+            <Route element={<SalarySettingsIndex />} path="salarySettings/*" />
             
             <Route
               element={<BranchRadiusSettingIndex />}
@@ -208,6 +215,7 @@ const App = () => {
             <Route element={<BiometricIndex />} path="biometrics/*" />
             {/* <Route element={<PriceConfigure />} path="priceconfigure/*" /> */}
           </Route>
+          <Route path ="/temp" element={<Temp/>} />
           <Route path="/:everythingElse" element={<NotFound />} />
         </Routes>
       </LoadScriptNext>

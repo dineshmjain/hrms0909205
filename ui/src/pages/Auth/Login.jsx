@@ -15,7 +15,7 @@ import bg from "../../assets/sign-in-bg.png";
 
 import toast, { Toaster } from "react-hot-toast";
 import { login } from "../../redux/Action/Auth/AuthAction";
-import { PasswordWithHelperText } from "../../components/input/Input";
+import { PasswordWithHelperText } from "../../components/Input/Input";
 const Login = () => {
   const [credentials, setCredentials] = useState({ password: "" });
   const [inputValue, setInputValue] = useState("");
@@ -58,7 +58,8 @@ const Login = () => {
       case 2:
         return window.open(`http://192.168.1.93/taskManagement`, "_blank");
       default:
-        return navigate("/dashboard");
+        return navigate("/auth/assist-wizard");
+      // return navigate("/dashboard");
     }
   };
 
@@ -134,7 +135,7 @@ const Login = () => {
         )?.then(({ payload }) => {
           if (payload?.status === 200) {
             handleRememberMe();
-            if (payload?.data?.pending?.organization == false) {
+            if (payload?.data?.pending?.organization == true) {
               toast("Please complete your organization details");
               // return navigate("../org");
               return navigate("../assist-wizard");
@@ -280,7 +281,7 @@ const Login = () => {
             </span>
             <span variant="small" className="font-inter">
               <span
-                onClick={() => navigate("/auth/forgot-password")}
+                onClick={() => navigate("/auth/subscription")}
                 className="text-primary flex"
               >
                 Forgot Password?

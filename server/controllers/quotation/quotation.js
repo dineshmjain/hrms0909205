@@ -59,3 +59,39 @@ export const trackQuotation = async (request, response, next) => {
   }
 }
 
+export const closeQuotation = async (request, response, next) => {
+  try {
+    const result = await quotationModel.closeQuotation(request?.body);
+
+    if (result?.status) {
+      return apiResponse.successResponseWithData(response, "Data found Successfully", result?.data)
+
+    } else {
+      // Handle failure
+      return apiResponse.somethingResponse(response, result?.message || 'Failed to list quotation');
+    }
+  }
+  catch (error) {
+    return logAndRespond(error, response, 'track Quotation');
+  }
+}
+
+
+
+export const getDetailsForQuoatation = async (request, response, next) => {
+  try {
+    const result = await quotationModel.closeQuotation(request?.body);
+
+    if (result?.status) {
+      return apiResponse.successResponseWithData(response, "Data found Successfully", result?.data)
+
+    } else {
+      // Handle failure
+      return apiResponse.somethingResponse(response, result?.message || 'Failed to list quotation');
+    }
+  }
+  catch (error) {
+    return logAndRespond(error, response, 'track Quotation');
+  }
+}
+

@@ -9,9 +9,11 @@ import {
   Target,
   Calendar,
   Check,
-  Building2,
   CalendarClock,
   Clock,
+  Building2,
+  DollarSign,
+  Briefcase,
 } from "lucide-react";
 import {
   Input,
@@ -33,7 +35,9 @@ import {
   GetBranchCreationAction,
   GetAllWizardAction,
 } from "../../redux/Action/Wizard/WizardAction";
+import { SubOrgEditAction } from "../../redux/Action/SubOrgAction/SubOrgAction";
 import { GetTypeOfIndustry } from "../../redux/Action/typeOfIndustory/TypeOfIndustryAction";
+import { BranchGetAction } from "../../redux/Action/Branch/BranchAction";
 import { FloatingInput } from "../../components/FloatingInput/FloatingInput";
 import OrganizationForm from "./OrganizationForm";
 import BranchSettings from "./BranchSettings";
@@ -56,7 +60,6 @@ const WizardScreen = () => {
   console.log("User ID in Wizard:", userId);
   const dispatch = useDispatch();
 
-  // const [currentStep, setCurrentStep] = useState(1);
   const [currentStep, setCurrentStep] = useState(() => {
     const savedStep = localStorage.getItem("wizardCurrentStep");
     return savedStep ? Number(savedStep) : 1;
@@ -68,11 +71,18 @@ const WizardScreen = () => {
     (state) => state.typeOfIndustury.typeList
   );
   const [wizardCompleted, setWizardCompleted] = useState(false);
-  const [branchList, setBranchList] = useState([]);
+
+  // Get branch list from Redux store
+  const branchList = useSelector((state) => state.branch.branchList || []);
   const shiftList = useSelector((state) => state.shift.shiftList);
   const [employeeList, setEmployeeList] = useState([]);
   const isToggleDisabled = shiftList.length > 0;
   const [overtimeList, setOvertimeList] = useState([]);
+
+  useEffect(() => {
+    console.log("branchList updated:", branchList);
+  }, [branchList]);
+
   useEffect(() => {
     const fetchIndustryList = async () => {
       const resultAction = await dispatch(GetTypeOfIndustry());
@@ -106,23 +116,35 @@ const WizardScreen = () => {
           goals: [],
           timeline: "",
           features: [],
+
+          name: "",
+          startTime: "",
+          endTime: "",
+          maxIn: "",
+          minOut: "",
+          weekOff: [],
+          salaryCycle: "",
+          timeSettingType: "startEnd",
         };
   });
 
   const steps = [
     { id: 1, title: "Get Started", icon: Rocket },
     { id: 2, title: "Organization Info", icon: Building },
-    { id: 3, title: "Branch Timings", icon: Building2 },
-    { id: 4, title: "Leave Settings", icon: CalendarClock },
-    { id: 5, title: "Shift/OT Selection", icon: Clock },
-    { id: 6, title: "Shift Creation", icon: Clock },
-    { id: 7, title: "OT Creation", icon: Clock },
-    { id: 8, title: "Salary Settings", icon: Target },
-    { id: 9, title: "Statutory Settings", icon: Target }, // new screen
-    { id: 10, title: "Employee Upload", icon: Users }, // shifted dow
+    { id: 3, title: "Leave Settings", icon: CalendarClock },
+    { id: 4, title: "Shift/OT Selection", icon: Clock },
+    // Only show these steps when "Both" is selected
+    ...(formData.shiftOvertime === "Both"
+      ? [
+          { id: 5, title: "Shift Creation", icon: Clock },
+          { id: 6, title: "OT Creation", icon: Clock },
+        ]
+      : []),
+    { id: 9, title: "Employee Upload", icon: Users },
+    { id: 10, title: "Complete Setup", icon: CheckCircle },
   ];
 
-  const totalSteps = steps.length; // instead of 5
+  const totalSteps = steps.length;
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => {
@@ -145,122 +167,6 @@ const WizardScreen = () => {
     });
   };
 
-  const nextStep = async () => {
-    if (currentStep === 2) {
-      // Organization step
-      if (!formData.orgTypeId) {
-        alert("Please select a Business Type before proceeding");
-        return;
-      }
-
-      if (!formData.orgId) {
-        const payload = {
-          name: formData.orgName || formData.groupName || formData.branchName,
-          orgTypeId: formData.orgTypeId,
-          structure: formData.structure,
-        };
-
-        try {
-          const resultAction = await dispatch(GetOrganizationAction(payload));
-          if (GetOrganizationAction.fulfilled.match(resultAction)) {
-            setFormData((prev) => ({
-              ...prev,
-              orgId: resultAction.payload._id,
-              branchId: resultAction.payload.branchId || null,
-            }));
-            setCurrentStep(currentStep + 1);
-          } else {
-            alert(
-              resultAction.payload?.message || "Failed to create organization"
-            );
-          }
-        } catch (err) {
-          console.error(err);
-          alert("Something went wrong while creating organization");
-        }
-      } else {
-        setCurrentStep(currentStep + 1);
-      }
-    } else if (currentStep === 3) {
-      // BranchSettings step → create branch ONLY if branchId is not available
-      if (!finalData.address || Object.keys(finalData.address).length === 0) {
-        alert("Please fill in the address correctly");
-        return;
-      }
-
-      // Skip API if branch already exists
-      if (formData.branchId) {
-        // Branch already exists → skip API
-        setCurrentStep(currentStep + 1);
-        return;
-      }
-
-      const payload = {
-        orgId: formData.orgId, // link branch to organization
-        name: formData.branchName || formData.orgName,
-        address: finalData.address,
-        geoLocation: finalData.geoLocation,
-        geoJson: finalData.geoJson,
-        timeSettingType: formData.timeSettingType || "startEnd",
-        startTime: formData.startTime,
-        endTime: formData.endTime,
-        maxIn: formData.maxIn,
-        minOut: formData.minOut,
-        weekOff: formData.weekOff || [],
-      };
-
-      try {
-        const resultAction = await dispatch(GetBranchCreationAction(payload));
-        if (GetBranchCreationAction.fulfilled.match(resultAction)) {
-          console.log("Branch created:", resultAction.payload);
-
-          // Save branchId for later use
-          setFormData((prev) => ({
-            ...prev,
-            branchId: resultAction.payload?.data?._id,
-          }));
-
-          setCurrentStep(currentStep + 1);
-        } else {
-          alert(resultAction.payload?.message || "Failed to create branch");
-        }
-      } catch (err) {
-        console.error(err);
-        alert("Something went wrong while creating branch");
-      }
-    } else if (currentStep === 5) {
-      // Shift/OT Selection
-      if (!formData.shiftOvertime || isToggleDisabled) {
-        setCurrentStep(8); // skip directly to Salary Settings
-      } else {
-        switch (formData.shiftOvertime) {
-          case "Shifts":
-            setCurrentStep(6); // go to ShiftCreation
-            break;
-          case "Overtime":
-            setCurrentStep(7); // go to OTCreation
-            break;
-          case "Both":
-            setCurrentStep(6); // start with ShiftCreation
-            break;
-          default:
-            setCurrentStep(8); // fallback
-        }
-      }
-    } else if (currentStep === 6) {
-      // After ShiftCreation
-      if (formData.shiftOvertime === "Both") {
-        setCurrentStep(7); // go to OTCreation
-      } else {
-        setCurrentStep(8); // skip to Salary
-      }
-    } else if (currentStep === 7) {
-      setCurrentStep(8); // After OTCreation → Salary
-    } else if (currentStep < totalSteps) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
   const fetchWizardData = async () => {
     try {
       const resultAction = await dispatch(GetAllWizardAction());
@@ -278,6 +184,9 @@ const WizardScreen = () => {
             orgTypeId: data.organization.orgTypeId,
             structure: data.organization.structure,
           }));
+
+          // Fetch branches using BranchGetAction
+          await dispatch(BranchGetAction({ orgId: data.organization._id }));
         }
 
         // Branch data
@@ -298,13 +207,17 @@ const WizardScreen = () => {
             geoLocation: data.branch.geoLocation || {},
             geoJson: data.branch.geoJson || {},
           });
+        }
 
-          setBranchList([{ _id: data.branch._id, name: data.branch.name }]);
-        }
-        // Overtime data
+        // Overtime data - ADD CONSOLE LOG HERE
         if (data?.overtime) {
-          setOvertimeList(data.overtime); // Save OT list
+          console.log("Setting OT list from API:", data.overtime);
+          setOvertimeList(data.overtime);
+        } else {
+          console.log("No overtime data in API response");
+          setOvertimeList([]);
         }
+
         if (data?.users) {
           setEmployeeList(data.users);
         }
@@ -314,64 +227,72 @@ const WizardScreen = () => {
     }
   };
 
-  // const prevStep = async () => {
-  //   if (currentStep > 1) {
-  //     const newStep = currentStep - 1;
+  const nextStep = async () => {
+    if (currentStep === 4) {
+      if (!formData.shiftOvertime || formData.shiftOvertime.trim() === "") {
+        // No selection -> skip to Employee Upload (step 9)
+        setCurrentStep(9);
+      } else if (
+        formData.shiftOvertime === "Shifts" ||
+        formData.shiftOvertime === "Overtime"
+      ) {
+        // Only one selected -> they configure inline, so go directly to step 9
+        setCurrentStep(9);
+      } else if (formData.shiftOvertime === "Both") {
+        // Both -> go to Shift Creation step (step 5)
+        setCurrentStep(5);
+      }
+    }
 
-  //     // Fetch wizard data only for steps 1-3
-  //     if (newStep >= 1 && newStep <= 3) {
-  //       try {
-  //         const resultAction = await dispatch(GetAllWizardAction());
-  //         console.log("GetAllWizardAction result:", resultAction);
+    // Step 5 (Shift Creation) - only reached when "Both" is selected
+    else if (currentStep === 5) {
+      setCurrentStep(6); // Go to OT Creation
+    }
 
-  //         if (GetAllWizardAction.fulfilled.match(resultAction)) {
-  //           const data = resultAction.payload.data;
+    // Step 6 (OT Creation) - only reached when "Both" is selected
+    else if (currentStep === 6) {
+      setCurrentStep(9); // Go to Employee Upload
+    }
 
-  //           if (data?.organization) {
-  //             setFormData((prev) => ({
-  //               ...prev,
-  //               orgId: data.organization._id,
-  //               orgName: data.organization.name,
-  //               orgTypeId: data.organization.orgTypeId,
-  //               structure: data.organization.structure,
-  //             }));
-  //           }
+    // Step 9 (Employee Upload) - go to step 10 (Complete Setup)
+    else if (currentStep === 9) {
+      setCurrentStep(10);
+    }
 
-  //           if (data?.branch) {
-  //             setFormData((prev) => ({
-  //               ...prev,
-  //               branchId: data.branch._id,
-  //               branchName: data.branch.name || prev.branchName,
-  //               startTime: data.branch.startTime,
-  //               endTime: data.branch.endTime,
-  //               maxIn: data.branch.maxIn, // Here
-  //               minOut: data.branch.minOut, //  Here
-  //               weekOff: data.branch.weekoff || [],
-  //             }));
+    // Normal progression for other steps
+    else if (currentStep < totalSteps) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
 
-  //             setFinalData({
-  //               address: data.branch.address || {},
-  //               geoLocation: data.branch.geoLocation || {},
-  //               geoJson: data.branch.geoJson || {},
-  //             });
-  //             console.log("Branch data:", data.branch);
-  //             // ← update branchList state here
-  //             setBranchList([{ _id: data.branch._id, name: data.branch.name }]);
-  //           }
-  //         }
-  //       } catch (err) {
-  //         console.error("Error fetching wizard data:", err);
-  //       }
-  //     }
-
-  //     setCurrentStep(newStep);
-  //   }
-  // };
   const prevStep = async () => {
     if (currentStep > 1) {
-      const newStep = currentStep - 1;
+      let newStep = currentStep - 1;
 
-      // Fetch wizard data only for steps 1-3
+      if (currentStep === 10) {
+        // Coming from Complete Setup -> go back to Employee Upload (step 9)
+        newStep = 9;
+      } else if (currentStep === 9) {
+        // Coming from Employee Upload
+        if (!formData.shiftOvertime || formData.shiftOvertime.trim() === "") {
+          // No shift/OT selected -> go back to selection (step 4)
+          newStep = 4;
+        } else if (formData.shiftOvertime === "Both") {
+          // Both selected -> go back to OT Creation (step 6)
+          newStep = 6;
+        } else {
+          // Only Shifts or Only OT -> go back to selection (step 4) where they configured inline
+          newStep = 4;
+        }
+      } else if (currentStep === 6) {
+        // Coming from OT Creation (only when "Both" selected)
+        newStep = 5; // Go back to Shift Creation
+      } else if (currentStep === 5) {
+        // Coming from Shift Creation (only when "Both" selected)
+        newStep = 4; // Go back to selection
+      }
+
+      // Fetch wizard data for early steps
       if (newStep >= 1 && newStep <= 3) {
         await fetchWizardData();
       }
@@ -384,16 +305,47 @@ const WizardScreen = () => {
     const initializeStructure = async () => {
       if (!formData.structure) {
         try {
-          const resultAction = await dispatch(GetStructureAction());
-          if (GetStructureAction.fulfilled.match(resultAction)) {
-            const structureValue = resultAction.payload?.data;
+          // Step 1: Get Structure
+          const structureResult = await dispatch(GetStructureAction());
+
+          if (GetStructureAction.fulfilled.match(structureResult)) {
+            const structureValue = structureResult.payload?.data;
             setFormData((prev) => ({
               ...prev,
               structure: structureValue,
             }));
 
-            // Auto-advance to step 2 if coming from step 1
-            // if (currentStep === 1) setCurrentStep(2);
+            // Step 2: Get Organization Name from wizard data
+            const wizardResult = await dispatch(GetAllWizardAction());
+
+            if (GetAllWizardAction.fulfilled.match(wizardResult)) {
+              const organizationName =
+                wizardResult.payload?.data?.organization?.name;
+              const orgId = wizardResult.payload?.data?.organization?._id;
+
+              if (organizationName) {
+                // Step 3: Create/Update Organization with structure
+                const orgPayload = {
+                  name: organizationName,
+                  structure: structureValue,
+                };
+
+                const orgResult = await dispatch(
+                  GetOrganizationAction(orgPayload)
+                );
+
+                if (GetOrganizationAction.fulfilled.match(orgResult)) {
+                  console.log(
+                    "Organization updated successfully with structure"
+                  );
+
+                  // Fetch branches
+                  if (orgId) {
+                    await dispatch(BranchGetAction({ orgId }));
+                  }
+                }
+              }
+            }
           }
         } catch (err) {
           console.error("Error fetching structure:", err);
@@ -411,13 +363,6 @@ const WizardScreen = () => {
     localStorage.setItem("wizardCurrentStep", currentStep);
   }, [currentStep]);
 
-  // const handleFinish = async () => {
-  //   console.log("Wizard completed with data:", formData);
-
-  //   await dispatch(getUserByToken()); // refresh flags
-  //   setWizardCompleted(true); // mark wizard as done
-  //   navigate("/dashboard"); // redirect only here
-  // };
   const handleFinish = async () => {
     console.log("Wizard completed with data:", formData);
     setWizardCompleted(true);
@@ -428,98 +373,144 @@ const WizardScreen = () => {
 
   const handleGetStarted = async () => {
     try {
-      const resultAction = await dispatch(GetStructureAction());
+      // Step 1: Get structure
+      const structureResult = await dispatch(GetStructureAction());
 
-      if (GetStructureAction.fulfilled.match(resultAction)) {
-        const structureValue = resultAction.payload?.data; // "branch" | "organization" | "group"
+      if (GetStructureAction.fulfilled.match(structureResult)) {
+        const structureValue = structureResult.payload?.data;
 
-        setFormData((prev) => ({
-          ...prev,
-          structure: structureValue, // store API value
-        }));
+        // Step 2: Get organization name
+        const wizardResult = await dispatch(GetAllWizardAction());
+        if (GetAllWizardAction.fulfilled.match(wizardResult)) {
+          const organizationName =
+            wizardResult.payload?.data?.organization?.name || "DefaultOrgName";
+          const orgId = wizardResult.payload?.data?.organization?._id;
 
-        nextStep(); // move to case 2
+          // Step 3: Hit GetOrganizationAction
+          const orgPayload = {
+            name: organizationName,
+            structure: structureValue
+          };
+
+          const orgResult = await dispatch(GetOrganizationAction(orgPayload));
+
+          if (GetOrganizationAction.fulfilled.match(orgResult)) {
+            console.log("✅ GetOrganizationAction success:", orgResult.payload);
+            // Store structure and org name locally
+            setFormData((prev) => ({
+              ...prev,
+              orgName: organizationName,
+              structure: structureValue,
+              orgId: orgId,
+            }));
+
+            // Fetch branches
+            if (orgId) {
+              await dispatch(BranchGetAction({ orgId }));
+            }
+
+            setCurrentStep(2); // Move to next step
+          } else {
+            alert(
+              orgResult.payload?.message || "Failed to process organization"
+            );
+          }
+        } else {
+          alert("Failed to fetch organization name");
+        }
       } else {
-        alert(
-          resultAction.payload?.message ||
-            resultAction.error?.message ||
-            "Failed to fetch structure"
-        );
+        alert("Failed to fetch structure");
       }
     } catch (err) {
-      console.error("Dispatch Error:", err);
-      alert("Something went wrong while fetching structure");
+      console.error("Error in handleGetStarted:", err);
+      alert("Something went wrong while starting the wizard");
     }
   };
 
-  const renderStepIndicator = () => (
-    <div className="w-full mb-8">
-      <div className="flex items-center justify-between mb-4">
-        {steps.map((step, index) => {
-          const Icon = step.icon;
-          const isCompleted = currentStep > step.id;
-          const isCurrent = currentStep === step.id;
+  const renderStepIndicator = () => {
+    // Find the current step index (0-based)
+    const currentStepIndex = steps.findIndex((step) => step.id === currentStep);
+    const progressPercentage = ((currentStepIndex + 1) / totalSteps) * 100;
 
-          return (
-            <div key={step.id} className=" flex flex-col items-center">
-              <div
-                className={`
-                w-10 h-10 rounded-full flex items-center justify-center mb-2 transition-all duration-200
-                ${
-                  isCompleted
-                    ? "bg-green-500 text-white"
-                    : isCurrent
-                    ? "bg-primary text-white"
-                    : "bg-gray-200 text-primary border border-primary"
-                }
-              `}
-              >
-                {isCompleted ? <CheckCircle size={20} /> : <Icon size={20} />}
-              </div>
-              <span
-                className={`text-xs font-medium ${
-                  isCurrent ? "text-primary" : "text-primary"
-                }`}
-              >
-                {step.title}
-              </span>
-              {index < steps.length - 1 && (
-                <div
-                  className={`
-                  absolute top-5 w-full h-0.5 -z-10 transition-all duration-200
-                  ${isCompleted ? "bg-green-500" : "bg-gray-200"}
-                `}
-                  style={{
-                    left: "50px",
-                    width: "calc(100% - 100px)",
-                  }}
-                />
-              )}
-            </div>
-          );
-        })}
+    return (
+      <div className="w-full mb-8">
+        <div className="relative flex items-center justify-between mb-4">
+          {steps.map((step, index) => {
+            const Icon = step.icon;
+            const isCompleted = currentStep > step.id;
+            const isCurrent = currentStep === step.id;
+
+            return (
+              <React.Fragment key={step.id}>
+                <div className="flex flex-col items-center relative z-10">
+                  <div
+                    className={`
+                    w-10 h-10 rounded-full flex items-center justify-center mb-2 transition-all duration-200
+                    ${
+                      isCompleted
+                        ? "bg-green-500 text-white"
+                        : isCurrent
+                        ? "bg-primary text-white"
+                        : "bg-gray-200 text-primary border border-primary"
+                    }
+                  `}
+                  >
+                    {isCompleted ? (
+                      <CheckCircle size={20} />
+                    ) : (
+                      <Icon size={20} />
+                    )}
+                  </div>
+                  <span
+                    className={`text-xs font-medium text-center ${
+                      isCurrent ? "text-primary" : "text-primary"
+                    }`}
+                  >
+                    {step.title}
+                  </span>
+                </div>
+                {index < steps.length - 1 && (
+                  <div
+                    className={`
+                    flex-1 h-0.5 mx-2 transition-all duration-200
+                    ${isCompleted ? "bg-green-500" : "bg-gray-200"}
+                  `}
+                  />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div
+            className="bg-primary h-2 rounded-full transition-all duration-300"
+            style={{ width: `${Math.min(progressPercentage, 100)}%` }}
+          />
+        </div>
       </div>
-      <div className="w-full bg-gray-200 rounded-full h-2">
-        <div
-          className="bg-primary h-2 rounded-full transition-all duration-300"
-          style={{ width: `${(currentStep / totalSteps) * 100}%` }}
-        />
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderStep = () => {
     switch (currentStep) {
       case 1:
         return (
-          <div className="text-center space-y-6">
-            <div className="mb-8">
-              <Typography className="text-primary mb-4 font-semibold text-[18px] capitalize  ">
-                Welcome to SecurForce
+          <div className="text-center space-y-6 py-2">
+            <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary/90 rounded-full shadow-sm backdrop-blur-sm">
+              <Typography className="text-white text-sm font-semibold tracking-wide uppercase">
+                Quick Setup Wizard
               </Typography>
-              <Typography className="text-[#6c6c6c] font-medium text-[14px] capitalize ">
-                We'll Setup Organization, Timings, Leave, Shift, OT, Salary
-                Settings, Employee and Client. Click Get Started to Continue
+            </div>
+            <div className="space-y-3">
+              <Typography className="text-primary text-3xl md:text-4xl font-bold tracking-tight">
+                Welcome to{" "}
+                <span className="bg-gradient-to-r from-primary to-blue-700 bg-clip-text text-transparent">
+                  SecurForce
+                </span>
+              </Typography>
+              <Typography className="text-gray-600 text-lg max-w-2xl mx-auto">
+                Let's get your workspace ready in just a few minutes. Follow
+                these quick steps to complete your setup effortlessly.
               </Typography>
             </div>
           </div>
@@ -528,19 +519,9 @@ const WizardScreen = () => {
       case 2:
         return (
           <OrganizationForm
-            formData={formData} // contains structure from API
+            formData={formData}          
             handleInputChange={handleInputChange}
-            typeOfIndustryList={typeOfIndustryList} // match the prop name
-            setFinalData={setFinalData}
-            setFormValidity={setFormValidity}
-          />
-        );
-
-      case 3:
-        return (
-          <BranchSettings
-            formData={formData}
-            handleInputChange={handleInputChange}
+            typeOfIndustryList={typeOfIndustryList}
             setFinalData={setFinalData}
             setFormValidity={setFormValidity}
             state={{
@@ -550,75 +531,169 @@ const WizardScreen = () => {
             }}
           />
         );
-      case 4:
+
+      case 3:
         return (
           <LeaveSettings
             formData={formData}
             handleInputChange={handleInputChange}
             branchList={branchList}
-            selectedBranch={formData.branchId} // ← extra, not used
+            selectedBranch={formData.branchId}
           />
         );
 
-      case 5:
+     
+
+      case 4:
         return (
-          <ShiftOvertimeSelector
-            value={formData.shiftOvertime}
-            onChange={(val) => {
-              handleInputChange("shiftOvertime", val);
-              if (val) {
-                // Auto-advance to Shift/OT Details step once user selects an option
-                setCurrentStep(currentStep + 1);
-              }
-            }}
-            disableToggle={isToggleDisabled}
-          />
-        );
+          <div className="space-y-8">
+            {/* Shift/OT Selector */}
+            <ShiftOvertimeSelector
+              value={formData.shiftOvertime}
+              onChange={(val) => {
+                handleInputChange("shiftOvertime", val);
+              }}
+              disableToggle={false}
+              existingShifts={shiftList && shiftList.length > 0}
+              existingOT={overtimeList && overtimeList.length > 0}
+            />
 
-      case 6:
+            {/* Show Shift Creation inline ONLY if "Shifts" is selected (not "Both") */}
+            {formData.shiftOvertime === "Shifts" && (
+              <div className="border-t-2 border-blue-200 pt-6 mt-6">
+                <Typography
+                  variant="h5"
+                  className="font-bold text-gray-800 mb-4"
+                >
+                  {shiftList && shiftList.length > 0
+                    ? "Shift Management"
+                    : "Configure Shifts"}
+                </Typography>
+                <ShiftCreation
+                  formData={formData}
+                  setFormData={setFormData}
+                  handleInputChange={handleInputChange}
+                  branchList={branchList}
+                  onSuccess={fetchWizardData}
+                />
+              </div>
+            )}
+
+            {/* Show OT Creation inline ONLY if "Overtime" is selected (not "Both") */}
+            {formData.shiftOvertime === "Overtime" && (
+              <div className="border-t-2 border-green-200 pt-6 mt-6">
+                <Typography
+                  variant="h5"
+                  className="font-bold text-gray-800 mb-4"
+                >
+                  {overtimeList && overtimeList.length > 0
+                    ? "Overtime Management"
+                    : "Configure Overtime"}
+                </Typography>
+                <OTCreation
+                  formData={formData}
+                  setFormData={setFormData}
+                  handleInputChange={handleInputChange}
+                  onSuccess={fetchWizardData}
+                  branchList={branchList}
+                />
+              </div>
+            )}
+
+            {/* Info message when "Both" is selected */}
+            {formData.shiftOvertime === "Both" && (
+              <div className="p-6 bg-blue-50 border-2 border-blue-300 rounded-lg">
+                <Typography className="text-blue-800 font-semibold mb-2">
+                   Both Shift and Overtime selected
+                </Typography>
+                <Typography className="text-blue-700 text-sm">
+                  Click "Next" to configure Shifts first, then Overtime in
+                  separate steps.
+                </Typography>
+              </div>
+            )}
+
+            {/* Info message when nothing is selected */}
+            {!formData.shiftOvertime && (
+              <div className="p-6 bg-gray-50 border-2 border-gray-300 rounded-lg">
+                <Typography className="text-gray-700 text-sm">
+                  No selection made.if there is no SHift or OT , You can skip this step and proceed directly
+                  to Employee Upload 
+                </Typography>
+              </div>
+            )}
+          </div>
+        );
+      case 5:
+        // Only shown when "Both" is selected
         return (
           <ShiftCreation
             formData={formData}
             setFormData={setFormData}
             handleInputChange={handleInputChange}
             branchList={branchList}
+            onSuccess={fetchWizardData}
           />
         );
 
-      case 7:
+      case 6:
+        // Only shown when "Both" is selected
         return (
           <OTCreation
             formData={formData}
             setFormData={setFormData}
             handleInputChange={handleInputChange}
-            onSuccess={fetchWizardData} // refresh list after save
+            onSuccess={fetchWizardData}
             overtimeList={overtimeList}
+            branchList={branchList}
           />
         );
 
-      case 8:
-        return (
-          <SalaryComponents
-            formData={formData}
-            handleInputChange={handleInputChange}
-          />
-        );
       case 9:
-        return (
-          <DefaultSalaryTemplate
-            formData={formData}
-            handleInputChange={handleInputChange}
-          />
-        );
-      case 10:
         return (
           <EmployeeCreation
             formData={formData}
             setFormData={setFormData}
             handleInputChange={handleInputChange}
-            onSuccess={fetchWizardData} // refresh list after save
+            onSuccess={fetchWizardData}
             employeeList={employeeList}
           />
+        );
+
+      case 10:
+        return (
+          <div className="text-center space-y-2 py-2">
+            <div className="inline-flex items-center justify-center w-24 h-24 bg-green-100 rounded-full mx-auto">
+              <CheckCircle className="w-12 h-12 text-green-600" />
+            </div>
+            <div className="space-y-2">
+              <Typography className="text-primary text-xl md:text-lg font-bold tracking-tight">
+                Organization Setup Complete!
+              </Typography>
+              <Typography className="text-gray-600 text-lg max-w-2xl mx-auto">
+                Your organization is now configured. Would you like to add
+                clients to your system?
+              </Typography>
+            </div>
+            <div className="pt-2 flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <button
+                onClick={handleFinish}
+                className="px-8 py-4 bg-primary text-white rounded-lg font-semibold hover:bg-blue-700 transition-all duration-200 flex items-center gap-2"
+              >
+                Go to Dashboard
+                <ArrowRight className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => {
+                  navigate("/auth/assist-client");
+                }}
+                className="px-8 py-4 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-all duration-200 flex items-center gap-2"
+              >
+                Add Clients
+                <Users className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
         );
 
       default:
@@ -627,27 +702,69 @@ const WizardScreen = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-14 px-4">
+    <div
+      className="min-h-screen py-14 px-4 relative overflow-hidden"
+      style={{
+        background: "linear-gradient(135deg, #667eea 0%, #1E40AF 100%)",
+      }}
+    >
+      {/* Animated Background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <svg
+          className="absolute inset-0 w-full h-full"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <defs>
+            <pattern
+              id="squareGrid"
+              patternUnits="userSpaceOnUse"
+              width="60"
+              height="60"
+            >
+              <rect
+                x="0"
+                y="0"
+                width="60"
+                height="60"
+                fill="none"
+                stroke="rgba(255, 255, 255, 0.08)"
+                strokeWidth="1"
+              />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#squareGrid)" />
+        </svg>
+      </div>
+
       <div className="max-w-full mx-6">
-        <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12">
+        <div className="bg-white/100 rounded-2xl shadow-md p-8 space-y-6 transition-all duration-300 min-h-[600px]">
           {renderStepIndicator()}
 
-          <div className="mb-8">{renderStep()}</div>
+          <div className="mb-2">{renderStep()}</div>
 
-          {/* Navigation Buttons - Only show for steps 2-5 */}
+          {/* Navigation Buttons */}
           {currentStep === 1 ? (
-            // Special case for welcome screen - only show Get Started button
             <div className="flex justify-center">
               <button
                 onClick={handleGetStarted}
-                className="px-4 py-4 bg-primary text-white  rounded-lg hover:bg-primaryLight hover:text-primary transition-all duration-200 text-sm flex gap-2 justify-between"
+                className="px-4 py-4 bg-primary text-white rounded-lg hover:bg-primaryLight hover:text-primary transition-all duration-200 text-sm flex gap-2 justify-between"
               >
                 Get Started
                 <ArrowRight className="w-5 h-5" />
               </button>
             </div>
+          ) : currentStep === 10 ? (
+            <div className="flex justify-start">
+              <button
+                type="button"
+                onClick={prevStep}
+                className="flex items-center px-6 py-3 bg-primary text-white rounded-lg font-medium hover:bg-blue-700 transition-all"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Previous
+              </button>
+            </div>
           ) : (
-            // Normal navigation for other steps
             <div className="flex justify-between items-center">
               <button
                 type="button"
@@ -662,26 +779,13 @@ const WizardScreen = () => {
                 Step {currentStep} of {totalSteps}
               </div>
 
-              {currentStep < totalSteps ? (
-                <button
-                  onClick={nextStep}
-                  className="flex items-center px-6 py-3 bg-primary text-white rounded-lg font-medium hover:bg-blue-700 transition-all"
-                >
-                  Next
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    handleFinish();
-                    navigate("/dashboard");
-                  }}
-                  className="flex items-center px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-all"
-                >
-                  Finish
-                  <CheckCircle className="w-4 h-4 ml-2" />
-                </button>
-              )}
+              <button
+                onClick={nextStep}
+                className="flex items-center px-6 py-3 bg-primary text-white rounded-lg font-medium hover:bg-blue-700 transition-all"
+              >
+                Next
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </button>
             </div>
           )}
         </div>

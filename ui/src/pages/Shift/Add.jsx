@@ -1,4 +1,5 @@
 import React from 'react';
+import moment from 'moment';
 import BasicInformation, { BasicConfig } from './BasicInformation/BasicInformation';
 import Header from '../../components/header/Header';
 import { Form, Formik } from 'formik';
@@ -10,11 +11,13 @@ import { ShiftCreateAction } from '../../redux/Action/Shift/ShiftAction';
 import toast from 'react-hot-toast';
 import { removeEmptyStrings } from '../../constants/reusableFun';
 
-const Add = () => {
 
-  const navigate=useNavigate()
-  const dispatch = useDispatch()
+const Add = () => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
   const BasicCon = BasicConfig();
+
+  const [selectedBranch, setSelectedBranch] = React.useState([]);
 
   const initialValues = {
     ...BasicCon.initialValues,
@@ -30,7 +33,7 @@ function validateShift({
   minIn,
   maxIn,
   minOut,
-  maxOut
+  maxOut,
 }) {
   const errors = [];
 
@@ -41,7 +44,7 @@ function validateShift({
     return date;
   }
 
-  let start, end, minInTime, maxInTime, minOutTime, maxOutTime;
+    let start, end, minInTime, maxInTime, minOutTime, maxOutTime;
 
   try {
     if (!startTime || !endTime) {
@@ -52,11 +55,11 @@ function validateShift({
     start = parseTime(startTime);
     end = parseTime(endTime);
 
-    // Optional fields: parse only if provided
-    if (minIn) minInTime = parseTime(minIn);
-    if (maxIn) maxInTime = parseTime(maxIn);
-    if (minOut) minOutTime = parseTime(minOut);
-    if (maxOut) maxOutTime = parseTime(maxOut);
+  // Optional fields: parse only if provided (use computed values)
+  if (minIn) minInTime = parseTime(minIn);
+  if (maxIn) maxInTime = parseTime(maxIn);
+  if (minOut) minOutTime = parseTime(minOut);
+  if (maxOut) maxOutTime = parseTime(maxOut);
   } catch (e) {
     errors.push("Invalid time format. Use 'HH:mm'.");
     return errors;
@@ -79,85 +82,53 @@ function validateShift({
   }
   if (start < new Date(0, 0, 0, 0, 0) || end < new Date(0, 0, 0, 0, 0)) {
     errors.push("Start Time and End Time must be valid times.");
-  }
-  if (minInTime && maxInTime && (minInTime < new Date(0, 0, 0, 0, 0) || maxInTime < new Date(0, 0, 0, 0, 0))) {
-    errors.push("Grace Min-In and Grace Max In must be valid times.");
-  }
-  if (minOutTime && maxOutTime && (minOutTime < new Date(0, 0, 0, 0, 0) || maxOutTime < new Date(0, 0, 0, 0, 0))) {
-    errors.push("Grace Min Out and Grace Max Out must be valid times.");
-  }    
+  } 
   if (start >= end) errors.push("Start Time must be before End Time (or valid overnight shift).");
-
-  // Conditional validations based on presence
-  if (minInTime && maxInTime) {
-    if (minInTime > maxInTime) {
-      errors.push("Grace Min-In must be before or equal to Grace Max-In.");
-    }
-    if (start < minInTime) {
-      errors.push("Grace Min-In Cannot Be Greater Than Start Time");
-    }
-    if (start > maxInTime) {
-      errors.push("Grace Max In Cannot Be Lesser Than Start Time");
-    }
-  }
-
-  if (minOutTime && maxOutTime) {
-    if (minOutTime > maxOutTime) {
-      errors.push("Grace Min-Out must be before or equal to Grace Max Out.");
-    }
-    if (end < minOutTime) {
-      errors.push("Grace Min Out Cannot Be Greater Than End Time");
-    }
-    if (end > maxOutTime) {
-      errors.push("Grace Max Out Cannot Be Lesser Than End Time");
-    }
-  }
-
-  // Overlap check (only if both ranges present)
-  if (maxInTime && minOutTime && maxInTime > minOutTime) {
-    errors.push("Grace Max In Cannot Be Greater Than Grace Min Out");
-  }
 
   return errors;
 }
 
+  const handleSubmit = async (formData) => {
+    console.log(formData.branchIds,"sdsdsdsds");
+    try {
+      const payload = { ...formData };
+      const start = formData.startTime;
+      const end = formData.endTime;
+      const maxInMinutes = parseInt(formData.maxIn || 0, 10);
+      const minOutMinutes = parseInt(formData.minOut || 0, 10);
 
- const handleSubmit = async (formData) => {
-  try {
-    
-    console.log('Form submitted:', formData);
+      if (start && !isNaN(maxInMinutes)) {
+        payload.maxIn = moment(start, 'HH:mm').add(maxInMinutes, 'minutes').format('HH:mm');
+        payload.minIn = moment(start, 'HH:mm').subtract(maxInMinutes, 'minutes').format('HH:mm');
+      }
 
-    // Optional: validate time fields before submission
-    const validationErrors = validateShift(formData); // If using time validation
-    if (validationErrors?.length > 0) {
-      validationErrors.forEach((err) => toast.error(err));
-      return;
+      if (end && !isNaN(minOutMinutes)) {
+        payload.minOut = moment(end, 'HH:mm').subtract(minOutMinutes, 'minutes').format('HH:mm');
+        payload.maxOut = moment(end, 'HH:mm').add(minOutMinutes, 'minutes').format('HH:mm');
+      }
+      console.log('Form submitted:', payload);
+      const cleanedData = removeEmptyStrings(payload);
+      // Dispatch the create action
+      const result = await dispatch(ShiftCreateAction(cleanedData));
+
+      if (!result || !result.meta) {
+        throw new Error('Unexpected response from dispatch.');
+      }
+
+      const { meta, payload: resPayload } = result;
+
+      // Handle result
+      if (meta.requestStatus === 'fulfilled') {
+        toast.success(resPayload?.message || 'Shift created successfully!');
+        navigate(-1);
+      } else {
+        toast.error(resPayload?.message || 'Failed to create Shift.');
+      }
+    } catch (error) {
+      console.error('Error creating Shift:', error);
+      toast.error('An error occurred while creating the Shift.');
     }
-
-    // Clean the form data
-    
-    const cleanedData = removeEmptyStrings(formData);
-    // Dispatch the create action
-    const result = await dispatch(ShiftCreateAction(cleanedData));
-
-    if (!result || !result.meta) {
-      throw new Error('Unexpected response from dispatch.');
-    }
-
-    const { meta, payload } = result;
-
-    // Handle result
-    if (meta.requestStatus === 'fulfilled') {
-      // toast.success(payload?.message || 'Shift created successfully!');
-      navigate(-1);
-    } else {
-      // toast.error(payload?.message || 'Failed to create Shift.');
-    }
-  } catch (error) {
-    console.error('Error creating Shift:', error);
-    toast.error('An error occurred while creating the Shift.');
-  }
-};
+  };
 
   return (
     <div className="flex flex-col w-full pb-4 bg-white border border-gray-100 rounded-md shadow-hrms overflow-auto">
@@ -182,7 +153,11 @@ function validateShift({
             <div className="md:ml-[3rem] flex-col">
               <div className="pb-2 border-b-2 flex-col border-gray-200">
                 <Form>
-                  <BasicInformation />
+                  <BasicInformation
+                    selectedBranch={selectedBranch}
+                    setSelectedBranch={setSelectedBranch}
+                    type='add'
+                  />
                 </Form>
               </div>
             </div>
