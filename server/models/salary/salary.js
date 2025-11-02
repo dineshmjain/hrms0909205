@@ -40,39 +40,24 @@ export const listSalaryComponents = async (body) => {
       throw new Error("orgId is required");
     }
 
-    const params = {
+    const query = {
       orgId: new ObjectId(body.orgDetails._id),
     };
 
     if (body.category && body.category !== "all") {
-      if (body.category === "statutory") {
-        params.isStatutory = true;
-      } else if (body.category === "normal") {
-        params.isStatutory = false;
-      }
+      query.isStatutory = body.category === "statutory";
     }
 
     if (typeof body.isActive === "boolean") {
-      params.isActive = body.isActive;
+      query.isActive = body.isActive;
     }
 
-    const aggregationPipeline = [{ $match: params }];
+    const projection = body.projection || {}; // optional selective fields
 
-    const paginationQuery = {
-      page: body.page,
-      limit: body.limit,
-      sortOrder: 1,
-      sortBy: "_id",
-    };
-
-    return await aggregationWithPegination(
-      aggregationPipeline,
-      paginationQuery,
-      salaryComponentsCollection
-    );
+    return await getMany(query, salaryComponentsCollection, projection);
   } catch (error) {
     logger.error("Error while listSalaryComponents", error);
-    throw error;
+    return { status: false, message: error.message };
   }
 };
 
@@ -272,13 +257,7 @@ export const getSalaryTemplate = async (body) => {
       { $project: { componentDocs: 0 } },
     ];
 
-    const result = await aggregate(aggregationPipeline, salaryTemplatesCollection);
-
-    if (!result.status || !result.data || result.data.length === 0) {
-      return { status: false, message: "Salary template not found" };
-    }
-
-    return { status: true, data: result.data[0] };
+    return await aggregate(aggregationPipeline, salaryTemplatesCollection);
   } catch (error) {
     logger.error("Error while getting salary template", error);
     throw error;
@@ -354,78 +333,21 @@ export const listSalaryTemplates = async (body) => {
   }
 };
 
-export const previewSalaryTemplate = async (body) => {
+export const previewSalaryBreakup = async (body) => {
   try {
-    const { ctc, templateId } = body;
-
-    if (!ctc || isNaN(ctc)) {
-      throw new Error("Valid CTC amount is required");
-    }
-    if (!templateId) {
-      throw new Error("templateId is required");
-    }
-
-    // --- STEP 1: FETCH TEMPLATE
-    const pipeline = [
-      { $match: { _id: new ObjectId(templateId), isActive: true } },
-      {
-        $lookup: {
-          from: salaryComponentsCollection,
-          localField: "components.componentName",
-          foreignField: "_id",
-          as: "componentDocs",
-        },
-      },
-      {
-        $addFields: {
-          components: {
-            $map: {
-              input: "$components",
-              as: "comp",
-              in: {
-                componentName: {
-                  $arrayElemAt: [
-                    {
-                      $filter: {
-                        input: "$componentDocs",
-                        as: "doc",
-                        cond: { $eq: ["$$doc._id", "$$comp.componentName"] },
-                      },
-                    },
-                    0,
-                  ],
-                },
-                valueType: "$$comp.valueType",
-                componentValue: "$$comp.componentValue",
-                percentageOf: "$$comp.percentageOf",
-              },
-            },
-          },
-        },
-      },
-      { $project: { componentDocs: 0 } },
-    ];
-
-    const { status, data } = await aggregate(pipeline, salaryTemplatesCollection);
-    if (!status || !data?.length) throw new Error("Template not found");
-
-    const template = data[0];
-    const totalCTC = parseFloat(ctc);
-    const orgId = template.orgId;
-    let comps = template.components || [];
+    const gross = body.gross;
+    const template = body.template;
+    const statutoryDocs = body.statutoryDocs;
+    let templateComps = template.components || [];
 
     // --- STEP 2: AUTO-INJECT STATUTORY COMPONENTS (EPF, ESI, PT, etc.)
-    const statutoryDocs = await getMany(
-      { isActive: true, isStatutory: true, orgId: orgId },
-      salaryComponentsCollection
-    );
 
     if (statutoryDocs?.status && Array.isArray(statutoryDocs.data)) {
       const existingIds = new Set(
-        comps.map((c) => String(c.componentName?._id || c.componentName))
+        templateComps.map((c) => String(c.componentName?._id || c.componentName))
       );
       const existingNames = new Set(
-        comps.map((c) => c.componentName?.name?.toLowerCase?.() || "")
+        templateComps.map((c) => c.componentName?.name?.toLowerCase?.() || "")
       );
 
       for (const stat of statutoryDocs.data) {
@@ -438,7 +360,7 @@ export const previewSalaryTemplate = async (body) => {
         const applies = appliesTo.some((id) => existingIds.has(id));
 
         if (applies || statName.includes("tax") || statName.includes("esi") || statName.includes("epf")) {
-          comps.push({
+          templateComps.push({
             componentName: stat,
             valueType: "statutory",
             componentValue: null,
@@ -448,6 +370,7 @@ export const previewSalaryTemplate = async (body) => {
           existingNames.add(statName);
         }
       }
+      console.log(templateComps)
     }
 
     const safeNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -467,7 +390,7 @@ export const previewSalaryTemplate = async (body) => {
       iter++;
       changed = false;
 
-      const currEarnings = comps.reduce((acc, c) => {
+      const currEarnings = templateComps.reduce((acc, c) => {
         const id = compId(c);
         if (c?.componentName?.category === "earning" && resolved[id]) {
           return acc + safeNum(compValues[id]);
@@ -475,7 +398,7 @@ export const previewSalaryTemplate = async (body) => {
         return acc;
       }, 0);
 
-      const currDeductions = comps.reduce((acc, c) => {
+      const currDeductions = templateComps.reduce((acc, c) => {
         const id = compId(c);
         if (c?.componentName?.category === "deduction" && resolved[id]) {
           return acc + safeNum(compValues[id]);
@@ -483,7 +406,7 @@ export const previewSalaryTemplate = async (body) => {
         return acc;
       }, 0);
 
-      for (const comp of comps) {
+      for (const comp of templateComps) {
         const id = compId(comp);
         if (!id || resolved[id]) continue;
 
@@ -508,8 +431,8 @@ export const previewSalaryTemplate = async (body) => {
           for (const basis of refs) {
             if (basis.type === "special") {
               const key = String(basis.value).toLowerCase();
-              if (key === "ctc") baseSum += totalCTC;
-              else if (key === "gross") baseSum += currEarnings;
+              if (key === "gross") baseSum += gross;
+              else if (key === "ctc") baseSum += gross; // fallback for old templates
               else if (key === "net")
                 baseSum += Math.max(0, currEarnings - currDeductions);
             } else if (basis.type === "component") {
@@ -540,7 +463,6 @@ export const previewSalaryTemplate = async (body) => {
           const limit = safeNum(details.limit);
           const fixedAmount = safeNum(details.amount);
 
-          // Case 1: Fixed statutory (like Professional Tax)
           if (fixedAmount > 0) {
             compValues[id] = fixedAmount;
             resolved[id] = true;
@@ -548,7 +470,6 @@ export const previewSalaryTemplate = async (body) => {
             continue;
           }
 
-          // Case 2: Percentage-based (PF/ESI)
           let baseSum = 0;
           let canResolve = true;
 
@@ -585,7 +506,7 @@ export const previewSalaryTemplate = async (body) => {
     const deductions = [];
     const employerContribs = [];
 
-    for (const comp of comps) {
+    for (const comp of templateComps) {
       const id = compId(comp);
       const meta = comp.componentName || {};
       const cat = meta.category || "earning";
@@ -601,7 +522,6 @@ export const previewSalaryTemplate = async (body) => {
         const employerPct = safeNum(details.contribution?.employer);
         const fixedAmount = safeNum(details.amount);
 
-        // Fixed statutory (PT)
         if (fixedAmount > 0) {
           deductions.push({
             name,
@@ -612,7 +532,6 @@ export const previewSalaryTemplate = async (body) => {
           continue;
         }
 
-        // Percentage-based (PF/ESI)
         let baseSum = 0;
         for (const refId of baseAppliesTo) {
           const refStr = refId?.toString?.() || String(refId);
@@ -649,7 +568,7 @@ export const previewSalaryTemplate = async (body) => {
       }
     }
 
-    const gross = totalEarnings;
+    const grossValue = gross;
     const netSalary = totalEarnings - totalDeductions;
     const ctcValue = totalEarnings + totalEmployerContrib;
 
@@ -657,8 +576,7 @@ export const previewSalaryTemplate = async (body) => {
       status: true,
       message: "Salary calculated successfully",
       data: {
-        ctc: totalCTC,
-        gross,
+        gross: grossValue,
         earnings,
         deductions,
         employerContribs,

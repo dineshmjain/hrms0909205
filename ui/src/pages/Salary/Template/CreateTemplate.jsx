@@ -18,9 +18,7 @@ const initialValues = {
   description: "",
   componentName: "",
   valueType: "",
-  componentValue: "",
-  includeInEPF: false,
-  includeInESI: false,
+  componentValue: 0,
   percentageOf: [],
 };
 
@@ -34,34 +32,25 @@ const CreateTemplate = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate()
 
-  // redux salary components (all)
   const { list: componentNames, loading } = useSelector(
     (state) => state.salary.all
   );
 
-  const { user } = useSelector((state) => state.user); // 👈 assuming user state exists
+  const { user } = useSelector((state) => state.user); 
 
   // fetch components list
   useEffect(() => {
     dispatch(SalaryComponentsGetAction({ page: 1, limit: 100, category: "all", isActive: true }));
   }, [dispatch]);
 
-  // format names
-const formattedComponents = useMemo(() => {
-  if (!componentNames || !Array.isArray(componentNames)) return [];
-
-  // filter out EPF and ESI components
-  const filtered = componentNames.filter(
-    (c) => !["employee provident fund (epf)", "employee state insurance (esi)"]
-      .includes(c.name.toLowerCase().trim())
-  );
-
-  return filtered.map((c) => ({
-    ...c,
-    name: toTitleCase(c.name),
-  }));
-}, [componentNames]);
-
+  // not showing statutory components in dropdown
+  const formattedComponents = useMemo(() => {
+    if (!componentNames || !Array.isArray(componentNames)) return [];
+    return componentNames
+          .filter((c) => c.isStatutory === false)
+          .map((c) => ({...c, name: toTitleCase(c.name),
+    }));
+  }, [componentNames]);
 
   // options for percentageOf (special + components)
   const percentageOptions = useMemo(() => {

@@ -1,4 +1,5 @@
 import axiosInstance from "../../config/axiosInstance";
+import masterPortalAxiosInstance from "../../config/masteraxiosInstance";
 export const getStructureApi = async (userCredentials) => {
   try {
     const response = await axiosInstance.post(
@@ -91,6 +92,34 @@ export const OtGetApi = async (userCredentials) => {
   try {
     const response = await axiosInstance.post(
       "/overtime/get/list",
+      userCredentials
+    );
+    return response.data;
+  } catch (error) {
+    console.log(error);
+
+    throw error.response.data || error.message;
+  }
+};
+
+
+export const GetSmsTemplateKeyApi = async (userCredentials) => {
+  try {
+    const response = await masterPortalAxiosInstance.post(
+      "/sms/getAvailableMessageTemplates",
+      userCredentials
+    );
+    return response.data;
+  } catch (error) {
+    console.log(error);
+
+    throw error.response.data || error.message;
+  }
+};
+export const GetSendSmsTemplateApi = async (userCredentials) => {
+  try {
+    const response = await masterPortalAxiosInstance.post(
+      "/sms/send/otp",
       userCredentials
     );
     return response.data;

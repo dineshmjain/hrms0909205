@@ -160,16 +160,23 @@ const List = () => {
     },
   ];
   const labels = {
+    employeeId: { DisplayName: "Employee ID" },
     name: {
       DisplayName: "Employee Name",
       type: "function",
       data: (data) =>
         `${data?.name?.firstName || ""} ${data?.name?.lastName || ""}`,
     },
+
     monthName: { DisplayName: "Month" },
-    monthDays: { DisplayName: "Total Days" },
+
+    monthDays: { DisplayName: "Working Days" },
+
     presentDays: { DisplayName: "Present Days" },
-    noOfShifts: { DisplayName: "No of Shifts" },
+    absentDays: { DisplayName: "Absent Days" },
+    WeekOff: { DisplayName: "Week Offs" },
+    noOfShifts: { DisplayName: "Duty Count" },
+    OTHours: { DisplayName: "OT Hours" },
     earlyIn: {
       DisplayName: "Early In",
       type: "chip",

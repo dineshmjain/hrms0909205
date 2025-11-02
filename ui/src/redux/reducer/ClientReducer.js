@@ -435,7 +435,7 @@ const ClientReducer = createSlice({
         state.loading = false;
         state.clientEmergencyContactList = action?.payload?.data?.contacts || []; // Ensure this is the correct path to the data
 
-        toast.success(action.payload.message);
+        // toast.success(action.payload.message);
       })
       .addCase(ClientEmergencyContactsAction.rejected, (state, action) => {
         toast.dismiss();
@@ -561,7 +561,7 @@ const ClientReducer = createSlice({
         state.loading = false;
         state.clientDefaultSettings = action?.payload?.data || {}; // Ensure this is the correct path to the data
 
-        toast.success(action.payload.message);
+        // toast.success(action.payload.message);
       })
       .addCase(ClientDefaultSettingsListAction.rejected, (state, action) => {
         toast.dismiss();

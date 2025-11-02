@@ -316,6 +316,11 @@ const OrganizationForm = ({
 
     setIsAddingBranch(true);
     try {
+      const actualMaxIn = addMinutesToTime(formData.startTime, formData.maxIn);
+      const actualMinOut = subtractMinutesFromTime(
+        formData.endTime,
+        formData.minOut
+      );
       //  For UPDATE: Send as NUMBERS (minutes), not time format
       const branchPayload = {
         id: editingBranchId,
@@ -326,8 +331,8 @@ const OrganizationForm = ({
         timeSettingType: formData.timeSettingType || "startEnd",
         startTime: formData.startTime,
         endTime: formData.endTime,
-        maxIn: Number(formData.maxIn) || 0, // Send as NUMBER (minutes)
-        minOut: Number(formData.minOut) || 0, //  Send as NUMBER (minutes)
+        maxIn: actualMaxIn, //  Send as time format (e.g., "10:10")
+        minOut: actualMinOut, //  Send as time format (e.g., "15:45")
         salaryCycle: {
           startDay: Number(formData.salaryCycle.startDay) || 1,
           endDay: Number(formData.salaryCycle.endDay) || 30,

@@ -52,7 +52,7 @@ const AttendanceApprovals = lazy(() =>
 const NotFound = lazy(() => import("./pages/Notfound/Notfound"));
 const RolesIndex = lazy(() => import("./pages/Roles/Index"));
 const TasksIndex = lazy(() => import("./pages/Tasks/Index"));
-const CheckPointIndex = lazy(() => import("./pages/Checkpoint/Index"));
+const CheckPointIndex = lazy(() => import("./pages/CheckPoints/Index"));
 const HolidayIndex = lazy(() => import("./pages/Holiday/Index"));
 const BannerIndex = lazy(() => import("./pages/Banners/Index"));
 const SettingIndex = lazy(() => import("./pages/settings/Index"));
@@ -72,6 +72,7 @@ const SalarySettingsIndex = lazy(() => import("./pages/Salary/Settings/index"))
 import Profile from "./pages/Profile/Profile";
 const BiometricIndex = lazy(() => import("./pages/Biometrics/index"));
 const Temp =lazy(()=> import("./pages/Temp3"))
+const Roaster = lazy(()=>import("./pages/Roster/Roster"))
 // const PriceConfigure = lazy(() => import("./pages/Quotations/"));
 
 const googleMapsApiKey = import.meta.env.VITE_MAPAPI;
@@ -206,7 +207,7 @@ const App = () => {
             <Route element={<HolidayIndex />} path="holidays/*" />
             <Route element={<BannerIndex />} path="banners/*" />
             <Route element={<SettingIndex />} path="settings/*" />
-
+   <Route path ="roster/*" element={<Roaster/>} />
             <Route
               element={<TasksIndex pageName={"patrolling"} />}
               path="patrolling/*"

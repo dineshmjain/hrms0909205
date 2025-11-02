@@ -4,8 +4,11 @@ import React, { useState } from "react";
 import Header from "../../../components/header/Header";
 import { clientKycGetAction, clientUpdateKYCAction } from "../../../redux/Action/Client/ClientAction";
 import { useEffect } from "react";
-import { useDispatch } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { removeEmptyStrings } from "../../../constants/reusableFun";
+import { getAddressTypesAction } from "../../../redux/Action/Global/GlobalAction";
+import FormikInput from "../../../components/input/FormikInput";
+import SingleSelectDropdown from "../../../components/SingleSelectDropdown/SingleSelectDropdown";
 
 const KYC = ({ state }) => {
     const dispatch = useDispatch();
@@ -23,8 +26,15 @@ const KYC = ({ state }) => {
         city: "",
         state: "",
         pincode: "",
+        addressTypeId: ""
     });
     clientUpdateKYCAction
+
+    const { addressTypes } = useSelector((state) => state?.global);
+
+    useEffect(() => {
+        dispatch(getAddressTypesAction());
+    }, [dispatch]);
 
     const handleUpdate = async () => {
         try {
@@ -56,7 +66,8 @@ const KYC = ({ state }) => {
                     </h3> */}
             <Header
                 headerLabel={"KYC Details"}
-                handleClick={handleUpdate}
+                // handleClick={handleUpdate}
+                isButton={false}
             />
             <div className="rounded-lg p-2">
 
@@ -87,18 +98,38 @@ const KYC = ({ state }) => {
                         />
                     </div>
                 </div>
-
-                <div className="grid grid-cols-1 gap-4 mt-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                <div className="grid grid-cols-12 gap-4 mb-4 mt-4">
+                    <div className="col-span-12 md:col-span-3">
+                        <label className="text-gray-700 text-sm font-medium mb-1.5 block">
+                            Select Address
+                        </label>
+                        <SingleSelectDropdown
+                            name="addressTypeId"
+                            label="Address Type"
+                            inputType="dropdown"
+                            listData={addressTypes}
+                            inputName="Select AddressType"
+                            feildName="name"
+                            hideLabel={true}
+                            showSerch={true}
+                            handleClick={(selected) => {
+                                handleInputChange("addressTypeId", selected?._id);
+                            }}
+                            selectedOption={formData.addressTypeId}
+                            selectedOptionDependency="_id"
+                        />
+                    </div>
+                    <div className="col-span-12 md:col-span-9">
+                        <label className="text-gray-700 text-sm font-medium mb-1.5 block">
                             Registered Address
                         </label>
                         <textarea
+                            name="registeredAddress"
                             value={formData.registeredAddress || ""}
                             onChange={(e) => handleInputChange("registeredAddress", e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 bg-white"
-                            placeholder="Enter registered address"
-                            rows="2"
+                            rows={1}
+                            placeholder="Enter complete address"
+                            className="w-full px-3 py-2 border border-gray-400 rounded-lg bg-white text-gray-900 placeholder-gray-600 focus:border-gray-600 focus:ring-2 focus:ring-gray-100 resize-none"
                         />
                     </div>
                 </div>

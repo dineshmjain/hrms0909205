@@ -18,30 +18,30 @@ import { resetPreviewState } from "../../../../redux/reducer/SalaryReducer";
 
 const PreviewTemplateSidebar = ({ open, onClose, selectedTemplate }) => {
   const dispatch = useDispatch();
-  const [ctc, setCtc] = useState("");
+  const [gross, setGross] = useState("");
 
   const { loading, result, error } = useSelector((s) => s.salary.preview);
 
   const handleCalculate = () => {
-    if (!ctc || isNaN(ctc) || !selectedTemplate?._id) return;
+    if (!gross || isNaN(gross) || !selectedTemplate?._id) return;
 
     dispatch(
       SalaryTemplatePreviewAction({
-        ctc: parseFloat(ctc),
+        gross: parseFloat(gross),
         templateId: selectedTemplate._id,
       })
     );
   };
 
   const handleClose = () => {
-    setCtc("");
+    setGross("");
     dispatch(resetPreviewState());
     onClose();
   };
 
   useEffect(() => {
     if (!open) {
-      setCtc("");
+      setGross("");
       dispatch(resetPreviewState());
     }
   }, [open, dispatch]);
@@ -130,13 +130,13 @@ const PreviewTemplateSidebar = ({ open, onClose, selectedTemplate }) => {
             color="blue-gray"
             className="font-medium mb-1"
           >
-            Enter CTC
+            Enter Gross Salary
           </Typography>
           <Input
             type="number"
-            label="CTC Amount"
-            value={ctc}
-            onChange={(e) => setCtc(e.target.value)}
+            label="Gross Amount"
+            value={gross}
+            onChange={(e) => setGross(e.target.value)}
           />
         </div>
 

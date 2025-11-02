@@ -119,9 +119,15 @@ router.post(
     auth.isAuth,
     user.isUserValid,
     org.getOrg,
-    salary.previewSalaryTemplate,
+    salary.getSalaryTemplate,
+    (request, response, next) => {
+        request.body.category = "statutory";
+        return next();
+    },
+    salary.listSalaryComponents,
+    salary.previewSalaryBreakup,
     (request,response) => {
-        return  apiResponse.responseWithPagination(response, "Data found successfully",request.body.components)
+        return  apiResponse.responseWithPagination(response, "Data found successfully",request.body.salaryBreakup)
     }
 );
 

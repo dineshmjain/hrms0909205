@@ -5,28 +5,27 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
 import Header from "../../components/header/Header";
-import SubCardHeader from "../../components/header/SubCardHeader";
-import BasicInformation, {
-  BasicConfig,
-} from "../User/BasicInformation/BasicInformation";
 import CombinedFormWizard from "../AssistWizard/components/CombinedEmployeeForm";
-import OfficialForm from "../User/Official/OfficalForm";
-import { OfficialConfig } from "../User/Official/OfficialConfig";
+import { BasicConfig } from "../User/BasicInformation/BasicInformation";
 import {
   EmployeeCreateAction,
   EmployeeGetAction,
 } from "../../redux/Action/Employee/EmployeeAction";
 import { removeEmptyStrings } from "../../constants/reusableFun";
 import { BranchGetAction } from "../../redux/Action/Branch/BranchAction";
-import Password from "../User/Password/Password";
+import {
+  GetSmsTemplateKeyAction,
+  GetSendSmsTemplateAction,
+} from "../../redux/Action/Wizard/WizardAction";
 import ImportUser from "../User/ImportUser";
-import { Card, CardBody, Typography } from "@material-tailwind/react";
+import { Typography } from "@material-tailwind/react";
 import { Plus, Upload, ArrowRight } from "lucide-react";
 import Table from "../../components/Table/Table";
-import { MdDelete, MdModeEditOutline, MdShare } from "react-icons/md";
+import { MdShare } from "react-icons/md";
 import moment from "moment";
 import ShareModal from "../../components/ShareModal/ShareModal";
 import { CheckCircle, X } from "lucide-react";
+
 const Toast = ({ message, type = "success", onClose }) => {
   useEffect(() => {
     const timer = setTimeout(onClose, 3000);
@@ -58,6 +57,7 @@ const Toast = ({ message, type = "success", onClose }) => {
     </div>
   );
 };
+
 const EmployeeCreation = ({ formData, employeeList = [], onSuccess }) => {
   const [selectedOption, setSelectedOption] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -67,7 +67,7 @@ const EmployeeCreation = ({ formData, employeeList = [], onSuccess }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // Get employee list from Redux
+  // Get employee list and SMS template from Redux
   const {
     employeeList: reduxEmployeeList,
     loading,
@@ -75,6 +75,9 @@ const EmployeeCreation = ({ formData, employeeList = [], onSuccess }) => {
     limit,
     pageNo,
   } = useSelector((state) => state.employee);
+
+  // Get SMS template key from Redux
+  const { smskey } = useSelector((state) => state.wizard);
 
   const basicConfig = BasicConfig();
 
@@ -88,8 +91,15 @@ const EmployeeCreation = ({ formData, employeeList = [], onSuccess }) => {
   const validationSchema = Yup.object({
     ...basicConfig.validationSchema,
   });
+
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+
+  // Fetch SMS template key on component mount
+  useEffect(() => {
+    dispatch(GetSmsTemplateKeyAction({ SoftwareID: 17 }));
+  }, [dispatch]);
+
   useEffect(() => {
     if (formData?.subOrgId) {
       dispatch(
@@ -144,6 +154,18 @@ const EmployeeCreation = ({ formData, employeeList = [], onSuccess }) => {
       const result = await dispatch(EmployeeCreateAction(payload));
 
       if (result?.payload?.status === 200) {
+        // Store the created employee data WITH password for sharing
+        const employeeWithPassword = {
+          ...result?.payload?.data,
+          name: {
+            firstName: values?.firstName,
+            lastName: values?.lastName,
+          },
+          email: values?.email,
+          password: values?.password, // Store password for sharing
+          mobile: values?.mobile,
+        };
+
         // Show success toast
         setToast({
           message: result?.payload?.message || "User Added successfully",
@@ -156,10 +178,14 @@ const EmployeeCreation = ({ formData, employeeList = [], onSuccess }) => {
         // Refresh employee list
         dispatch(EmployeeGetAction({ page: 1, limit: 10 }));
 
+        // Open share modal automatically for newly created employee
+        setSelectedEmployee(employeeWithPassword);
+        setShareModalOpen(true);
+
         // Optional: Close the form section after success
         setTimeout(() => {
           setSelectedOption("");
-        }, 2000);
+        }, 3000);
       } else {
         // Show error toast
         setToast({
@@ -175,28 +201,130 @@ const EmployeeCreation = ({ formData, employeeList = [], onSuccess }) => {
       });
     }
   };
-  // Handle share button click
+
+  // Handle share button click from table
   const handleShareClick = (employeeData) => {
     setSelectedEmployee(employeeData);
     setShareModalOpen(true);
   };
 
   // Handle share confirmation
-  const handleShareConfirm = (employeeData) => {
+  const handleShareConfirm = async (employeeData) => {
     console.log("Sharing employee:", employeeData);
-    // Add your share logic here
+
+    // Check if SMS template key is available
+    if (!smskey || smskey.length === 0) {
+      setToast({
+        message: "SMS template not loaded. Please try again.",
+        type: "error",
+      });
+      return;
+    }
+
+    // Find the template with key "share_credentials"
+    const template = smskey.find((t) => t.key === "share_credentials");
+
+    if (!template) {
+      setToast({
+        message: "SMS template not found. Please contact admin.",
+        type: "error",
+      });
+      return;
+    }
+
+    // Extract employee details
+    const fullName = `${employeeData?.name?.firstName || ""} ${
+      employeeData?.name?.lastName || ""
+    }`.trim();
+    const username = employeeData?.mobile || "N/A";
+    const password =
+      employeeData?.password || "Please contact admin for password";
+    const mobile = employeeData?.mobile;
+
+    // Validate mobile number
+    if (!mobile) {
+      setToast({
+        message: "Employee mobile number not found.",
+        type: "error",
+      });
+      return;
+    }
+
+    // Check if password is available
+    if (!employeeData?.password) {
+      setToast({
+        message:
+          "Password not available. This feature only works for newly created employees.",
+        type: "error",
+      });
+      return;
+    }
+
+    // Configure these values as per your application
+    const softwareName = "SecurForce"; // Change this to your software name
+    const loginUrl = "securforce.com"; // Change this to your login URL
+
+    // let message = template.Message;
+    // message = message.replace("{#var#}", fullName); // 1st: Employee Name
+    // message = message.replace("{#var#}", softwareName); // 2nd: Software Name
+    // message = message.replace("{#var#}", username); // 3rd: Username
+    // message = message.replace("{#var#}", password); // 4th: Password
+    // message = message.replace("{#var#}", loginUrl); // 5th: Login URL
+    let message = template.Message;
+
+    // Replace all {#var#} placeholders with actual values in order
+    const replacements = [fullName, softwareName, username, password, loginUrl];
+    replacements.forEach((value) => {
+      message = message.replace("{#var#}", value);
+    });
+    // Prepare SMS payload
+    const smsPayload = {
+      SoftwareID: 17,
+      SenderId: "MWBTEC",
+      UserId: 0,
+      Receiver: [mobile],
+      Message: message,
+      templateKey: "share_credentials",
+    };
+
+    console.log("SMS Payload:", smsPayload);
+
+    // Dispatch the SMS action
+    try {
+      const result = await dispatch(GetSendSmsTemplateAction(smsPayload));
+
+      if (result?.payload?.status === 200) {
+        setShareModalOpen(false);
+        setToast({
+          message: "Credentials shared successfully via SMS!",
+          type: "success",
+        });
+        // Clear the password from state after successful share
+        setSelectedEmployee(null);
+      } else {
+        setToast({
+          message: result?.payload?.message || "Failed to send SMS",
+          type: "error",
+        });
+      }
+    } catch (error) {
+      console.error("Error sending SMS:", error);
+      setToast({
+        message: "Error sending SMS. Please try again.",
+        type: "error",
+      });
+    }
   };
+
   // Table labels configuration
   const labels = {
     firstName: {
-      DisplayName: " Name",
+      DisplayName: "Name",
       type: "object",
       objectName: "name",
     },
-
     mobile: { DisplayName: "Mobile" },
     branchName: { DisplayName: "Branch", type: "object", objectName: "branch" },
-
     workTiming: {
       DisplayName: "Work Timing",
       type: "function",
@@ -217,30 +345,26 @@ const EmployeeCreation = ({ formData, employeeList = [], onSuccess }) => {
     },
   };
 
-  const actions = [
-    {
-      title: "Share",
-      text: <MdShare className="w-5 h-5 text-primary" />,
-      onClick: (data) => {
-        handleShareClick(data); // Changed from console.log
-      },
-    },
-  ];
-
-  // const getEmployeeList = (page, limit, search = "") => {
-  //   setSearchTerm(search);
-  //   dispatch(EmployeeGetAction({ page, limit, search: search.trim() }));
-  // };
+  // const actions = [
+  //   {
+  //     title: "Share",
+  //     text: <MdShare className="w-5 h-5 text-primary" />,
+  //     onClick: (data) => {
+  //       handleShareClick(data);
+  //     },
+  //   },
+  // ];
 
   const getEmployeeList = (params) => {
     let body = removeEmptyStrings(params);
     console.log("Fetching employees with params:", body);
     dispatch(EmployeeGetAction(removeEmptyStrings(body)));
-    // console.log(params);
   };
+
   const refreshEmployeeList = () => {
     dispatch(EmployeeGetAction({ page: 1, limit: 10 }));
   };
+
   return (
     <div className="w-full flex flex-col items-center justify-center">
       <div className="w-full flex flex-col items-start text-left gap-4">
@@ -325,14 +449,14 @@ const EmployeeCreation = ({ formData, employeeList = [], onSuccess }) => {
             <ImportUser
               noRedirect={true}
               isWizard={true}
-              onUploadSuccess={refreshEmployeeList} // Add this prop
+              onUploadSuccess={refreshEmployeeList}
             />
           </div>
         )}
 
         {/* Employee List Table with Pagination */}
-        <div className="w-full ">
-          <div className="flex justify-between items-center p-4 bg-white rounded-lg ">
+        <div className="w-full">
+          <div className="flex justify-between items-center p-4 bg-white rounded-lg">
             <div>
               <Typography className="text-gray-900 font-semibold text-[18px]">
                 Existing Employees
@@ -343,16 +467,15 @@ const EmployeeCreation = ({ formData, employeeList = [], onSuccess }) => {
           <Table
             tableJson={reduxEmployeeList}
             labels={labels}
-            actions={actions}
+            // actions={actions}
             isLoading={loading}
             hideColumns={true}
             tableName="Employee List"
-            hideReload={true} // Add this prop
+            hideReload={true}
             paginationProps={{
               totalRecord,
               pageNo,
               limit,
-
               onDataChange: (page, limit, search = "") => {
                 getEmployeeList({ page, limit, search });
               },
@@ -360,7 +483,10 @@ const EmployeeCreation = ({ formData, employeeList = [], onSuccess }) => {
           />
           <ShareModal
             isOpen={shareModalOpen}
-            onClose={() => setShareModalOpen(false)}
+            onClose={() => {
+              setShareModalOpen(false);
+              setSelectedEmployee(null); // Clear selected employee
+            }}
             onConfirm={handleShareConfirm}
             employeeData={selectedEmployee}
           />

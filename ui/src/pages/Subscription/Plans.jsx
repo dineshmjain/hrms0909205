@@ -185,15 +185,9 @@ const Plans = () => {
                     })}
                 </div>
             </div>
-
             {/* Mobile Swipe Hint */}
             <p className="mt-5 text-center text-xs text-gray-500 sm:hidden"> {/* mt-6 → mt-5 */}
                 Swipe to view all plans
-            </p>
-
-            {/* Footer Note */}
-            <p className="mt-8 text-center text-xs text-gray-500"> {/* mt-10 → mt-8 */}
-                All plans include core HRMS features. Need more? Contact sales.
             </p>
 
             {/* Hide Scrollbar */}

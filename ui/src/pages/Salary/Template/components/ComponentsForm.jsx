@@ -100,6 +100,7 @@ const ComponentsForm = ({
           {/* Component Value */}
           <FormikInput
             name="componentValue"
+            type="number"
             label="Component Value *"
             inputType="input"
             placeholder="Enter Value"

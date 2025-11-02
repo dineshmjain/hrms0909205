@@ -2,10 +2,19 @@
 import { createSlice } from "@reduxjs/toolkit";
 import toast from "react-hot-toast";
 import { GetStructureAction } from "../Action/Wizard/WizardAction";
-import { GetOrganizationAction ,GetOrganizationDetailsAction} from "../Action/Wizard/WizardAction"; // import your action
+import {
+  GetOrganizationAction,
+  GetOrganizationDetailsAction,
+} from "../Action/Wizard/WizardAction"; // import your action
 import { GetBranchCreationAction } from "../Action/Wizard/WizardAction";
 import { GetAllWizardAction } from "../Action/Wizard/WizardAction";
-import { OtCreateAction, OtUpdateAction ,OtGetAction} from "../Action/Wizard/WizardAction";
+import {
+  OtCreateAction,
+  OtUpdateAction,
+  OtGetAction,
+  GetSmsTemplateKeyAction,
+  GetSendSmsTemplateAction,
+} from "../Action/Wizard/WizardAction";
 
 const initialState = {
   structure: null,
@@ -19,6 +28,8 @@ const initialState = {
   otUpdate: null,
   organizationDetails: null,
   otGet: null,
+  smskey: null,
+  smstemplate: null,
 };
 
 const WizardReducer = createSlice({
@@ -162,8 +173,7 @@ const WizardReducer = createSlice({
         state.status = "success";
         state.organizationDetails = action.payload?.data || null;
         toast.success("Organization details fetched successfully");
-      }
-      )
+      })
       .addCase(GetOrganizationDetailsAction.rejected, (state, action) => {
         state.status = "failed";
         state.error = true;
@@ -176,27 +186,56 @@ const WizardReducer = createSlice({
       })
       .addCase(OtGetAction.pending, (state) => {
         state.status = "loading";
-      } 
-      )
+      })
       .addCase(OtGetAction.fulfilled, (state, action) => {
         state.status = "success";
         state.otGet = action.payload?.data || null;
         toast.success("OT Fetched successfully");
-      }
-      )
+      })
       .addCase(OtGetAction.rejected, (state, action) => {
         state.status = "failed";
         state.error = true;
         const backendError =
           action.payload || action.error?.response?.data || action.error;
-        const validationMessage =
-          backendError?.message || "Failed to fetch OT";
+        const validationMessage = backendError?.message || "Failed to fetch OT";
         state.errorMessage = validationMessage;
         toast.error(validationMessage);
-      }
-      );
+      })
+      .addCase(GetSmsTemplateKeyAction.pending, (state) => {
+        state.status = "loading";
+      })
+      .addCase(GetSmsTemplateKeyAction.fulfilled, (state, action) => {
+        state.status = "success";
+        state.smskey = action.payload?.data || null;
+        toast.success("SMS Key Fetched successfully");
+      })
+      .addCase(GetSmsTemplateKeyAction.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = true;
+        const backendError =
+          action.payload || action.error?.response?.data || action.error;
+        const validationMessage = backendError?.message || "Failed to fetch sms Key";
+        state.errorMessage = validationMessage;
+        toast.error(validationMessage);
+      })
+      .addCase(GetSendSmsTemplateAction.pending, (state) => {
+        state.status = "loading";
+      })
+      .addCase(GetSendSmsTemplateAction.fulfilled, (state, action) => {
+        state.status = "success";
+        state.smstemplate = action.payload?.data || null;
+        toast.success("SMS Send successfully");
+      })
+      .addCase(GetSendSmsTemplateAction.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = true;
+        const backendError =
+          action.payload || action.error?.response?.data || action.error;
+        const validationMessage = backendError?.message || "Failed to Send sms";
+        state.errorMessage = validationMessage;
+        toast.error(validationMessage);
+      });
   },
 });
-
 
 export default WizardReducer.reducer;

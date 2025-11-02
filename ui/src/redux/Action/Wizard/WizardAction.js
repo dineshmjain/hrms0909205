@@ -7,7 +7,9 @@ import {
   OtCreateApi,
   OtUpdateApi,
   OtGetApi,
-  getOrganizationDetailsApi
+  getOrganizationDetailsApi,
+  GetSmsTemplateKeyApi,
+  GetSendSmsTemplateApi,
 } from "../../../apis/Wiard/WizardApi";
 
 export const GetStructureAction = createAsyncThunk(
@@ -26,7 +28,6 @@ export const GetStructureAction = createAsyncThunk(
     }
   }
 );
-
 
 export const GetOrganizationAction = createAsyncThunk(
   "getOrganizationApi",
@@ -135,6 +136,40 @@ export const OtGetAction = createAsyncThunk(
       return data;
     } catch (error) {
       console.log("OT Get Error -->", error.message);
+      return rejectWithValue(
+        error?.response?.data || { message: "Unknown error occurred" }
+      );
+    }
+  }
+);
+
+export const GetSmsTemplateKeyAction = createAsyncThunk(
+  "GetSmsTemplateKeyApi",
+  async (userCredentials, { rejectWithValue }) => {
+    console.log("User Sms Template Key in Action:", userCredentials);
+    try {
+      const data = await GetSmsTemplateKeyApi(userCredentials);
+      console.log("User Sms Template Key Get Success -->", data);
+      return data;
+    } catch (error) {
+      console.log("User Sms Template Key Get Error -->", error.message);
+      return rejectWithValue(
+        error?.response?.data || { message: "Unknown error occurred" }
+      );
+    }
+  }
+);
+
+export const GetSendSmsTemplateAction = createAsyncThunk(
+  "GetSendSmsTemplateApi",
+  async (userCredentials, { rejectWithValue }) => {
+    console.log("User Sms send Template Key in Action:", userCredentials);
+    try {
+      const data = await GetSendSmsTemplateApi(userCredentials);
+      console.log("User Sms send Template Key Get Success -->", data);
+      return data;
+    } catch (error) {
+      console.log("User Sms send Template Key Get Error -->", error.message);
       return rejectWithValue(
         error?.response?.data || { message: "Unknown error occurred" }
       );

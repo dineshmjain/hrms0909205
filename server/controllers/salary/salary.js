@@ -113,7 +113,7 @@ export const getSalaryTemplate = async (request, response, next) => {
     try{
         salary.getSalaryTemplate(request.body).then(res => {
             if(!res.status) return apiResponse.ErrorResponse(response,"Something went worng",res.error);
-            request.body.template = res.data;
+            request.body.template = res.data[0];
             return next();
         }).catch(error => {
             request.logger.error("Error while addDefaultDesignations in designation controller ",{ stack: error.stack });
@@ -143,11 +143,19 @@ export const listSalaryTemplates = async (request, response, next) => {
     }
 }
 
-export const previewSalaryTemplate = async (request, response, next) => {
+export const previewSalaryBreakup = async (request, response, next) => {
     try{
-        salary.previewSalaryTemplate(request.body).then(res => {
+        if (request.body.components !== request.body.statutoryDocs) {
+          Object.defineProperty(
+            request.body,
+            "statutoryDocs",
+            Object.getOwnPropertyDescriptor(request.body, "components")
+          );
+          delete request.body.components;
+        }
+        salary.previewSalaryBreakup(request.body).then(res => {
             if(!res.status) return apiResponse.ErrorResponse(response,"Something went worng",res.error);
-            request.body.components = res;
+            request.body.salaryBreakup = res;
             return next();
         }).catch(error => {
             request.logger.error("Error while addDefaultDesignations in designation controller ",{ stack: error.stack });

@@ -10,7 +10,6 @@ const TabsContent = ({ tab, ...rest }) => {
   const tabData = {
     clientOwnerDetails: <OwnerDetails {...rest} />,
     clientBranch: <BranchTab {...rest} />,
-    kyc: <KYC {...rest} />,
     clientShift: <ShiftTab {...rest} />,
     assignEmp: <EmployeeAssign {...rest} />,
     emergencyNo: <EmergencyNo {...rest} />,

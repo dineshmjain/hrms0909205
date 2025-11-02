@@ -117,25 +117,7 @@ export const BasicConfig = () => {
     },
   };
 };
-useEffect(() => {
-  // Get user from Redux store
-  const user = useSelector((state) => state.auth.user); // Adjust path based on your store
 
-  console.log("User:", user);
-  console.log("User Modules:", user?.modules);
-  console.log(
-    "SubOrganization Read Permission:",
-    user?.modules?.["suborganization"]?.r
-  );
-
-  // Check if suborganization read permission exists
-  if (user?.modules?.["suborganization"]?.r) {
-    console.log("SubOrganization read permission granted");
-    dispatch(SubOrgListAction());
-  } else {
-    console.log("SubOrganization read permission denied");
-  }
-}, [dispatch]);
 const BasicInformation = ({ isEditAvaliable, isClient }) => {
   const dispatch = useDispatch();
   const { state, search } = useLocation();
@@ -165,12 +147,26 @@ const BasicInformation = ({ isEditAvaliable, isClient }) => {
     }
   }, [dispatch, state]);
 
+  // useEffect(() => {
+  //   if (user?.modules?.["suborganization"]?.r) {
+  //     dispatch(SubOrgListAction());
+  //   }
+  // }, [dispatch, user]);
   useEffect(() => {
+    console.log("User:", user);
+    console.log("User Modules:", user?.modules);
+    console.log(
+      "SubOrganization Read Permission:",
+      user?.modules?.["suborganization"]?.r
+    );
+
     if (user?.modules?.["suborganization"]?.r) {
+      console.log("SubOrganization read permission granted");
       dispatch(SubOrgListAction());
+    } else {
+      console.log("SubOrganization read permission denied");
     }
   }, [dispatch, user]);
-
   const toggleWeekOff = (day) => {
     const currentWeekOff = values.weekOff || [];
     if (currentWeekOff.includes(day)) {
