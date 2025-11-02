@@ -1036,20 +1036,33 @@ export let validation = {
           otherwise: Joi.forbidden(),
         }),
 
-        maxIn: Joi.number()
-          .integer()
-          .min(0)
-          .optional()
-          .messages({
-            "number.base": "maxIn must be a number",
-          }),
+        // maxIn: Joi.number()
+        //   .integer()
+        //   .min(0)
+        //   .optional()
+        //   .messages({
+        //     "number.base": "maxIn must be a number",
+        //   }),
 
-        minOut: Joi.number()
-          .integer()
-          .min(0)
+        // minOut: Joi.number()
+        //   .integer()
+        //   .min(0)
+        //   .optional()
+        //   .messages({
+        //     "number.base": "minOut must be a number",
+        //   }),
+
+        minOut: Joi.string()
+          .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
           .optional()
           .messages({
-            "number.base": "minOut must be a number",
+            "string.pattern.base": "minIn must be in HH:mm format",
+          }),
+        maxIn: Joi.string()
+          .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
+          .optional()
+          .messages({
+            "string.pattern.base": "maxIn must be in HH:mm format",
           }),
 
         weekOff: Joi.array()
@@ -1130,9 +1143,9 @@ export let validation = {
         subOrgId: Joi.string(),
         address: Joi.object({
           addressTypeId: Joi.string().required(),
-          hno: Joi.string().optional(),
+          hno: Joi.string().allow("").optional(),
           street: Joi.string().optional(),
-          landmark: Joi.string().optional(),
+          landmark: Joi.string().allow("").optional(),
           city: Joi.string().required(),
           taluk: Joi.string().optional(),
           district: Joi.string().optional(),
@@ -2279,13 +2292,21 @@ export let validation = {
     body: Joi.object()
       .required()
       .keys({
-        name: Joi.string().min(3).required(),
+        name: Joi.string().min(3).required().messages({
+          "string.empty": "Please provide branch name",
+          "string.min": "Branch name must be at least 3 characters long",
+          "any.required": "Branch name is required",
+        }),
         clientId: Joi.string()
           .pattern(/^[a-f\d]{24}$/i)
-          .message("clientId must be a valid ObjectId"),
+          .message({
+            "string.empty": "Please select client",
+            "any.required": "Please select client",
+            "string.pattern.base": "Client ID must be a valid ObjectId",
+          }),
         subOrgId: Joi.string()
           .pattern(/^[a-f\d]{24}$/i)
-          .message("subOrgId must be a valid ObjectId"),
+          .message({"string.pattern.base": "Sub-organization ID must be a valid ObjectId"}),
         isDefaultOrg: Joi.boolean().optional(),
         structure: Joi.string().valid("branch").optional(),
         timeSettingType: Joi.string()
@@ -2299,6 +2320,8 @@ export let validation = {
             .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
             .optional()
             .messages({
+              "any.required": "Please provide start time",
+              "string.empty": "Please provide start time",
               "string.pattern.base": "startTime must be in HH:mm format",
             }),
           otherwise: Joi.forbidden(),
@@ -2310,6 +2333,8 @@ export let validation = {
             .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
             .optional()
             .messages({
+              "any.required": "Please provide End time",
+              "string.empty": "Please provide End time",
               "string.pattern.base": "endTime must be in HH:mm format",
             }),
           otherwise: Joi.forbidden(),
@@ -2321,6 +2346,8 @@ export let validation = {
             .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
             .optional()
             .messages({
+              "any.required": "Please reporting Time",
+              "string.empty": "Please provide reporting Time",
               "string.pattern.base": "reportingTime must be in HH:mm format",
             }),
           otherwise: Joi.forbidden(),
@@ -2330,6 +2357,7 @@ export let validation = {
           .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
           .optional()
           .messages({
+            "string.empty": "Please provide grace In Minutes",
             "string.pattern.base": "maxIn must be in HH:mm format",
           }),
 
@@ -2337,6 +2365,7 @@ export let validation = {
           .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
           .optional()
           .messages({
+            "string.empty": "Please provide grace Out Minutes",
             "string.pattern.base": "minOut must be in HH:mm format",
           }),
 
@@ -2354,6 +2383,7 @@ export let validation = {
           )
           .optional()
           .messages({
+            "string.empty": "Please provide select weekday names",
             "any.only": "weekOff must contain valid weekday names",
           }),
 
@@ -2416,15 +2446,27 @@ export let validation = {
         // }),
         // // address:Joi.object(),
         address: Joi.object({
-          addressTypeId: Joi.string().required(),
+          addressTypeId: Joi.string().required().messages({
+            "any.required": "Please select address type",
+            "string.empty": "Please select address type",
+          }),
           hno: Joi.string().allow('').optional(),
           street: Joi.string().optional(),
           landmark: Joi.string().allow('').optional(),
-          city: Joi.string().required(),
+          city: Joi.string().required().messages({
+            "any.required": "Please enter city name",
+            "string.empty": "Please enter city name",
+          }),
           taluk: Joi.string().optional(),
           district: Joi.string().optional(),
-          state: Joi.string().required(),
-          country: Joi.string().required(),
+          state: Joi.string().required().messages({
+            "any.required": "Please select state",
+            "string.empty": "Please select state",
+          }),
+          country: Joi.string().required().messages({
+            "any.required": "Please select country",
+            "string.empty": "Please select country",
+          }),
           pincode: Joi.optional(),
         }),
         geoLocation: Joi.object({
@@ -3946,11 +3988,11 @@ export let validation = {
   extendAdd: {
     body: Joi.object({
       branchId: Joi.string()
-        .required()
+        .optional()
         .pattern(/^[a-f\d]{24}$/i)
         .message("branchId must be a valid ObjectId"),
       shiftId: Joi.string()
-        .required()
+        .optional()
         .pattern(/^[a-f\d]{24}$/i)
         .message("shiftId must be a valid ObjectId"),
       clientMappedId: Joi.string()
@@ -3963,10 +4005,12 @@ export let validation = {
   },
   updateExtendStatus: {
     body: Joi.object({
-      extensionId: Joi.string()
-        .required()
-        .pattern(/^[a-f\d]{24}$/i)
-        .message("extensionId must be a valid ObjectId"),
+      extensionIds: Joi.array().items(
+        Joi.string()
+          .required()
+          .pattern(/^[a-f\d]{24}$/i)
+          .message("extensionIds must be a valid ObjectId")
+      ),
       status: Joi.string().optional().valid('pending', 'approve', 'reject'),
       remarks: Joi.string().optional()
     }),
@@ -3981,5 +4025,155 @@ export let validation = {
     }),
   },
 
+
+  /**
+    * checkpoint
+    */
+  createCheckpoint: {
+    body: Joi.object().keys({
+      name: Joi.string().required(),
+      description:Joi.string().optional(),
+      // location: Joi.object().required(),
+      clientId: Joi.string().required().pattern(/^[a-f\d]{24}$/i).message('clientId must be a valid ObjectId'),
+      // branchId: Joi.string().required().pattern(/^[a-f\d]{24}$/i).message('branchId must be a valid ObjectId'),
+      address: Joi.object({
+        RoomNo: Joi.optional(),
+        FloorNo: Joi.optional(),
+        BuildingNo: Joi.optional(),
+        BuildingName: Joi.string().optional(),
+        Area: Joi.string().optional()
+      }).optional(),
+      geoLocation: Joi.object({
+        city: Joi.string().required(),
+        district: Joi.string().optional(),
+        state: Joi.string().required(),
+        country: Joi.string().required(),
+        pincode: Joi.required(),
+        address: Joi.string().required(),
+      }).required(),
+      geoJson: Joi.object({
+        type: Joi.string().valid("Point").required(),
+        coordinates: Joi.array().items(Joi.number()).length(2).required()
+      }),
+      attachments: Joi.object().optional(),
+      clientBranchId:Joi.string().optional().pattern(/^[a-f\d]{24}$/i).message('clientBranchId must be a valid ObjectId'),
+    //   startTime: Joi.string().pattern(/^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/).required().messages({
+    //     'string.pattern.base': 'Start time must be in the format HH:MM and between 00:00 and 23:59.'
+    // }),
+    //   graceIn:Joi.string().pattern(/^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/).required().messages({
+    //     'string.pattern.base': 'Start time must be in the format HH:MM and between 00:00 and 23:59.'
+    // }),
+    // graceOut:Joi.string().pattern(/^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/).required().messages({
+    //   'string.pattern.base': 'Start time must be in the format HH:MM and between 00:00 and 23:59.'
+    // }),
+
+    tasks:Joi.array().optional()
+
+    }).required()
+  },
+
+  updateCheckpoint: {
+    body: Joi.object().keys({
+      name: Joi.string(),
+      // location: Joi.object().optional(),
+      geoLocation: Joi.object({
+        city: Joi.string().required(),
+        district: Joi.string().optional(),
+        state: Joi.string().required(),
+        country: Joi.string().required(),
+        pincode: Joi.required(),
+        address: Joi.string().required(),
+      }).optional(),
+      geoJson: Joi.object({
+        type: Joi.string().valid("Point").required(),
+        coordinates: Joi.array().items(Joi.number()).length(2).required()
+      }).optional(),
+      isActive: Joi.boolean().optional(),
+      address: Joi.object({
+        RoomNo: Joi.optional(),
+        FloorNo: Joi.optional(),
+        BuildingNo: Joi.optional(),
+        BuildingName: Joi.string().optional(),
+        Area: Joi.string().optional()
+      }).optional(),
+      attachments: Joi.object().optional(),
+      chekpointId: Joi.string().pattern(/^[a-f\d]{24}$/i).message('checkpointId must be a valid ObjectId').required(),
+      clientBranchId:Joi.string().optional().pattern(/^[a-f\d]{24}$/i).message('clientBranchId must be a valid ObjectId'),
+      startTime: Joi.string().pattern(/^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/).optional().messages({
+        'string.pattern.base': 'Start time must be in the format HH:MM and between 00:00 and 23:59.'
+      }),
+      graceIn:Joi.string().pattern(/^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/).optional().messages({
+        'string.pattern.base': 'Start time must be in the format HH:MM and between 00:00 and 23:59.'
+      }),
+      graceOut:Joi.string().pattern(/^((0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]|24:00)$/).optional().messages({
+        'string.pattern.base': 'Start time must be in the format HH:MM and between 00:00 and 23:59.'
+      }),
+    }).required()
+  },
+
+  // validations for get checkpoint
+  getCheckPoint: {
+    body: Joi.object().keys({
+      name: Joi.string().optional(),
+      clientId: Joi.string().optional().pattern(/^[a-f\d]{24}$/i).message('clientId must be a valid ObjectId'),
+      chekpointId: Joi.string().optional().pattern(/^[a-f\d]{24}$/i).message('_id must be a valid ObjectId'),
+      page: Joi.optional(),
+      limit: Joi.optional()
+    }).min(1).required()
+  },
+  leaveListBalance:{
+    body:Joi.object().keys({
+      isExcel:Joi.boolean().optional(),
+      leaveList:Joi.boolean().optional(),
+      orgIds: Joi.array()
+      .items(
+        Joi.string()
+          .pattern(/^[a-f\d]{24}$/i)
+          .message("orgIds must be array of a valid ObjectId")
+      )
+      .optional(),
+    branchIds: Joi.array()
+      .items(
+        Joi.string()
+          .pattern(/^[a-f\d]{24}$/i)
+          .message("branchId must be array of a valid ObjectId")
+      )
+      .optional(),
+    departmentIds: Joi.array()
+      .optional()
+      .items(
+        Joi.string()
+          .pattern(/^[a-f\d]{24}$/i)
+          .message("departmentIds must be array of a valid ObjectId")
+      ),
+    designationIds: Joi.array()
+      .optional()
+      .items(
+        Joi.string()
+          .pattern(/^[a-f\d]{24}$/i)
+          .message("designationIds must be array of a valid ObjectId")
+      ),
+    employeeIds: Joi.array()
+      .optional()
+      .items(
+        Joi.string().custom((value, helpers) => {
+          if (!ObjectId.isValid(value)) {
+            return helpers.message(
+              `"${value}" is not a valid ObjectId in employeeIds`
+            );
+          }
+          return value;
+        })
+      ),
+  })
+  .custom((value, helpers) => {
+    
+
+    return value;
+  
+
+      
+    })
+  }
 
 }

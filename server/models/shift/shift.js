@@ -203,7 +203,7 @@ export const listShift = async (body) => {
 export const getOneShift = async (body) => {
     try{
 
-        body.orgId = body?.orgDetails?._id ? body.orgDetails._id : new ObjectId(body.user.orgId);
+        // body.orgId = body?.orgDetails?._id ? body.orgDetails._id : new ObjectId(body.user.orgId);
         const queryBuilder = new QueryBuilder(body)
             .addShiftId()
             .addName()

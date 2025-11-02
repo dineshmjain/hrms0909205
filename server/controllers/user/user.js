@@ -22,6 +22,7 @@ import * as orgModel from '../../models/organization/organization.js';
 import * as designationModel from  '../../models/designation/designation.js';
 import * as shiftModel from '../..//models/shift/shift.js';
 import { response } from 'express'
+import { logger } from '../../helper/logger.js'
 const kafka = new KafkaService();
 //============================ AUTH ==================================
 
@@ -1761,6 +1762,24 @@ export const getAdminUser = async(request, response, next) => {
         })
     }
     catch (error) {
+        return apiResponse.somethingResponse(response, error.message)
+    }
+}
+
+
+export const getEmployeesBranchId=async(request,response,next)=>{
+    try {
+        userModel.getUsersByBranchId(request.body).then(res => {
+            if (!res.status) return apiResponse.notFoundResponse(response, "No clients found for this user")
+            request.body.userIds= res.data
+            return next()
+        }).catch(error => {
+            request.logger.error("Error while getEmployeesBranchId in user controller ", { stack: error.stack });
+            return apiResponse.somethingResponse(response, "Unable to fetch user")
+        })
+    }
+    catch (error) {
+        request.logger.error("Error while getEmployeesBranchId in user controller ", { stack: error.stack });
         return apiResponse.somethingResponse(response, error.message)
     }
 }

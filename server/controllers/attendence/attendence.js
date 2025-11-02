@@ -600,6 +600,7 @@ export const generateTransactionLog = async (request, response, next) => {
             if(!request.body.existingCheckInOutData || !request.body.extendAttendance || request.body.type === 'checkOut')
             {
                 request.body.checkExisting = await employeeAttendenceModel.getEmployeeStats(request.body)
+                request.body.checkExistingDaily = await employeeAttendenceModel.getEmployeeStatsDaily(request.body)
                 await employeeAttendenceModel.addEmployeeAttendenceStats2(request.body)
             }
 
@@ -1371,13 +1372,14 @@ export const getAllEmployeeAttendenceStats = async (request, response, next) => 
             getData.data = getData.data.map(item => {
                 const {workingDays,monthDays} = helper.getWorkingDaysTillToday(item.year, item.month);
                 const present = item.presentDays || 0;
-                const absent = Math.max(workingDays - present, 0);
+                const absent = Math.max(item.workingDays - present, 0);
                 
                 return {
                   ...item,
                   monthName:moment().month(item.month - 1).format('MMMM'),
                   monthDays,
                   lateIn:item.lateIn ?? 0,
+                  weekOff: Math.max(monthDays - item.workingDays, 0),
                   absentDays: absent
                 };
               });

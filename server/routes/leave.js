@@ -146,4 +146,21 @@ router.post('/aprove/reject',
     }
 )
 
+
+router.post('/generate/list/pdf/excel',
+    celebrate(validation.leaveListBalance),
+    auth.isAuth,
+    user.isUserValid,
+    user.getEmployeesBranchId,           // Step 1: Get employees
+    leave.getUserLeaveBalance,           // Step 2: Try to fetch balance
+    leavePolicy.getPolicy,               // Step 3: Get branch policies
+    leave.createUserLeaveBalanceReports,        // Step 4: Create missing balances
+    leave.getUserLeaveBalance,           // Step 5: Re-fetch (now all exist)
+    leave.generateLeaveBalancePdf,     // Step 6: Generate PDF
+    leave.generateLeaveBalanceExcel,
+    (request,response)=>{
+        return apiResponse.successResponseWithData(response,'generated pdf successfully',request.body.result)
+    }
+)
+
 export default router;

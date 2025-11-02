@@ -87,6 +87,7 @@ router.post('/add',
     shift.getAllShifts,
     ShiftDateController.getShiftByDate,
     shiftGroup.getShiftGroupListByDate,
+    clientbranch.getShiftIdsByClientRequirement,
     employAttendenceController.setAssignedShift,
     shiftGroup.getCurrentDateShift,
     employAttendenceController.getEmployeeNearestShift2,
@@ -155,6 +156,7 @@ router.post('/team/add',
   shift.getAllShifts,
   ShiftDateController.getShiftByDate,
   shiftGroup.getShiftGroupListByDate,
+  clientbranch.getShiftIdsByClientRequirement,
   employAttendenceController.setAssignedShift,
   shiftGroup.getCurrentDateShift,  
   employAttendenceController.getEmployeeNearestShift2,
@@ -486,6 +488,12 @@ router.post('/extend/apply',
     celebrate(validation.extendAdd),
     auth.isAuth,
     user.isUserValid,
+    // (request, response, next) => {
+    //     if(request.body.user.workTimingType !== 'shift') {
+    //         return apiResponse.validationError(response, "Only shift based employees can apply for extension.");
+    //     }
+    //     return next();
+    // },
     extension.isDuplicateExtension,
     extension.add,
     (request, response) => {
@@ -497,7 +505,7 @@ router.post('/extend/update/status',
     celebrate(validation.updateExtendStatus),
     auth.isAuth,
     user.isUserValid,
-    extension.isExtendedIdValid,
+    extension.isMultipleExtendedIdValid,
     extension.updateStatus,
     (request, response) => {
         return apiResponse.successResponse(response, "Extension Status updated Sucessfully!");

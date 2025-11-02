@@ -334,6 +334,22 @@ export const listClientRequirements=async (request, response, next) => {
     }
 }
 
+export const listRequirementUsers=async (request, response, next) => {
+    try {
+        const result = await branchModel.listRequirementUsers(request.body)
+        if (result.status) {
+            request.body.requirements = result
+        } else {
+            request.logger.error("Error while fetching requirements ",{ stack: error.stack });
+            return apiResponse.somethingResponse(response, error.message)
+        }
+        return next()
+    } catch (error) {
+        console.log(error)
+        return apiResponse.ErrorResponse(response, "Failed to fetch requirements")
+    }
+}
+
 export const assignEmployeesToRequirements = async (request, response, next) => {
     try {
         const result = await branchModel.assignEmployeesToRequirements(request.body)

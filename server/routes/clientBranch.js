@@ -70,6 +70,16 @@ router.post('/requirements/list',
     },
 )
 
+router.post('/requirements/employees/list',
+    // celebrate(validation.addClientBranch),
+    auth.isAuth,
+    user.isUserValid,
+    branch.listRequirementUsers,
+    (request, response, next) => {
+        return apiResponse.responseWithPagination(response, "Employees fetched successfully!", request.body.requirements)
+    },
+)
+
 router.post('/requirements/employees',
     // celebrate(validation.addClientBranch),
     auth.isAuth,

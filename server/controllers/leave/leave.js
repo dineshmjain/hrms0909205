@@ -5,6 +5,7 @@ import { ObjectId } from 'mongodb';
 import * as leave from '../../models/leave/leave.js';
 import moment from 'moment';
 import { logger } from '../../helper/logger.js';
+import * as helper from '../../helper/formatting.js';
 
 export class LeaveController extends Controller {
     constructor(request,response,next) {
@@ -411,3 +412,75 @@ export const getUserAppliedLeaves=async(request,response,next)=>{
         return apiResponse.somethingResponse(response, error.message)
     }
 }
+
+
+export const createUserLeaveBalanceReports=async(request,response,next)=>{
+    try{
+       // Skip if already have balances for all
+        if (request.body.isUserBalance && request.body.userBalance.length >= request.body.userIds.length * request.body.policydata.length) {
+            return next();
+        }
+       
+        leave.createLeaveBalanceForReports(request.body).then(res=>{
+            if(res.status){
+                return next()
+            }
+            // return apiResponse.notFoundResponse(response,'No Data found')
+            return next()
+        }).catch(error=>{
+            logger.error('error while createUserLeaveBalance in leave controller',{stack:error.stack});
+            return apiResponse.somethingResponse(response, error.message)
+        })
+
+    }catch(error){
+        logger.error('error while createUserLeaveBalance in leave controller',{stack:error.stack});
+        return apiResponse.somethingResponse(response, error.message)
+    }
+}
+
+
+export const generateLeaveBalancePdf=async (request, response, next) => {
+    try {
+        const { userIds, userBalance, policydata } = request.body;
+      if(request.body.isExcel && request.body.isExcel===true)return next()
+      if(request.body.leaveList && request.body.leaveList===true){
+        const leaveBalanceList=helper.formatLeaveBalanceData({userIds, userBalance, policydata})
+        request.body.result=leaveBalanceList
+        return next()
+      }
+      const pdf=await helper.generateLeavePdf({userIds, userBalance, policydata})
+
+      if(pdf.status){
+        request.body.result=pdf.filePath
+        return next()
+      }
+
+      return apiResponse.validationError(response,'failed to generate pdf')
+
+    } catch (err) {
+      request.logger.error('PDF generation error', { stack: err.stack });
+      return apiResponse.somethingResponse(res, 'Failed to generate PDF');
+    }
+};
+
+export const generateLeaveBalanceExcel=async (request, response, next) => {
+    try {
+      const { userIds, userBalance, policydata } = request.body;
+      if(request.body.isExcel && request.body.isExcel===true)return next()
+      if(request.body.leaveList && request.body.leaveList===true)return next()
+      const pdf=await helper.generateLeaveExcel({userIds, userBalance, policydata})
+      
+
+      if(pdf.status){
+        request.body.result=pdf.filePath
+        return next()
+      }
+
+      return apiResponse.validationError(response,'failed to generate excel')
+
+    } catch (err) {
+      request.logger.error('excel generation error', { stack: err.stack });
+      return apiResponse.somethingResponse(res, 'Failed to generate excel');
+    }
+};
+

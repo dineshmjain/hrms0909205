@@ -13,6 +13,8 @@ import { defaultGraceTime } from './constants.js';
 import * as shiftModel from '../models/shift/shift.js';
 import { getMany } from './mongo.js';
 import { ObjectId } from 'mongodb';
+import PDFDocument from 'pdfkit';
+import { promises as fsp } from 'fs';
 // import "jspdf-autotable"
 // import {jsPDF} from "jspdf"
 
@@ -1679,6 +1681,129 @@ export const employeeExcelFormat = async (body) => {
         "Balance Amount(optional)",
         "Loan/Adavance Status(optional)"
         ];
+
+        sampleRows = [
+          [
+            "EMP001",
+            "Mukesh",
+            "Bafna",
+            "9553737837",
+            "Test@123",
+            "mukesh.bafna@example.com",
+            "Male",
+            "1990-01-01",
+            "2022-06-15",
+            "Mwb Trading",
+            "Mwb Trading - Chennai",
+            "Accounts",
+            "Accountant",
+            "NO",
+            "NO",
+            "YES",
+            "MBA",
+            "O+",
+            "Mukesh Bafna",
+            "9998887770",
+            "9998887771",
+            "Married",
+            "12A",
+            "MG Road",
+            "Near City Mall",
+            "Pune",
+            "Pune",
+            "Maharashtra",
+            "India",
+            "411001",
+            "Personal Loan",
+            "50000",
+            "2024-11-01",
+            "10",
+            "5000",
+            "16500",
+            "33500",
+            "Active"
+          ],
+          [
+            "EMP002",
+            "Abani",
+            "Bafna",
+            "9553737838",
+            "Test@123",
+            "abani.bafna@example.com",
+            "Male",
+            "1992-03-10",
+            "2023-01-12",
+            "Mwb Trading",
+            "Mwb Trading - Mumbai",
+            "Accounts",
+            "Auditor",
+            shiftOptions[1] || "Morning Shift",
+            "NO",
+            "NO",
+            "MBA",
+            "O+",
+            "Mukesh Bafna",
+            "9998887770",
+            "9998887771",
+            "Single",
+            "13A",
+            "MG Road5",
+            "Near City Mall1",
+            "Pune",
+            "Pune",
+            "Maharashtra",
+            "India",
+            "411002",
+            "Advance Loan",
+            "50000",
+            "2024-11-01",
+            "10",
+            "0",
+            "16500",
+            "33500",
+            "Active"
+          ],
+          [
+            "EMP003",
+            "Ramesh",
+            "Kumar",
+            "9553737839",
+            "Test@123",
+            "ramesh.kumar@example.com",
+            "Male",
+            "1991-05-20",
+            "2021-11-01",
+            "MWB Manufacturing",
+            "Mwb Manufacturing - Hubballi",
+            "Cleaning",
+            "Supervisor",
+            "YES",
+            "NO",
+            "NO",
+            "Diploma",
+            "O+",
+            "Mukesh Bafna",
+            "9998887770",
+            "9998887771",
+            "Married",
+            "14A",
+            "MG Road6",
+            "Near City Mall2",
+            "Pune",
+            "Pune",
+            "Maharashtra",
+            "India",
+            "411003",
+            "None",
+            "0",
+            "",
+            "0",
+            "0",
+            "0",
+            "0",
+            "None"
+          ],
+        ];
       }
   
       // 🔹 Branch structure case
@@ -1931,6 +2056,7 @@ export const employeeExcelFormat = async (body) => {
   
       // 🔹 Instruction Row
       sheet.insertRow(2, [
+        "",
         "",
         "",
         "",
@@ -2447,6 +2573,7 @@ try {
             const [endHour, endMin] = shift.endTime.split(":").map(Number);
             shiftEnd.setHours(endHour, endMin, 0, 0);
 
+            const isDayCross = shiftEnd <= shiftStart;
             // Handle overnight shift
             if (shiftEnd <= shiftStart) {
                 shiftEnd.setDate(shiftEnd.getDate() + 1);
@@ -2495,7 +2622,8 @@ try {
                     shiftStart,
                     shiftEnd,
                     adjustedShiftStart,
-                    adjustedShiftEnd
+                    adjustedShiftEnd,
+                    isDayCross
                 });
             // }
         }
@@ -2791,5 +2919,672 @@ export const getDaysBetweenDates = (expiryDate, selectedDate) => {
   // Use the `diff` method in days
   return Math.abs(firstDate.diff(secondDate, 'days'));
 }
+
+
+// const ensureDirectory = async (dirPath, label = 'directory') => {
+//   try {
+//     // Try to access → if exists, do nothing
+//     await fsp.access(dirPath);
+//     console.log(`${label} already exists: ${dirPath}`);
+//   } catch (error) {
+//     if (error.code === 'ENOENT') {
+//       console.log(`Creating ${label}: ${dirPath}`);
+//       await fsp.mkdir(dirPath, { recursive: true });
+//     } else {
+//       throw new Error(`Failed to access ${label}: ${error.message}`);
+//     }
+//   }
+// };
+
+const ensureDirectory = async (dirPath, label = 'directory') => {
+  try {
+    // Try to read directory
+    const fileCreation=await fsp.access(dirPath);
+    console.log("...fileCreation..",fileCreation)
+    console.log(`${label} already exists: ${dirPath}`);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      console.log(`Creating ${label}: ${dirPath}`);
+      await fsp.mkdir(dirPath, { recursive: true });
+      console.log(`${label} created successfully!`);
+    } else {
+      console.error(`Error ensuring ${label}:`, error.message);
+      throw error;
+    }
+  }
+};
+
+const decimalNumber = (num) => {
+  const val = Number(num);
+  if (isNaN(val)) return 0;
+  return Math.round(val * 100) / 100;
+};
+
+
+
+export const generateLeavePdf2=async(body)=>{
+  try{
+    const { userIds, userBalance, policydata } = body;
+    const rows = [];
+
+    const policyMap = {};
+    policydata.forEach(p => (policyMap[p.leavePolicyId.toString()] = p));
+
+    const balanceMap = {};
+    userBalance.forEach(b => {
+      const uid = b.userId.toString();
+      if (!balanceMap[uid]) balanceMap[uid] = [];
+      balanceMap[uid].push(b);
+    });
+
+    userIds.forEach(emp => {
+      const empId = emp._id.toString();
+      const balances = balanceMap[empId] || [];
+
+      if (balances.length === 0) {
+        // employee has no policy at all → still show a row
+        rows.push({
+          employeeId: emp.employeeId || empId,
+          employeeName: emp.name.firstName + emp.name.lastName || '—',
+          // branchName: emp.branchName || '—',
+          designation:emp.designationName || '-',
+          policyName: '—',
+          // branchPolicy: '—',
+          totalAllocated: 0,
+          usedLeave: 0,
+          availableLeave: 0,
+          currentBalance: 0,
+          lossOfPay: 0,
+        });
+      } else {
+        balances.forEach(bal => {
+          const pol = policyMap[bal.policyId.toString()] || {};
+          const allocated = bal.totalAccrued ?? 0;
+          const used = bal.usedLeaves ?? 0;
+          const available = allocated - used;
+
+          rows.push({
+            employeeId: emp.employeeId || empId,
+            // employeeName: emp.name || '—',
+            employeeName: emp.name.firstName +emp.name.lastName || '—',
+            // branchName: emp.branchName || '—',
+            designation:emp.designationName || '-',
+            policyName: pol.leavePolicyName || '—',
+            // branchPolicy: pol.brachName || '—',
+            totalAllocated: decimalNumber(allocated),
+            usedLeave: decimalNumber(used),
+            availableLeave: decimalNumber(available),
+            currentBalance: decimalNumber(bal.currentBalance) ?? 0,
+            lossOfPay: decimalNumber(bal.lossOfPayUsed) ?? 0,
+          });
+        });
+      }
+    });
+
+    // --------------------------------------------------------------
+    // 2. PDF – one big table on a single page (auto page-break)
+    // --------------------------------------------------------------
+
+    const reportsDir = path.join(__dirname, '/assets/reports/leaves');
+    await ensureDirectory(reportsDir, 'Leave Reports Directory');
+
+    const fileName = `leave_balance_${Date.now()}.pdf`;
+    const filePath = path.join(reportsDir, fileName);
+    const fileUrl = `/api/v1/leave/reports/pdf/${fileName}`;
+
+    const doc = new PDFDocument({ margin: 40, size: 'A4' });
+    const stream = fs.createWriteStream(filePath);
+    doc.pipe(stream);
+
+    // Header
+    doc.fontSize(18).text('Leave Balance Report', { align: 'center' });
+    doc.fontSize(10).text(`Generated: ${moment().format('DD-MMM-YYYY HH:mm')}`, { align: 'center' });
+    doc.moveDown(1.5);
+
+    // Table definition
+    const colWidths = [45, 85, 70, 90, 55, 45, 55, 55, 45];
+    const headers = [
+      'Emp ID',
+      'Employee',
+      'Designation',
+      'Policy',
+      'Allocated',
+      'Used',
+      'Available',
+      'Balance',
+      'LOP',
+    ];
+
+    let y = doc.y;
+
+    // ---- Helper: draw a line (border) ----
+    const line = (x1, x2, yy) => doc.moveTo(x1, yy).lineTo(x2, yy).stroke();
+
+    // ---- Draw header row ----
+    let x = 40;
+    headers.forEach((h, i) => {
+      doc
+        .font('Helvetica-Bold')
+        .fontSize(9)
+        .text(h, x, y, { width: colWidths[i], align: 'center' });
+      x += colWidths[i];
+    });
+    y += 20;
+    line(40, 40 + colWidths.reduce((a, b) => a + b, 0), y - 5); // bottom line
+
+    // ---- Draw data rows (with auto page-break) ----
+    const rowHeight = 18;
+    rows.forEach(row => {
+      // page break if needed
+      if (y + rowHeight > doc.page.height - 50) {
+        doc.addPage();
+        y = 50;
+      }
+
+      x = 40;
+      const cells = [
+        row.employeeId,
+        row.employeeName,
+        // row.branchName,
+        row.designation,
+        row.policyName,
+        // row.branchPolicy,
+        row.totalAllocated,
+        row.usedLeave,
+        row.availableLeave,
+        row.currentBalance,
+        row.lossOfPay,
+      ];
+
+      cells.forEach((cell, i) => {
+        doc
+          .font('Helvetica')
+          .fontSize(8)
+          .text(String(cell), x, y, { width: colWidths[i], align: i === 0 ? 'left' : 'center' });
+        x += colWidths[i];
+      });
+
+      // horizontal line under row
+      line(40, 40 + colWidths.reduce((a, b) => a + b, 0), y + rowHeight - 2);
+      y += rowHeight;
+    });
+
+    // final bottom line
+    line(40, 40 + colWidths.reduce((a, b) => a + b, 0), y - 2);
+
+    doc.end();
+
+    // wait for file write
+    await new Promise((resolve, reject) => {
+      stream.on('finish', resolve);
+      stream.on('error', reject);
+    });
+
+    // expose for the final handler
+    // req.body.pdfUrl = fileUrl;
+    // req.body.gridData = rows;   // same data you can show in UI
+
+    return {status:true,filePath:fileUrl}
+
+  }catch(error){
+    logger.error(" Error in generatepdf in helper formatting.js",{stack:error.stack})
+    return {status:false,message:error.message}
+  }
+}
+
+
+export const generateLeavePdf = async (body) => {
+  try {
+    const { userIds, userBalance, policydata } = body;
+
+    const rows = [];
+    const policyMap = {};
+    policydata.forEach(p => (policyMap[p.leavePolicyId.toString()] = p));
+
+    const balanceMap = {};
+    userBalance.forEach(b => {
+      const uid = b.userId.toString();
+      if (!balanceMap[uid]) balanceMap[uid] = [];
+      balanceMap[uid].push(b);
+    });
+
+    userIds.forEach(emp => {
+      const empId = emp._id.toString();
+      const balances = balanceMap[empId] || [];
+      const org = emp.organizationName || "—";
+      const branch = emp.branchName || "—";
+      // const dept = emp.departmentName || "—";
+
+      if (balances.length === 0) {
+        rows.push({
+          organizationName: org,
+          branchName: branch,
+          department: emp.departmentName,
+          employeeId: emp.employeeId || empId,
+          employeeName: `${emp.name.firstName ?? ""} ${emp.name.lastName ?? ""}`.trim() || "—",
+          designation: emp.designationName || "-",
+          policyName: "—",
+          totalAllocated: decimalNumber(0),
+          usedLeave: decimalNumber(0),
+          availableLeave: decimalNumber(0),
+          currentBalance: decimalNumber(0),
+          lossOfPay: decimalNumber(0),
+        });
+      } else {
+        balances.forEach(bal => {
+          const pol = policyMap[bal.policyId.toString()] || {};
+          const allocated = bal.totalAccrued ?? 0;
+          const used = bal.usedLeaves ?? 0;
+          const available = allocated - used;
+
+          rows.push({
+            organizationName: org,
+            branchName: branch,
+            department: emp.departmentName,
+            employeeId: emp.employeeId || empId,
+            employeeName: `${emp.name.firstName ?? ""} ${emp.name.lastName ?? ""}`.trim() || "—",
+            designation: emp.designationName || "-",
+            policyName: pol.leavePolicyName || "—",
+            totalAllocated: decimalNumber(allocated),
+            usedLeave: decimalNumber(used),
+            availableLeave: decimalNumber(available),
+            currentBalance: decimalNumber(bal.currentBalance) ?? 0,
+            lossOfPay: decimalNumber(bal.lossOfPayUsed) ?? 0,
+          });
+        });
+      }
+    });
+
+    // Output directory
+    const reportsDir = path.join(__dirname, "/assets/reports/leavespdf");
+    if (!fs.existsSync(reportsDir)) fs.mkdirSync(reportsDir, { recursive: true });
+
+    const fileName = `leave_balance_${Date.now()}.pdf`;
+    const filePath = path.join(reportsDir, fileName);
+    const fileUrl = `/api/v1/leave/reports/pdf/${fileName}`;
+
+    const doc = new PDFDocument({ margin: 40, size: "A4" });
+    const stream = fs.createWriteStream(filePath);
+    doc.pipe(stream);
+
+    // --------------------------------------
+    // HEADER (Centered)
+    // --------------------------------------
+    const firstRow = rows[0] || {};
+    doc.font("Helvetica-Bold").fontSize(18).fillColor("#1a1a1a");
+    doc.text("Leave Balance Report", { align: "center" });
+    doc.moveDown(0.5);
+
+    doc.font("Helvetica").fontSize(11).fillColor("#333");
+    doc.text(`Organization: ${firstRow.organizationName || "—"}`, { align: "center" });
+    doc.text(`Branch: ${firstRow.branchName || "—"} }`, { align: "center" });
+    doc.moveDown(0.5);
+
+    doc.fontSize(9).fillColor("#555");
+    doc.text(`Generated on: ${moment().format("DD-MMM-YYYY HH:mm")}`, { align: "right" });
+    doc.moveDown(1);
+
+    // --------------------------------------
+    // TABLE SETUP
+    // --------------------------------------
+    const headers = [
+      "Emp ID",
+      "Employee Name",
+      "Department",
+      "Designation",
+      "Leave Type",
+      "Allocated",
+      "Used",
+      "Available",
+      "Balance",
+      // "LOP",
+    ];
+
+    const colWidths = [55, 100,80, 80, 80, 55, 45, 55, 55, 45];
+    const tableWidth = colWidths.reduce((a, b) => a + b, 0);
+    const startX = (doc.page.width - tableWidth) / 2; // center the table
+    let y = doc.y;
+
+    const drawGridCell = (x, y, w, h) => {
+      doc.rect(x, y, w, h).stroke();
+    };
+
+    const drawHeader = () => {
+      let x = startX;
+      doc.font("Helvetica-Bold").fontSize(9).fillColor("#000");
+      headers.forEach((h, i) => {
+        drawGridCell(x, y, colWidths[i], 20);
+        doc.text(h, x + 2, y + 5, { width: colWidths[i] - 4, align: "center" });
+        x += colWidths[i];
+      });
+      y += 20;
+    };
+
+    // Header
+    doc.lineWidth(0.5);
+    drawHeader();
+
+    // --------------------------------------
+    // DATA ROWS
+    // --------------------------------------
+    doc.font("Helvetica").fontSize(8).fillColor("#000");
+    const rowHeight = 18;
+
+    rows.forEach((row, idx) => {
+      if (y + rowHeight > doc.page.height - 60) {
+        doc.addPage();
+        y = 50;
+        drawHeader();
+      }
+
+      let x = startX;
+      const cells = [
+        row.employeeId,
+        row.employeeName,
+        row.department,
+        row.designation,
+        row.policyName,
+        row.totalAllocated,
+        row.usedLeave,
+        row.availableLeave,
+        row.currentBalance,
+        row.lossOfPay,
+      ];
+
+      // Alternate shading
+      if (idx % 2 === 0) {
+        doc.rect(startX, y, tableWidth, rowHeight).fill("#f9f9f9").stroke();
+      }
+
+      cells.forEach((cell, i) => {
+        drawGridCell(x, y, colWidths[i], rowHeight);
+        doc.fillColor("#000").text(String(cell), x + 2, y + 5, {
+          width: colWidths[i] - 4,
+          align: i < 4 ? "left" : "right",
+        });
+        x += colWidths[i];
+      });
+
+      y += rowHeight;
+    });
+
+    // --------------------------------------
+    // FOOTER
+    // --------------------------------------
+    const footerY = doc.page.height - 40;
+    doc.fontSize(8).fillColor("#666").text(`Page ${doc.page.number}`, startX, footerY, {
+      align: "center",
+    });
+
+    doc.end();
+    await new Promise((resolve, reject) => {
+      stream.on("finish", resolve);
+      stream.on("error", reject);
+    });
+
+    return { status: true, filePath: fileUrl };
+  } catch (error) {
+    console.error("Error in generateLeavePdf:", error);
+    return { status: false, message: error.message };
+  }
+};
+
+
+
+export const generateLeaveExcel = async (body) => {
+  try {
+    const { userIds, userBalance, policydata } = body;
+
+    const rows = [];
+    const policyMap = {};
+    policydata.forEach((p) => (policyMap[p.leavePolicyId.toString()] = p));
+
+    const balanceMap = {};
+    userBalance.forEach((b) => {
+      const uid = b.userId.toString();
+      if (!balanceMap[uid]) balanceMap[uid] = [];
+      balanceMap[uid].push(b);
+    });
+
+    userIds.forEach((emp) => {
+      const empId = emp._id.toString();
+      const balances = balanceMap[empId] || [];
+      const org = emp.organizationName || "—";
+      const branch = emp.branchName || "—";
+      const dept = emp.departmentName || "—";
+
+      if (balances.length === 0) {
+        rows.push({
+          organizationName: org,
+          branchName: branch,
+          departmentName: dept,
+          employeeId: emp.employeeId || empId,
+          employeeName: `${emp.name.firstName ?? ""} ${emp.name.lastName ?? ""}`.trim() || "—",
+          designation: emp.designationName || "-",
+          policyName: "—",
+          totalAllocated: decimalNumber(0),
+          usedLeave: decimalNumber(0),
+          availableLeave: decimalNumber(0),
+          currentBalance: decimalNumber(0),
+          lossOfPay: decimalNumber(0),
+        });
+      } else {
+        balances.forEach((bal) => {
+          const pol = policyMap[bal.policyId.toString()] || {};
+          const allocated = bal.totalAccrued ?? 0;
+          const used = bal.usedLeaves ?? 0;
+          const available = allocated - used;
+
+          rows.push({
+            organizationName: org,
+            branchName: branch,
+            departmentName: dept,
+            employeeId: emp.employeeId || empId,
+            employeeName: `${emp.name.firstName ?? ""} ${emp.name.lastName ?? ""}`.trim() || "—",
+            designation: emp.designationName || "-",
+            policyName: pol.leavePolicyName || "—",
+            totalAllocated: decimalNumber(allocated),
+            usedLeave: decimalNumber(used),
+            availableLeave: decimalNumber(available),
+            currentBalance: decimalNumber(bal.currentBalance) ?? 0,
+            lossOfPay: decimalNumber(bal.lossOfPayUsed) ?? 0,
+          });
+        });
+      }
+    });
+
+    // Create workbook and worksheet
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Leave Balance Report", {
+      views: [{ state: "frozen", ySplit: 6 }], // Freeze header rows
+    });
+
+    // ------------------------------------
+    // Header Section (merged cells)
+    // ------------------------------------
+    const firstRow = rows[0] || {};
+    const title = "Leave Balance Report";
+
+    sheet.mergeCells("A1:I1");
+    sheet.getCell("A1").value = title;
+    sheet.getCell("A1").font = { size: 16, bold: true };
+    sheet.getCell("A1").alignment = { horizontal: "center", vertical: "middle" };
+
+    sheet.mergeCells("A2:I2");
+    sheet.getCell("A2").value = `Organization: ${firstRow.organizationName || "—"}`;
+    sheet.getCell("A2").alignment = { horizontal: "center" };
+
+    sheet.mergeCells("A3:I3");
+    sheet.getCell("A3").value = `Branch: ${firstRow.branchName || "—"}   |   Department: ${firstRow.departmentName || "—"}`;
+    sheet.getCell("A3").alignment = { horizontal: "center" };
+
+    sheet.mergeCells("A4:I4");
+    sheet.getCell("A4").value = `Generated on: ${moment().format("DD-MMM-YYYY HH:mm")}`;
+    sheet.getCell("A4").alignment = { horizontal: "right" };
+
+    sheet.addRow([]);
+    sheet.addRow([]);
+
+    // ------------------------------------
+    // Table Header
+    // ------------------------------------
+    const headerRow = [
+      "Emp ID",
+      "Employee Name",
+      "Designation",
+      "Policy",
+      "Allocated",
+      "Used",
+      "Available",
+      "Balance",
+      "LOP",
+    ];
+    const header = sheet.addRow(headerRow);
+
+    header.eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "4472C4" } };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.border = {
+        top: { style: "thin" },
+        bottom: { style: "thin" },
+        left: { style: "thin" },
+        right: { style: "thin" },
+      };
+    });
+
+    // ------------------------------------
+    // Data Rows
+    // ------------------------------------
+    rows.forEach((r) => {
+      const row = sheet.addRow([
+        r.employeeId,
+        r.employeeName,
+        r.designation,
+        r.policyName,
+        r.totalAllocated,
+        r.usedLeave,
+        r.availableLeave,
+        r.currentBalance,
+        r.lossOfPay,
+      ]);
+
+      row.eachCell((cell) => {
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+        cell.border = {
+          top: { style: "thin" },
+          bottom: { style: "thin" },
+          left: { style: "thin" },
+          right: { style: "thin" },
+        };
+      });
+    });
+
+    // ------------------------------------
+    // Column Widths
+    // ------------------------------------
+    const widths = [12, 25, 18, 18, 12, 10, 12, 12, 10];
+    widths.forEach((w, i) => (sheet.getColumn(i + 1).width = w));
+
+    // Alternate Row Coloring
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber > 6 && rowNumber % 2 === 0) {
+        row.eachCell((cell) => {
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "F2F2F2" },
+          };
+        });
+      }
+    });
+
+    // ------------------------------------
+    // Save File
+    // ------------------------------------
+    const reportsDir = path.join(__dirname, "/assets/reports/leavesexcel");
+    if (!fs.existsSync(reportsDir)) fs.mkdirSync(reportsDir, { recursive: true });
+
+    const fileName = `leave_balance_${Date.now()}.xlsx`;
+    const filePath = path.join(reportsDir, fileName);
+    const fileUrl = `/api/v1/leave/reports/excel/${fileName}`;
+
+    await workbook.xlsx.writeFile(filePath);
+
+    return { status: true, filePath: fileUrl };
+  } catch (error) {
+    console.error("Error in generateLeaveExcel:", error);
+    return { status: false, message: error.message };
+  }
+};
+
+
+
+export const formatLeaveBalanceData = (body) => {
+  try{
+    const { userIds, userBalance, policydata } = body
+    const rows = [];
+    const policyMap = {};
+    policydata.forEach(p => (policyMap[p.leavePolicyId.toString()] = p));
+  
+    const balanceMap = {};
+    userBalance.forEach(b => {
+      const uid = b.userId.toString();
+      if (!balanceMap[uid]) balanceMap[uid] = [];
+      balanceMap[uid].push(b);
+    });
+  
+    userIds.forEach(emp => {
+      const empId = emp._id.toString();
+      const balances = balanceMap[empId] || [];
+  
+      if (balances.length === 0) {
+        rows.push({
+          organizationName: emp.organizationName || "—",
+          branchName: emp.branchName || "—",
+          departmentName: emp.departmentName || "—",
+          employeeId: emp.employeeId || empId,
+          employeeName: `${emp.name.firstName ?? ""} ${emp.name.lastName ?? ""}`.trim() || "—",
+          designation: emp.designationName || "-",
+          policyName: "—",
+          totalAllocated: decimalNumber(0),
+          usedLeave: decimalNumber(0),
+          availableLeave: decimalNumber(0),
+          currentBalance: decimalNumber(0),
+          lossOfPay: decimalNumber(0),
+        });
+      } else {
+        balances.forEach(bal => {
+          const pol = policyMap[bal.policyId.toString()] || {};
+          const allocated = bal.totalAccrued ?? 0;
+          const used = bal.usedLeaves ?? 0;
+          const available = allocated - used;
+  
+          rows.push({
+            organizationName: emp.organizationName || "—",
+            branchName: emp.branchName || "—",
+            departmentName: emp.departmentName || "—",
+            employeeId: emp.employeeId || empId,
+            employeeName: `${emp.name.firstName ?? ""} ${emp.name.lastName ?? ""}`.trim() || "—",
+            designation: emp.designationName || "-",
+            policyName: pol.leavePolicyName || "—",
+            totalAllocated: decimalNumber(allocated),
+            usedLeave: decimalNumber(used),
+            availableLeave: decimalNumber(available),
+            currentBalance: decimalNumber(bal.currentBalance) ?? 0,
+            lossOfPay: decimalNumber(bal.lossOfPayUsed) ?? 0,
+          });
+        });
+      }
+    });
+  
+    return rows;
+
+  }catch(error){
+    console.error("Error in formatLeaveBalanceData:", error);
+    return { status: false, message: error.message };
+  }
+ 
+};
 
   

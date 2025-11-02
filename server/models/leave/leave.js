@@ -745,6 +745,12 @@ export const getLeaveBalance=async(body)=>{
             query["userId"]=new ObjectId(body.employeeId)
         }
 
+        if (body.userIds) {
+            delete query.userId
+            const userIds = body.userIds.map(u => new ObjectId(u._id));
+            query.userId = { $in: userIds };
+           
+        } 
         const pipeline = [
             {
                 $match: query
@@ -973,3 +979,146 @@ export const leaveBalanceSalaryEnabledUsers=async(body)=>{
         throw error
     }
 }
+
+
+export const createLeaveBalanceForReports= async (body) => {
+    try {
+      const now = moment();
+      const userIds = body.userIds || [];
+      const branchPolicies = body.policydata || [];
+      const existingBalances = body.userBalance || [];
+  
+      if (userIds.length === 0 || branchPolicies.length === 0) {
+        return { status: false };
+      }
+  
+      // Step 1: Build map of existing balances: { "userId_policyId": true }
+      const existingMap = {};
+      existingBalances.forEach(bal => {
+        const key = `${bal.userId.toString()}_${bal.policyId.toString()}`;
+        existingMap[key] = true;
+      });
+  
+      const newBalances = [];
+  
+      // Step 2: Loop through EVERY user
+      for (const emp of userIds) {
+        const userIdStr = emp._id.toString();
+        const joinDate = moment(emp.joinDate || now).startOf('day');
+  
+        // Step 3: Loop through EVERY branch policy
+        for (const policy of branchPolicies) {
+          const policyIdStr = policy.leavePolicyId.toString();
+          const balanceKey = `${userIdStr}_${policyIdStr}`;
+  
+          // Step 4: SKIP if already exists
+          if (existingMap[balanceKey]) {
+            continue;
+          }
+  
+          // Step 5: CREATE missing balance
+          const balanceDoc = {
+            userId: new ObjectId(emp._id),
+            orgId: new ObjectId(body.user.orgId),
+            policyId: new ObjectId(policy.leavePolicyId),
+            isActive: true,
+            totalAccrued: 0,
+            usedLeaves: 0,
+            currentBalance: 0,
+            lossOfPayUsed: 0,
+            transaction: [],
+            usedTransaction: [],
+            createdDate: new Date(),
+            firstCreditedMonth: null,
+            lastCreditedMonth: null,
+            nextCreditingDate: null
+          };
+  
+          // MONTHLY CYCLE
+          if (policy.cycle?.type === 'monthly') {
+            const creditedDay = policy.cycle.creditedDay || 1;
+  
+            let firstCredit = moment(joinDate).date(creditedDay);
+            if (joinDate.date() > creditedDay) {
+              firstCredit.add(1, 'month');
+            }
+  
+            let cycles = now.diff(firstCredit, 'months') + 1;
+            if (cycles < 0) cycles = 0;
+            if (cycles > 2) cycles = 2; // Only last 2 months
+  
+            const accrued = cycles * policy.noOfDays;
+            balanceDoc.totalAccrued = accrued;
+            balanceDoc.currentBalance = accrued;
+  
+            for (let i = 0; i < cycles; i++) {
+              const creditDate = moment(now)
+                .subtract(cycles - 1 - i, 'months')
+                .date(creditedDay)
+                .startOf('day');
+  
+              balanceDoc.transaction.push({
+                date: creditDate.toDate(),
+                credited: policy.noOfDays
+              });
+            }
+  
+            if (cycles > 0) {
+              balanceDoc.firstCreditedMonth = moment(now).subtract(cycles - 1, 'months').format('YYYY-MM');
+              balanceDoc.lastCreditedMonth = moment(now).format('YYYY-MM');
+              balanceDoc.nextCreditingDate = moment(now).date(creditedDay).add(1, 'month').toDate();
+            }
+          }
+  
+          // YEARLY CYCLE
+          else if (policy.cycle?.type === 'yearly') {
+            const creditMonth = policy.cycle.creditedMonth || 'January';
+            const creditDay = policy.cycle.creditedDay || 1;
+            const creditDate = moment().month(creditMonth).date(creditDay).startOf('day');
+  
+            if (joinDate.isSameOrBefore(creditDate, 'day') && now.isSameOrAfter(creditDate)) {
+              balanceDoc.totalAccrued = policy.noOfDays;
+              balanceDoc.currentBalance = policy.noOfDays;
+              balanceDoc.transaction.push({
+                date: creditDate.toDate(),
+                credited: policy.noOfDays
+              });
+              balanceDoc.firstCreditedMonth = creditDate.format('YYYY-MM');
+              balanceDoc.lastCreditedMonth = creditDate.format('YYYY-MM');
+              balanceDoc.nextCreditingDate = creditDate.add(1, 'year').toDate();
+            } else {
+              // Pro-rata
+              const monthsWorked = 12 - joinDate.month();
+              const prorated = parseFloat((policy.noOfDays * monthsWorked / 12).toFixed(2));
+              balanceDoc.totalAccrued = prorated;
+              balanceDoc.currentBalance = prorated;
+              balanceDoc.transaction.push({
+                date: joinDate.toDate(),
+                credited: prorated,
+                remark: 'Pro-rata yearly leave'
+              });
+              balanceDoc.firstCreditedMonth = joinDate.format('YYYY-MM');
+              balanceDoc.lastCreditedMonth = moment().format('YYYY-MM');
+              balanceDoc.nextCreditingDate = creditDate.add(1, 'year').toDate();
+            }
+          }
+  
+          newBalances.push(balanceDoc);
+        }
+      }
+  
+      // Step 6: Insert all at once
+      if (newBalances.length > 0) {
+        await createMany(newBalances, 'leaveBalance');
+      }
+  
+      return {
+        status: true,
+        createdCount: newBalances.length
+      };
+  
+    } catch (error) {
+      console.error('createLeaveBalance error:', error);
+      throw error;
+    }
+  };

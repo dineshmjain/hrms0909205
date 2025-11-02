@@ -2661,3 +2661,133 @@ export const getAdminUser = async(body) => {
     return {status : false, message : "Failed to get Admin Role Details"}
   }
 }
+
+
+
+export const getUsersByBranchId=async(body)=>{
+  try{
+
+    const query = [
+      {
+        $match: {
+          orgId: new ObjectId(body.user.orgId),
+          isActive: true,
+          owner: { $ne: true },
+        }
+      },
+      {
+        $lookup: {
+          from: "assignment",
+          localField: "assignmentId",
+          foreignField: "_id",
+          as: "matchedAssignments"
+        }
+      },
+      {
+        $unwind: {
+          path: "$matchedAssignments",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $lookup: {
+          from: "branches",
+          localField: "matchedAssignments.branchId",
+          foreignField: "_id",
+          as: "branch"
+        }
+      },
+      {
+        $unwind: {
+          path: "$branch",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      // Lookup department details
+      {
+        $lookup: {
+          from: "department",
+          localField: "matchedAssignments.departmentId",
+          foreignField: "_id",
+          as: "department"
+        }
+      },
+      {
+        $unwind: {
+          path: "$department",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      // Lookup designation details (if assigned)
+      {
+        $lookup: {
+          from: "designation",
+          localField: "matchedAssignments.designationId",
+          foreignField: "_id",
+          as: "designation"
+        }
+      },
+      {
+        $unwind: {
+          path: "$designation",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $lookup: {
+          from: "organization",
+          localField: "orgId",
+          foreignField: "_id",
+          as: "organization"
+        }
+      },
+      {
+        $unwind: {
+          path: "$organization",
+          preserveNullAndEmptyArrays: true
+        }
+      }
+
+    ]
+    
+    let matchQuery = {};
+
+    if(body.branchIds && body.branchIds.length>0) matchQuery["matchedAssignments.branchId"] = {$in: body.branchIds.map(id => new ObjectId(id))};
+    if(body.departmentIds && body.departmentIds.length>0) matchQuery["matchedAssignments.departmentId"] = {$in: body.departmentIds.map(id => new ObjectId(id))};
+    if(body.designationIds && body.designationIds.length>0) matchQuery["matchedAssignments.designationId"] = {$in: body.designationIds.map(id => new ObjectId(id))};
+
+    if(body.employeeIds && body.employeeIds.length>0) matchQuery["_id"] = {$in: body.employeeIds.map(id => new ObjectId(id))};
+
+    if (Object.keys(matchQuery).length > 0) {
+      query.push( { $match: matchQuery });
+    }
+
+    query.push({
+      $project: {
+        _id: 1,
+        name: 1,
+        employeeId: 1,
+        organizationName:'$organization.name',
+        branchName: '$branch.name',
+        departmentName: '$department.name',
+        designationName: '$designation.name',
+        joinDate:1,
+        address:"$branch.address"
+      }
+    });
+    
+    // let paginationQuery = {
+    //   page: body.page || 1,
+    //   limit: body.limit || 10
+    // };
+    console.log(JSON.stringify(query));
+    
+    return await aggregationWithPegination(query,{}, collection_name);
+
+
+  }catch (error) {
+    logger.error("error in getUsersByBranchId in user model",{stack:error.stack})
+    throw error
+  }
+
+}

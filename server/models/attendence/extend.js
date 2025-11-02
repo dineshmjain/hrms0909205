@@ -15,8 +15,6 @@ export const add = async (body) => {
     try {
         let query = {
             orgId: new ObjectId(body.user.orgId),
-            branchId: new ObjectId(body.branchId),
-            shiftId: new ObjectId(body.shiftId),
             date: new Date(body.date),
             userId: new ObjectId(body.userId),
             isApproved: null, //pending
@@ -24,6 +22,8 @@ export const add = async (body) => {
             createdBy: new ObjectId(body.user._id),
         };
 
+        if(body.branchId) query["branchId"] = new ObjectId(body.branchId);
+        if(body.shiftId) query["shiftId"] = new ObjectId(body.shiftId);
         if (body.clientMappedId) query["clientMappedId"] = new ObjectId(body.clientMappedId);
 
         return await create(query, collection_name);
@@ -119,10 +119,24 @@ export const getById = async (body) => {
     }
 }
 
+export const getMultipleExtensions = async (body) => {
+    try {
+
+        let query = {
+            _id: {$in : body.extensionIds.map(id => new ObjectId(id))}
+        }
+        return await getMany(query, collection_name);
+    }
+    catch (error) {
+        logger.error(`attendance : extend : getMultipleExtensions : ${error}`);
+        throw error;
+    }
+}
+
 export const updateStatus = async (body) => {
     try {
         let query = {
-            _id: new ObjectId(body.extensionId)
+            _id: {$in : body.extensionIds.map(id => new ObjectId(id))}
         }
 
         let update = {

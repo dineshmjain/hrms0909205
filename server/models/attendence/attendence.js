@@ -1,4 +1,4 @@
-import { create, getOne, removeOne, findOneAndUpdate, aggregationWithPegination, updateOne, findWithPegination, getMany, bulkWriteOperations,aggregate,updateMany} from '../../helper/mongo.js';
+import { create, getOne, removeOne, findOneAndUpdate, aggregationWithPegination, updateOne, findWithPegination, getMany, bulkWriteOperations,aggregate,updateMany, updateOneWithupsert} from '../../helper/mongo.js';
 import { ObjectId } from 'mongodb';
 import { logger } from '../../helper/logger.js';
 import moment from 'moment-timezone';
@@ -637,6 +637,31 @@ export const getEmployeeStats = async(body)=>{
 
         }
         return await getOne(query, 'attendenceStatistics')
+
+    }
+    catch (error) {
+        logger.error("Error while get employee attendance statistics in getEmployeeStats model",{stack: error.stack });
+        throw error;
+    }
+}
+
+export const getEmployeeStatsDaily = async(body)=>{
+    try
+    {
+        const { user, message, type, messageStatus} = body
+        const date = moment(body.transactionDate)
+        const year = date.year()
+        const month = date.month() + 1
+      
+        const query ={
+            userId: new ObjectId(user._id),
+            orgId: new ObjectId(user.orgId),
+            year: year,
+            month: month,
+            date: body.nearestShift?.isDayCross && body.type == 'checkOut' ? moment(body.transactionDate).subtract(1, 'days').format('YYYY-MM-DD') : date.format('YYYY-MM-DD')
+        }
+
+        return await getOne(query, 'ShiftAttendanceSummary')
 
     }
     catch (error) {
@@ -3387,10 +3412,10 @@ export const getExistingCheckInShiftId=async(body)=>{
 
 export const addEmployeeAttendenceStats2 = async (body) => {
     try {
-      const { user, type, messageStatus, checkExisting, existingCheckInOutData,employeeAttendenceId } = body;
+      const { user, type, messageStatus, checkExisting, checkExistingDaily, existingCheckInOutData,employeeAttendenceId } = body;
   
       const date = moment(body.transactionDate);
-      const todayStr = date.format("YYYY-MM-DD");
+      const todayStr = body.nearestShift?.dayCross && body.type == 'checkOut' ? moment(body.transactionDate).subtract(1, 'days').format('YYYY-MM-DD') : date.format('YYYY-MM-DD');
       const timeStr = date.format("HH:mm:ss");
       const year = date.year();
       const month = date.month() + 1;
@@ -3404,6 +3429,7 @@ export const addEmployeeAttendenceStats2 = async (body) => {
       };
   
       const doc = checkExisting?.data;
+      const docDaily = checkExistingDaily?.data;
       const update = {};
       const $inc = {};
       const $set = {};
@@ -3659,6 +3685,17 @@ export const addEmployeeAttendenceStats2 = async (body) => {
       if (Object.keys($set).length) update.$set = $set;
   
       if (!Object.keys(update).length) return;
+
+      const docUpsertQuery = {...query, date: todayStr}
+
+        const docUpsertUpdate = {
+            $set: {
+                ...docUpsertQuery,
+                createdDate: new Date(),
+                ...today
+            }
+      }
+      await updateOneWithupsert(docUpsertQuery, docUpsertUpdate, 'ShiftAttendanceSummary',{upsert:true});
       return await findOneAndUpdate(query, update, "attendenceStatistics");
     } catch (error) {
       logger.error("Error in addEmployeeAttendenceStats", { stack: error.stack });

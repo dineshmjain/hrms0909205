@@ -69,6 +69,21 @@ export const isExtendedIdValid = async (request, response, next) => {
     }
 }
 
+export const isMultipleExtendedIdValid = async (request, response, next) => {
+    try {
+        const getMultipleExtensions = await attendenceExtendModel.getMultipleExtensions(request.body)
+
+        if (!getMultipleExtensions.status || getMultipleExtensions.data.length != request.body.extensionIds.length) return apiResponse.validationError(response, "Invalid extension!!");
+
+        request.body.extendData = getMultipleExtensions.data;
+
+        return next()
+    } catch (error) {
+        logger.error(`attendance : extend : isMultipleExtendedIdValid : ${error}`);
+        return apiResponse.somethingResponse(response, "unable to validate extension");
+    }
+}
+
 export const updateStatus = async (request, response, next) => {
     try {
         const updateStatus = await attendenceExtendModel.updateStatus(request.body)

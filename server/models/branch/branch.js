@@ -12,6 +12,8 @@ const REQUIREMENTS_COLLECTION = "branchRequirements"
 const SHIFT_COLLECTION = "shift"
 const DESIGNATION_COLLECTION = "designation"
 const USERS_COLLECTION = "user"
+const ASSIGNMENT_COLLECTION = "assignment"
+const DEPARTMENT_COLLECTION = "department"
 
 export const addBranch = async (body) => {
   try {
@@ -235,6 +237,142 @@ console.log(JSON.stringify(aggregationPipeline,null,2),'hello')
     return { status: false, message: "Unable to fetch branch requirements" };
   }
 };
+
+export const listRequirementUsers = async (body) => {
+  try {
+    const { clientMappedId, clientBranchIds, limit = 10, page = 1 } = body;
+
+    if (!clientMappedId) {
+      return { status: false, message: "Organization ID is required" };
+    }
+
+    const orgId = new ObjectId(clientMappedId);
+    const branchIds = Array.isArray(clientBranchIds)
+      ? clientBranchIds.map((id) => new ObjectId(id))
+      : [];
+
+    const aggregationPipeline = [
+      {
+        $match: {
+          orgId: orgId,
+          ...(branchIds.length > 0 ? { branchId: { $in: branchIds } } : {}),
+          isActive: true,
+        },
+      },
+      {
+        $lookup: {
+          from: USERS_COLLECTION,
+          let: { requirementId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $in: ["$$requirementId", { $ifNull: ["$requirementIds", []] }],
+                },
+              },
+            },
+            {
+              $lookup: {
+                from: ASSIGNMENT_COLLECTION,
+                let: { assignmentIds: "$assignmentId" },
+                pipeline: [
+                  {
+                    $match: {
+                      $expr: {
+                        $in: ["$_id", { $ifNull: ["$$assignmentIds", []] }],
+                      },
+                    },
+                  },
+                  {
+                    $lookup: {
+                      from: DEPARTMENT_COLLECTION,
+                      localField: "departmentId",
+                      foreignField: "_id",
+                      as: "departmentDetails",
+                    },
+                  },
+                  {
+                    $unwind: {
+                      path: "$departmentDetails",
+                      preserveNullAndEmptyArrays: true,
+                    },
+                  },
+                  {
+                    $lookup: {
+                      from: DESIGNATION_COLLECTION,
+                      localField: "designationId",
+                      foreignField: "_id",
+                      as: "designationDetails",
+                    },
+                  },
+                  {
+                    $unwind: {
+                      path: "$designationDetails",
+                      preserveNullAndEmptyArrays: true,
+                    },
+                  },
+                  {
+                    $project: {
+                      _id: 1,
+                      "departmentDetails.name": 1,
+                      "designationDetails.name": 1,
+                    },
+                  },
+                ],
+                as: "assignmentDetails",
+              },
+            },
+            {
+              $addFields: {
+                departmentName: {
+                  $arrayElemAt: ["$assignmentDetails.departmentDetails.name", 0],
+                },
+                designationName: {
+                  $arrayElemAt: ["$assignmentDetails.designationDetails.name", 0],
+                },
+              },
+            },
+            {
+              $project: {
+                _id: 1,
+                name: 1,
+                gender: 1,
+                requirementIds: 1,
+                departmentName: 1,
+                designationName: 1,
+                mobile: 1, // Added this field
+              },
+            },
+          ],
+          as: "users",
+        },
+      },
+      { $unwind: "$users" },
+      { $replaceRoot: { newRoot: "$users" } },
+      {
+        $group: {
+          _id: "$_id",
+          name: { $first: "$name" },
+          gender: { $first: "$gender" },
+          mobile: { $first: "$mobile" },
+          requirementIds: { $first: "$requirementIds" },
+          departmentName: { $first: "$departmentName" },
+          designationName: { $first: "$designationName" },
+        },
+      },
+    ];
+
+    return await aggregationWithPegination(
+      aggregationPipeline,
+      { limit, page, sortBy: "name.firstName", sortOrder: 1 },
+      REQUIREMENTS_COLLECTION
+    );
+  } catch (error) {
+    logger.error("Error in listRequirementUsers:", error);
+    return { status: false, message: "Unable to fetch requirement users" };
+  }
+};
+
 
 export const assignEmployeesToRequirements = async (body) => {
   try {
@@ -960,7 +1098,7 @@ export const getNearestLocationBranch = async (body) => {
       // { $sort: { distance: 1 } }, // Sort by distance
       { $limit: 1 }
     ];
-    // console.log(JSON.stringify(aggregationPipeline),"aggregationPipeline branches")
+    console.log(JSON.stringify(aggregationPipeline),"aggregationPipeline branches")
     return await aggregate(aggregationPipeline,'branches');
   }catch(error){
     logger.error("Error while getNearestLocationBranch in branch module");
